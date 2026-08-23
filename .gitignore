@@ -1,0 +1,32 @@
+# Data — MVTec AD is ~5.3 GB and is CC BY-NC-SA licensed. Never vendor it into the repo.
+data/
+*.tar
+*.tar.xz
+*.zip
+
+# HF datasets cache, if a run is pointed at the repo dir
+.cache/
+huggingface/
+
+# Model weights — all backbones here are pulled from timm at runtime
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
+# Secrets. The notebooks read huggingface_hub.get_token(); nothing should ever land here.
+.env
+*.token
+.hf_token
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

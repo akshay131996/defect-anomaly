@@ -1,0 +1,620 @@
+<title>Inspecting Without Examples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+:root {
+  --ground:   #F6F7F9;
+  --panel:    #FFFFFF;
+  --panel-2:  #EDEFF3;
+  --ink:      #131820;
+  --ink-soft: #39424F;
+  --muted:    #5A6472;
+  --rule:     #D9DFE6;
+  --rule-soft:#E7EBF0;
+  --accent:   #1B5E92;
+  --accent-w: #E8F0F7;
+  --pass:     #2E7355;
+  --warn:     #B0770E;
+  --fail:     #A63A2C;
+  --shadow:   0 1px 2px rgba(19,24,32,.05), 0 8px 24px rgba(19,24,32,.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:   #0F131A;
+    --panel:    #161C25;
+    --panel-2:  #1D242F;
+    --ink:      #E4E9F0;
+    --ink-soft: #BBC4D0;
+    --muted:    #8C97A6;
+    --rule:     #2A323E;
+    --rule-soft:#222933;
+    --accent:   #6BA9DC;
+    --accent-w: #16232F;
+    --pass:     #5FB68C;
+    --warn:     #D9A441;
+    --fail:     #D8705F;
+    --shadow:   0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:   #0F131A;
+  --panel:    #161C25;
+  --panel-2:  #1D242F;
+  --ink:      #E4E9F0;
+  --ink-soft: #BBC4D0;
+  --muted:    #8C97A6;
+  --rule:     #2A323E;
+  --rule-soft:#222933;
+  --accent:   #6BA9DC;
+  --accent-w: #16232F;
+  --pass:     #5FB68C;
+  --warn:     #D9A441;
+  --fail:     #D8705F;
+  --shadow:   0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 4rem 1.5rem 6rem;
+}
+
+/* ---- masthead ---- */
+.masthead { border-bottom: 2px solid var(--ink); padding-bottom: 1.5rem; margin-bottom: 2.5rem; }
+
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: .7rem;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 .9rem;
+}
+
+h1 {
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 5.5vw, 2.9rem);
+  line-height: 1.08;
+  letter-spacing: -.022em;
+  text-wrap: balance;
+  margin: 0 0 .7rem;
+}
+
+.standfirst {
+  font-size: 1.16rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: 34rem;
+}
+
+/* ---- summary panel ---- */
+.summary {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 2px;
+  padding: 1.5rem 1.6rem;
+  margin: 0 0 3rem;
+  box-shadow: var(--shadow);
+}
+.summary h2 { margin-top: 0; }
+.summary ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .6rem; }
+.summary li::marker { color: var(--accent); }
+
+/* ---- headings ---- */
+h2 {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 650;
+  font-size: 1.42rem;
+  line-height: 1.24;
+  letter-spacing: -.012em;
+  text-wrap: balance;
+  margin: 3.2rem 0 .9rem;
+}
+
+h3 {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 1.06rem;
+  letter-spacing: -.006em;
+  margin: 2rem 0 .5rem;
+}
+
+p { margin: 0 0 1.1rem; }
+strong { font-weight: 600; }
+
+a { color: var(--accent); text-underline-offset: 2px; }
+
+/* ---- figures ---- */
+figure {
+  margin: 2.2rem 0;
+  padding: 1.4rem 1.4rem 1.1rem;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+}
+figure svg { display: block; width: 100%; height: auto; }
+figcaption {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: .84rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-top: 1rem;
+  padding-top: .85rem;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.scroll-x { overflow-x: auto; }
+
+/* ---- interactive control ---- */
+.control {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.2rem 0 .4rem;
+  flex-wrap: wrap;
+}
+.control label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .74rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+input[type="range"] {
+  flex: 1 1 14rem;
+  accent-color: var(--accent);
+  min-width: 10rem;
+}
+input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+.readout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: .8rem;
+  margin-top: 1.1rem;
+}
+.stat {
+  background: var(--panel-2);
+  border-radius: 2px;
+  padding: .7rem .8rem;
+}
+.stat .k {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .25rem;
+}
+.stat .v {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 650;
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.stat.is-fail .v { color: var(--fail); }
+.stat.is-warn .v { color: var(--warn); }
+
+/* ---- callout ---- */
+.note {
+  border-left: 3px solid var(--rule);
+  padding: .2rem 0 .2rem 1.1rem;
+  margin: 1.8rem 0;
+  color: var(--ink-soft);
+}
+.note .lbl {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .3rem;
+}
+
+/* ---- table ---- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: .9rem;
+  margin: 1.5rem 0;
+}
+th, td {
+  text-align: left;
+  padding: .6rem .7rem;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+}
+th {
+  font-weight: 600;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+}
+td.num { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---- status strip ---- */
+.status {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .76rem;
+  line-height: 1.6;
+  color: var(--muted);
+  background: var(--panel-2);
+  border-radius: 2px;
+  padding: .9rem 1rem;
+  margin: 3.5rem 0 0;
+}
+.status b { color: var(--ink-soft); font-weight: 500; }
+
+footer {
+  margin-top: 3rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--rule);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: .82rem;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Project brief · Visual inspection</p>
+    <h1>Inspecting Without Examples</h1>
+    <p class="standfirst">Catching defective parts when you have no pictures of defects to learn from — and why the accuracy number is not the number that matters.</p>
+  </header>
+
+  <div class="summary">
+    <h2 style="margin-top:0;font-size:1.05rem;">The short version</h2>
+    <ul>
+      <li>A production line cannot supply training examples of defects. By the time you have collected five hundred of them, you have shipped five hundred of them.</li>
+      <li>So the model learns only what <em>good</em> looks like, and flags anything that does not fit. No defect examples required.</li>
+      <li>The model does not output pass or fail. It outputs a <strong>score</strong>. Somebody still has to decide where the line goes.</li>
+      <li>That decision is a business decision, not a modelling one — because a missed defect and a false alarm have very different prices.</li>
+      <li>The published accuracy figures for this task (~99%) do not tell you how many defects would reach a customer. A different number does, and it is the one this work reports.</li>
+    </ul>
+  </div>
+
+  <h2>The problem with normal machine learning here</h2>
+
+  <p>Almost every model you have heard about learns from examples of the thing it is looking for. Show it ten thousand photographs labelled <em>cat</em> and ten thousand labelled <em>dog</em>, and it learns the difference.</p>
+
+  <p>Visual quality inspection breaks that arrangement. A well-run line produces overwhelmingly good parts — that is the entire point of a well-run line. Defects are rare, and they are also <em>varied</em>: a scratch, a crack, a misprint, a missing component, and a contamination are five different-looking problems that share nothing except being wrong.</p>
+
+  <p>Two consequences follow, and both are awkward. You cannot gather a balanced training set without deliberately producing scrap. And even if you gathered one, it would only cover the defect types you had already seen — the model would be blind to the sixth failure mode that shows up next quarter when a supplier changes material.</p>
+
+  <div class="note">
+    <span class="lbl">The reframing</span>
+    Rather than learning what defects look like, learn what <em>normal</em> looks like — and treat anything sufficiently far from normal as suspect. Good parts you have in abundance, for free, already.
+  </div>
+
+  <h2>How it actually works</h2>
+
+  <p>The system builds a reference of normality from defect-free parts alone, then measures how far each new part sits from that reference.</p>
+
+  <figure>
+    <div class="scroll-x">
+      <svg viewBox="0 0 720 250" role="img" aria-label="Flow diagram: defect-free training images pass through a frozen feature extractor into a reference memory of normal appearance. A new part is embedded the same way, compared by distance to its nearest neighbours in that memory, and produces an anomaly score which a threshold turns into a pass or review decision.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- setup lane -->
+        <text x="0" y="14" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor" opacity=".55" letter-spacing="1.2">SETUP — ONCE, FROM GOOD PARTS ONLY</text>
+
+        <rect x="0" y="26" width="150" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="75" y="47" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">Defect-free</text>
+        <text x="75" y="63" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">training images</text>
+
+        <line x1="150" y1="52" x2="222" y2="52" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+
+        <rect x="228" y="26" width="150" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="303" y="47" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">Feature extractor</text>
+        <text x="303" y="63" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">frozen, not trained</text>
+
+        <line x1="378" y1="52" x2="450" y2="52" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+
+        <rect x="456" y="26" width="150" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+        <text x="531" y="47" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">Reference of</text>
+        <text x="531" y="63" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">normal appearance</text>
+
+        <!-- divider -->
+        <line x1="0" y1="104" x2="720" y2="104" stroke="currentColor" stroke-width="1" opacity=".18" stroke-dasharray="3 4"/>
+
+        <!-- inference lane -->
+        <text x="0" y="130" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor" opacity=".55" letter-spacing="1.2">IN PRODUCTION — EVERY PART</text>
+
+        <rect x="0" y="142" width="150" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="75" y="173" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">New part</text>
+
+        <line x1="150" y1="168" x2="222" y2="168" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+
+        <rect x="228" y="142" width="150" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <text x="303" y="173" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor">Same extractor</text>
+
+        <line x1="378" y1="168" x2="450" y2="168" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+        <text x="414" y="161" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".6">compare</text>
+
+        <rect x="456" y="142" width="150" height="52" rx="2" fill="none" stroke="#1B5E92" stroke-width="1.8"/>
+        <text x="531" y="163" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="#1B5E92" font-weight="600">Anomaly score</text>
+        <text x="531" y="179" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#1B5E92" opacity=".85">distance from normal</text>
+
+        <!-- feedback from reference down to compare -->
+        <line x1="531" y1="78" x2="531" y2="120" stroke="currentColor" stroke-width="1.4" opacity=".5"/>
+        <line x1="531" y1="120" x2="414" y2="120" stroke="currentColor" stroke-width="1.4" opacity=".5"/>
+        <line x1="414" y1="120" x2="414" y2="150" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#ar)"/>
+
+        <!-- threshold -->
+        <line x1="531" y1="194" x2="531" y2="218" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)"/>
+        <text x="545" y="212" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor" opacity=".65">threshold</text>
+        <text x="531" y="242" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor" font-weight="600">Pass · or · Send for review</text>
+      </svg>
+    </div>
+    <figcaption>The reference of normal is built once from good parts. In production, every part is measured against it, and the distance becomes a score. Note where the decision actually happens — at the threshold, after the model has finished.</figcaption>
+  </figure>
+
+  <p>The feature extractor is a standard pretrained vision model, used as-is. It is not trained on your parts; it simply converts an image into a compact numerical description. Two visually similar parts land close together in that numerical space, and a scratched part lands further away from everything in the reference.</p>
+
+  <p>The important structural point for planning purposes: <strong>there is no training run.</strong> Setting this up on a new product line means photographing good parts and building the reference, not commissioning a training job. That has real consequences for how quickly a new line can be brought online.</p>
+
+  <h2>Where the decision actually gets made</h2>
+
+  <p>Here is the part that gets lost when this work is summarised as an accuracy percentage.</p>
+
+  <p>The model produces a number, not a verdict. Good parts tend to score low and defective parts tend to score high — but the two ranges <em>overlap</em>. Some unusual-but-acceptable parts score higher than some subtly defective ones. No threshold separates them cleanly, because no such threshold exists.</p>
+
+  <p>So somebody chooses where the line goes, and that choice determines everything the business experiences. Move it right and fewer good parts get pulled for review, but more defects reach customers. Move it left and you catch more defects while stopping more good parts. Try it:</p>
+
+  <figure>
+    <div class="scroll-x">
+      <svg id="fig" viewBox="0 0 720 300" role="img" aria-label="Two overlapping score distributions: good parts cluster at low anomaly scores, defective parts at higher scores, with a region of overlap. A movable threshold line splits them; defective parts left of the line are escapes that ship to customers, good parts right of the line are false alarms pulled for review.">
+        <!-- axis -->
+        <line x1="48" y1="238" x2="700" y2="238" stroke="currentColor" stroke-width="1.2"/>
+        <text x="48" y="262" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">low</text>
+        <text x="374" y="280" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6" letter-spacing="1">ANOMALY SCORE</text>
+        <text x="700" y="262" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">high</text>
+
+        <!-- shaded error regions (under curves, drawn first) -->
+        <path id="escArea" fill="#A63A2C" opacity=".85"/>
+        <path id="faArea"  fill="#B0770E" opacity=".55"/>
+
+        <!-- distribution outlines -->
+        <path id="goodCurve" fill="currentColor" fill-opacity=".10" stroke="currentColor" stroke-width="1.6"/>
+        <path id="badCurve"  fill="#A63A2C" fill-opacity=".10" stroke="#A63A2C" stroke-width="1.6"/>
+
+        <!-- labels -->
+        <text x="150" y="72" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="currentColor" font-weight="600">Good parts</text>
+        <text x="150" y="88" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".6">500 / batch</text>
+        <text x="560" y="120" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="#A63A2C" font-weight="600">Defective parts</text>
+        <text x="560" y="136" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#A63A2C" opacity=".8">60 / batch</text>
+
+        <!-- threshold -->
+        <line id="thrLine" x1="400" y1="34" x2="400" y2="238" stroke="#1B5E92" stroke-width="2.2" stroke-dasharray="5 4"/>
+        <text id="thrLabel" x="400" y="26" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1B5E92" font-weight="500">threshold</text>
+      </svg>
+    </div>
+
+    <div class="control">
+      <label for="thr">Move the line</label>
+      <input type="range" id="thr" min="24" max="86" value="46" step="1"
+             aria-describedby="readout">
+    </div>
+
+    <div class="readout" id="readout">
+      <div class="stat is-fail">
+        <span class="k">Escapes</span>
+        <span class="v" id="vEsc">—</span>
+      </div>
+      <div class="stat is-warn">
+        <span class="k">False alarms</span>
+        <span class="v" id="vFa">—</span>
+      </div>
+      <div class="stat">
+        <span class="k">Defects caught</span>
+        <span class="v" id="vRec">—</span>
+      </div>
+      <div class="stat">
+        <span class="k">Relative cost</span>
+        <span class="v" id="vCost">—</span>
+      </div>
+    </div>
+
+    <figcaption><strong>Illustrative distributions</strong>, shown to make the trade-off concrete — not measured results. <span style="color:var(--fail);font-weight:600;">Escapes</span> are defective parts that passed inspection and shipped. <span style="color:var(--warn);font-weight:600;">False alarms</span> are good parts pulled off the line for a human to check. Relative cost assumes one escape costs as much as 100 false alarms; that ratio is a business input, and changing it moves the best threshold.</figcaption>
+  </figure>
+
+  <p>Notice that there is no setting where both numbers are zero. That is not a deficiency in the model — it is the shape of the problem. The overlap is real, and the only question is which side of it you would rather absorb.</p>
+
+  <h2>Why the published accuracy figure does not answer the question</h2>
+
+  <p>Methods for this task are compared using a metric called AUROC, usually quoted around 99% on the standard benchmark. It is a fair metric and it is widely misread, so it is worth one paragraph.</p>
+
+  <p><strong>AUROC measures ranking, not decisions.</strong> It asks: if you drew one good part and one defective part at random, how often would the defective one score higher? At 99%, almost always. What it never mentions is where the threshold sits — because it averages over <em>all possible</em> thresholds. Two systems with identical AUROC can, at the threshold you actually deploy, differ substantially in how many defects reach customers.</p>
+
+  <p>So a 99% AUROC is a genuine statement about a model's ranking quality and tells a plant manager nothing about escapes per shift. The numbers that do are the ones in the panel above: escapes, false alarms, and what they cost together.</p>
+
+  <div class="note">
+    <span class="lbl">Why this matters commercially</span>
+    A supplier quoting "99% accurate" has not told you their escape rate, and may not have measured it. Asking for escapes and false alarms at a stated operating point is the question that separates a real evaluation from a benchmark score.
+  </div>
+
+  <h2>Calibrating blind</h2>
+
+  <p>There is a subtle trap in choosing the threshold, and it is worth understanding because it is easy to get wrong in a way that looks fine.</p>
+
+  <p>The obvious approach is to try thresholds until escapes and false alarms are nicely balanced. But doing that requires a pile of known defects to measure against — and the entire premise of this method is that you do not have one. At commissioning time on a real line, you have good parts and nothing else.</p>
+
+  <p>So the threshold has to be set from good parts alone: run the reference set through the system, look at the distribution of scores that <em>known-good</em> parts produce, and place the line where an acceptable fraction of them would be flagged. Set it at the 99th percentile and roughly one good part in a hundred goes for review — a false alarm rate you have chosen deliberately and can staff for.</p>
+
+  <p>A threshold tuned against a test set that contains defects will report better numbers and will not reproduce them in production. This work sets it the honest way, from defect-free data only, which is why the reported figures are lower and are the ones worth trusting.</p>
+
+  <h2>Not every product is equally inspectable</h2>
+
+  <p>The benchmark covers fifteen product categories, and their difficulty varies enormously. Reporting a single averaged figure across all of them conceals that completely — which is why this work reports every category separately.</p>
+
+  <table>
+    <thead>
+      <tr><th>Category</th><th>Type</th><th>Why it behaves as it does</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="num">bottle</td><td>Object</td><td>Consistent shape and framing, visible defects. Close to solved.</td></tr>
+      <tr><td class="num">screw</td><td>Object</td><td>Parts sit at arbitrary rotations and defects are a few pixels wide. Persistently the hardest.</td></tr>
+      <tr><td class="num">carpet</td><td>Texture</td><td>No fixed structure at all; the model must learn a statistical pattern rather than a shape.</td></tr>
+    </tbody>
+  </table>
+
+  <p>The practical read for a manager: <strong>feasibility is per-product, not per-technology.</strong> A pilot that succeeds on one component says little about the next one, and the difference is usually defect size relative to the frame, plus how consistently the part is presented to the camera. Both are fixable with fixturing and optics, which is often cheaper than any modelling improvement.</p>
+
+  <h2>What this does not do</h2>
+
+  <p>Three limits worth stating plainly, since they shape what a deployment would need.</p>
+
+  <p><strong>It flags, it does not diagnose.</strong> The output is "this part is unusual", not "this part has a 4&nbsp;mm crack in the flange". Defect classification is a separate problem needing labelled defect examples — the very thing this approach avoids.</p>
+
+  <p><strong>It assumes the reference stays valid.</strong> Change the material, the lighting, the camera position, or the supplier, and yesterday's definition of normal is wrong. Everything starts reading as anomalous. Re-referencing is cheap, but it has to be triggered by somebody, and drift monitoring is a real part of the work.</p>
+
+  <p><strong>It inherits its notion of similarity from a general-purpose model.</strong> The feature extractor was trained on everyday photographs, not your parts. Where a defect is visually subtle in ways that ordinary photography never cared about, the extractor may simply not represent it.</p>
+
+  <h2>What comes next</h2>
+
+  <p>The work is staged so each step answers a question the previous one raised.</p>
+
+  <table>
+    <thead>
+      <tr><th>Stage</th><th>Question it answers</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="num">1 — baseline</td><td>How far does the simplest possible method get, and what does it cost at a threshold set the honest way? Everything later must beat this.</td></tr>
+      <tr><td class="num">2 — published methods</td><td>Do the more sophisticated published methods actually improve the numbers a plant cares about, or only the benchmark score?</td></tr>
+      <tr><td class="num">3 — data efficiency</td><td>How many good images are needed before performance plateaus? This sets the real commissioning cost for a new line.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Stage three is the one with the most operational value. "How long must we photograph good parts before this is useful?" determines whether the approach is viable for short production runs, and it is the question the published literature almost never addresses.</p>
+
+  <div class="status">
+    <b>Status.</b> Method and evaluation design complete; stage&nbsp;1 measurements pending. No performance figures are claimed in this document — the ~99% AUROC referenced above is published literature for this benchmark, not a result produced here. The distributions in the interactive figure are illustrative.<br><br>
+    <b>Data.</b> MVTec AD, 15 product categories, ~5,350 images, training split defect-free by construction. Licensed CC BY-NC-SA 4.0 — research use only, not licensed for commercial deployment.
+  </div>
+
+  <footer>
+    Prepared for review. Questions this document should provoke, in rough priority: what escape rate is acceptable per shift, what a false alarm actually costs in inspector time, and which product line would make the most informative pilot.
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var W = 720, BASE = 238, TOP = 34;
+  var X0 = 48, X1 = 700;
+
+  // Illustrative populations. Fixed, deterministic — no randomness.
+  var GOOD = { mu: 0.28, sd: 0.075, n: 500 };
+  var BAD  = { mu: 0.56, sd: 0.135, n: 60  };
+
+  function xOf(t) { return X0 + t * (X1 - X0); }
+
+  function pdf(t, d) {
+    var z = (t - d.mu) / d.sd;
+    return Math.exp(-0.5 * z * z);
+  }
+
+  // Normal CDF via Abramowitz-Stegun erf approximation.
+  function cdf(t, d) {
+    var z = (t - d.mu) / (d.sd * Math.SQRT2);
+    var s = z < 0 ? -1 : 1;
+    z = Math.abs(z);
+    var a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741,
+        a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+    var k = 1 / (1 + p * z);
+    var y = 1 - (((((a5 * k + a4) * k) + a3) * k + a2) * k + a1) * k * Math.exp(-z * z);
+    return 0.5 * (1 + s * y);
+  }
+
+  var STEPS = 240, HGOOD = 150, HBAD = 92;
+
+  function curvePath(d, h) {
+    var pts = [];
+    for (var i = 0; i <= STEPS; i++) {
+      var t = i / STEPS;
+      pts.push(xOf(t).toFixed(1) + ' ' + (BASE - pdf(t, d) * h).toFixed(1));
+    }
+    return 'M ' + xOf(0).toFixed(1) + ' ' + BASE + ' L ' + pts.join(' L ') +
+           ' L ' + xOf(1).toFixed(1) + ' ' + BASE + ' Z';
+  }
+
+  function partialPath(d, h, from, to) {
+    if (to <= from) return '';
+    var pts = [], n = 90;
+    for (var i = 0; i <= n; i++) {
+      var t = from + (to - from) * (i / n);
+      pts.push(xOf(t).toFixed(1) + ' ' + (BASE - pdf(t, d) * h).toFixed(1));
+    }
+    return 'M ' + xOf(from).toFixed(1) + ' ' + BASE + ' L ' + pts.join(' L ') +
+           ' L ' + xOf(to).toFixed(1) + ' ' + BASE + ' Z';
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  $('goodCurve').setAttribute('d', curvePath(GOOD, HGOOD));
+  $('badCurve').setAttribute('d', curvePath(BAD, HBAD));
+
+  var slider = $('thr');
+
+  function update() {
+    var t = parseInt(slider.value, 10) / 100;
+    var x = xOf(t);
+
+    $('thrLine').setAttribute('x1', x); $('thrLine').setAttribute('x2', x);
+    var lbl = $('thrLabel');
+    lbl.setAttribute('x', Math.min(Math.max(x, X0 + 34), X1 - 34));
+
+    // Escapes: defective parts scoring BELOW the line. False alarms: good parts ABOVE it.
+    $('escArea').setAttribute('d', partialPath(BAD, HBAD, 0, t));
+    $('faArea').setAttribute('d', partialPath(GOOD, HGOOD, t, 1));
+
+    var esc = BAD.n * cdf(t, BAD);
+    var fa  = GOOD.n * (1 - cdf(t, GOOD));
+    var caught = BAD.n - esc;
+
+    $('vEsc').textContent = Math.round(esc);
+    $('vFa').textContent = Math.round(fa);
+    $('vRec').textContent = Math.round(100 * caught / BAD.n) + '%';
+    $('vCost').textContent = Math.round(esc * 100 + fa).toLocaleString();
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>

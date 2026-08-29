@@ -124,12 +124,18 @@ GOOD_LABEL = next(l for (d, l) in pairs if str(d).lower() == "good")
 
 sub = full.filter(lambda r: r[object_col] in CATEGORIES)
 
+# Materialise label columns once — `dataset[column]` rebuilds the entire column on every
+# call, so indexing it inside a loop is quadratic. Images stay lazy; these are scalars.
+OBJ   = sub[object_col]
+SPLIT = [str(s).lower() for s in sub[split_col]]
+LABEL = sub[label_col]
+
 def split_indices(cat):
     tr, te = [], []
     for i in range(len(sub)):
-        if sub[object_col][i] != cat:
+        if OBJ[i] != cat:
             continue
-        (tr if "train" in str(sub[split_col][i]).lower() else te).append(i)
+        (tr if "train" in SPLIT[i] else te).append(i)
     return tr, te
 
 for cat in CATEGORIES:
@@ -167,6 +173,21 @@ patches that prevent false alarms.
 Scoring a part: for each of its patches, distance to the nearest bank entry. The image score
 is the **maximum** over patches — one bad region is enough to condemn a part, which is the
 correct semantics for inspection and the direct opposite of averaging.
+
+**4. A held-out calibration split.** The threshold is a percentile of the scores of *good*
+parts, so those scores have to be honest. Score a training image against a bank built from
+its own patches and every patch that made it into the coreset returns distance exactly
+zero. That would be survivable if the image score were a mean — but it is a max, and greedy
+k-center selects outliers preferentially, so the very patch that would have set the maximum
+is the one most likely to be sitting in the bank. Calibration scores come out too low, the
+percentile threshold lands too low, and the line sees more false alarms in service than the
+calibration promised.
+
+So 20% of the defect-free training images are held out: the bank is built from the other
+80%, and the threshold is read off images the bank has never seen. Session 1 had the same
+problem in simpler form and solved it by dropping the self-match neighbour; at patch level
+the equivalent is a real hold-out. The cost is a smaller bank, which is itself worth
+reporting — it is a preview of session 3's question.
 ''')
 
 # ---------------------------------------------------------------- 4
@@ -272,13 +293,16 @@ distances to be roughly right. The bank itself keeps full-dimensional vectors.
 
 code(r'''
 @torch.no_grad()
-def coreset_indices(feats, ratio=0.01, proj_dim=128, seed=0):
+def coreset_indices(feats, ratio=0.01, proj_dim=128, seed=0, chunk=16384):
     n = feats.shape[0]
     k = max(int(n * ratio), 32)
     g = torch.Generator().manual_seed(seed)
 
-    P = torch.randn(feats.shape[1], proj_dim, generator=g) / (proj_dim ** 0.5)
-    X = (feats @ P).to(DEVICE)
+    # Project on the GPU. `feats` is ~160k x 1024 here, and doing this matmul on the CPU
+    # first was the slowest line in the notebook. Chunked so the full matrix never has to
+    # sit in VRAM at once; the generator stays on the CPU so the seed still reproduces.
+    P = (torch.randn(feats.shape[1], proj_dim, generator=g) / (proj_dim ** 0.5)).to(DEVICE)
+    X = torch.cat([feats[i:i + chunk].to(DEVICE) @ P for i in range(0, n, chunk)])
 
     start = int(torch.randint(n, (1,), generator=g))
     sel = [start]
@@ -314,6 +338,12 @@ import time
 from sklearn.metrics import roc_auc_score
 
 CORESET_RATIO = 0.01
+
+# Fraction of the defect-free training images held out to calibrate the threshold. 20% of
+# MVTec's smallest category (~60 images) still leaves ~12 calibration images, which is thin
+# for a 99th percentile — session 3's data-efficiency sweep should report how unstable the
+# threshold is at that size rather than assume it is fine.
+CAL_FRAC, CAL_SEED = 0.20, 0
 results = {}
 
 for spec in RUNS:
@@ -325,32 +355,49 @@ for spec in RUNS:
         t0 = time.time()
         tr, te = split_indices(cat)
 
-        f_tr = extract(ex, tr)
+        # Hold out a slice of the defect-free training images for threshold calibration.
+        # The bank is built only from the rest, so calibration scores contain no
+        # self-matches. Scoring an image against a bank that contains its own patches
+        # returns exactly zero for those patches — and because greedy k-center selects
+        # outliers preferentially, the patch that would have set the max is the one most
+        # likely to be in the bank. That deflates train scores, drags the percentile
+        # threshold down, and produces more false alarms in service than calibration
+        # predicted. Session 1 avoided this by dropping the self-match neighbour; the
+        # patch-level equivalent is a genuine hold-out.
+        rng = np.random.default_rng(CAL_SEED)
+        perm = rng.permutation(len(tr))
+        n_cal = max(int(round(len(tr) * CAL_FRAC)), 1)
+        cal = [tr[i] for i in perm[:n_cal]]
+        fit = [tr[i] for i in perm[n_cal:]]
+
+        f_fit = extract(ex, fit)
         n_patch = ex.grid[0] * ex.grid[1]
 
-        keep = coreset_indices(f_tr, CORESET_RATIO)
-        bank = f_tr[keep]
+        keep = coreset_indices(f_fit, CORESET_RATIO)
+        bank = f_fit[keep]
 
         d_te = patch_distances(bank, extract(ex, te), n_patch)
         scores = d_te.max(dim=1).values.numpy()
 
-        # Train scores calibrate the threshold, exactly as in session 1 — defect-free data
-        # is all a line has at commissioning.
-        d_tr = patch_distances(bank, f_tr, n_patch)
-        train_scores = d_tr.max(dim=1).values.numpy()
+        # Calibration scores set the threshold — defect-free data is all a line has at
+        # commissioning, and these images were never seen by the bank.
+        d_cal = patch_distances(bank, extract(ex, cal), n_patch)
+        train_scores = d_cal.max(dim=1).values.numpy()
 
-        truth = np.array([0 if sub[label_col][i] == GOOD_LABEL else 1 for i in te])
+        truth = np.array([0 if LABEL[i] == GOOD_LABEL else 1 for i in te])
         auroc = roc_auc_score(truth, scores)
 
         results[spec["tag"]][cat] = {
             "auroc": float(auroc), "scores": scores, "truth": truth,
             "train_scores": train_scores, "grid": ex.grid, "dim": ex.dim,
             "bank_size": len(keep), "patches_per_image": n_patch,
+            "n_fit_images": len(fit), "n_cal_images": len(cal),
             "bank": bank,          # kept for the anomaly maps in section 8
             "seconds": time.time() - t0,
         }
         print(f"  {cat:<10} AUROC {auroc:.3f}   grid {ex.grid[0]}x{ex.grid[1]}"
-              f"   dim {ex.dim:5d}   bank {len(keep):6d}   {time.time()-t0:5.1f}s")
+              f"   dim {ex.dim:5d}   bank {len(keep):6d}"
+              f"   fit/cal {len(fit)}/{len(cal)}   {time.time()-t0:5.1f}s")
 
     del ex
     torch.cuda.empty_cache() if DEVICE == "cuda" else None
@@ -545,7 +592,9 @@ summary = {
     "dataset": DATASET_ID,
     "categories": CATEGORIES,
     "coreset_ratio": CORESET_RATIO,
-    "threshold_rule": f"{PCTL}th percentile of train-only scores",
+    "calibration_split": {"frac": CAL_FRAC, "seed": CAL_SEED},
+    "threshold_rule": f"{PCTL}th percentile of held-out calibration scores "
+                      f"({CAL_FRAC:.0%} of train, unseen by the bank)",
     "cost_ratio_escape_to_false_alarm": COST_ESCAPE,
     "runs": {},
 }

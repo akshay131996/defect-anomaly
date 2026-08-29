@@ -246,10 +246,18 @@ assert not missing, f"requested categories not in dataset: {missing}"
 sub = full.filter(lambda r: r[object_col] in CATEGORIES)
 print(f"working subset: {len(sub)} rows\n")
 
+# Materialise the label columns ONCE. `dataset[column]` rebuilds the whole column list on
+# every call, so `sub[object_col][i]` inside a loop is quadratic — invisible at three
+# categories, minutes of dead time at fifteen. Images stay lazy; these are scalars.
+OBJ    = sub[object_col]
+SPLIT  = [str(s).lower() for s in sub[split_col]]
+LABEL  = sub[label_col]
+DEFECT = sub[defect_col]
+
 for cat in CATEGORIES:
-    rows = [i for i, o in enumerate(sub[object_col]) if o == cat]
-    defects = collections.Counter(sub[defect_col][i] for i in rows)
-    n_train = sum(1 for i in rows if "train" in str(sub[split_col][i]).lower())
+    rows = [i for i, o in enumerate(OBJ) if o == cat]
+    defects = collections.Counter(DEFECT[i] for i in rows)
+    n_train = sum(1 for i in rows if "train" in SPLIT[i])
     print(f"{cat:<10} train {n_train:4d}   test {len(rows)-n_train:4d}   "
           f"defect types: {dict(defects)}")
 
@@ -257,10 +265,10 @@ for cat in CATEGORIES:
 fig, axes = plt.subplots(len(CATEGORIES), 2, figsize=(7, 3.4 * len(CATEGORIES)))
 for r, cat in enumerate(CATEGORIES):
     idx_good = next(i for i in range(len(sub))
-                    if sub[object_col][i] == cat and sub[label_col][i] == GOOD_LABEL)
+                    if OBJ[i] == cat and LABEL[i] == GOOD_LABEL)
     idx_bad = next(i for i in range(len(sub))
-                   if sub[object_col][i] == cat and sub[label_col][i] != GOOD_LABEL)
-    for c, (idx, title) in enumerate([(idx_good, "good"), (idx_bad, sub[defect_col][idx_bad])]):
+                   if OBJ[i] == cat and LABEL[i] != GOOD_LABEL)
+    for c, (idx, title) in enumerate([(idx_good, "good"), (idx_bad, DEFECT[idx_bad])]):
         axes[r, c].imshow(sub[idx][image_col])
         axes[r, c].set_title(f"{cat} — {title}", fontsize=10)
         axes[r, c].axis("off")
@@ -299,9 +307,9 @@ def to_small_gray(img):
 def split_indices(cat):
     tr, te = [], []
     for i in range(len(sub)):
-        if sub[object_col][i] != cat:
+        if OBJ[i] != cat:
             continue
-        (tr if "train" in str(sub[split_col][i]).lower() else te).append(i)
+        (tr if "train" in SPLIT[i] else te).append(i)
     return tr, te
 
 
@@ -310,7 +318,7 @@ for cat in CATEGORIES:
     tr, te = split_indices(cat)
     ref = np.mean([to_small_gray(sub[i][image_col]) for i in tr], axis=0)
     scores = np.array([np.linalg.norm(to_small_gray(sub[i][image_col]) - ref) for i in te])
-    truth = np.array([0 if sub[label_col][i] == GOOD_LABEL else 1 for i in te])
+    truth = np.array([0 if LABEL[i] == GOOD_LABEL else 1 for i in te])
     auroc = roc_auc_score(truth, scores)
     baseline0[cat] = float(auroc)
     print(f"{cat:<10} AUROC {auroc:.3f}   ({truth.sum()} defective / {len(truth)} test images)")
@@ -373,7 +381,7 @@ for cat in CATEGORIES:
     nn = NearestNeighbors(n_neighbors=K).fit(f_tr)
     dist, _ = nn.kneighbors(f_te)
     scores = dist.mean(axis=1)                       # higher = more anomalous
-    truth = np.array([0 if sub[label_col][i] == GOOD_LABEL else 1 for i in te])
+    truth = np.array([0 if LABEL[i] == GOOD_LABEL else 1 for i in te])
 
     # Scores on the TRAINING data too: the threshold later has to be set from these alone,
     # because defect-free parts are all a factory has at calibration time.
@@ -479,10 +487,31 @@ to run it and what that costs".
 
 The ratio itself is a business input, not a modelling one. What an engineer owes the
 business is this curve, so the ratio can be argued about with numbers attached.
+
+**The trap in this cell, stated before the numbers appear.** The minimum of the curve is
+found by trying thresholds against a test set whose labels are known. No plant can do that
+— at commissioning there are no defects to tune against, which is the premise of the whole
+method. So the minimum is an **oracle**: an upper bound on what perfect threshold selection
+would have been worth, not a value anyone can deploy.
+
+That distinction is the difference between a defensible result and one that falls apart on
+contact. Quote the gap as "what threshold selection is worth", never as "what the heuristic
+costs you", and treat closing it with defect-free data alone as the open question it is.
 ''')
 
 code(r'''
 COST_ESCAPE, COST_FALSE_ALARM = 100.0, 1.0
+
+
+def cost_at(d, thr):
+    """Cost of running this category at one threshold. Evaluated directly rather than
+    looked up on a grid — the default-vs-optimal gap is the headline claim here, and
+    reading it off the nearest grid point moves it by whole escapes."""
+    pred = (d["scores"] > thr).astype(int)
+    fn = int(((pred == 0) & (d["truth"] == 1)).sum())
+    fp = int(((pred == 1) & (d["truth"] == 0)).sum())
+    return fn * COST_ESCAPE + fp * COST_FALSE_ALARM, fn, fp
+
 
 fig, axes = plt.subplots(1, len(CATEGORIES), figsize=(5 * len(CATEGORIES), 4))
 if len(CATEGORIES) == 1:
@@ -491,39 +520,55 @@ if len(CATEGORIES) == 1:
 cost_summary = {}
 for ax, cat in zip(axes, CATEGORIES):
     d = per_cat[cat]
-    grid = np.percentile(d["train_scores"], np.linspace(50, 100, 120))
+    default_thr = float(np.percentile(d["train_scores"], PCTL))
+
+    # Cover the whole score range, not just up to the largest training score — the optimum
+    # can sit above anything seen during calibration. The exact default is forced into the
+    # grid so the plotted curve passes through the point being compared against.
+    lo = float(min(d["train_scores"].min(), d["scores"].min()))
+    hi = float(max(d["train_scores"].max(), d["scores"].max()))
+    grid = np.unique(np.concatenate([
+        np.percentile(d["train_scores"], np.linspace(50, 100, 200)),
+        np.linspace(lo, hi, 200),
+        [default_thr],
+    ]))
+
     costs, escapes_at = [], []
     for thr in grid:
-        pred = (d["scores"] > thr).astype(int)
-        fn = int(((pred == 0) & (d["truth"] == 1)).sum())
-        fp = int(((pred == 1) & (d["truth"] == 0)).sum())
-        costs.append(fn * COST_ESCAPE + fp * COST_FALSE_ALARM)
-        escapes_at.append(fn)
+        c, fn, fp = cost_at(d, thr)
+        costs.append(c); escapes_at.append(fn)
     costs = np.array(costs)
 
     best = int(np.argmin(costs))
-    default_thr = float(np.percentile(d["train_scores"], PCTL))
+    default_cost, default_fn, default_fp = cost_at(d, default_thr)
     cost_summary[cat] = {
         "best_threshold": float(grid[best]),
         "best_cost": float(costs[best]),
         "escapes_at_best": int(escapes_at[best]),
-        "cost_at_99th_pctl": float(costs[np.argmin(np.abs(grid - default_thr))]),
+        "cost_at_99th_pctl": float(default_cost),
+        "escapes_at_99th_pctl": int(default_fn),
     }
 
     ax.plot(grid, costs, lw=2)
-    ax.axvline(grid[best], ls="--", c="tab:green", label=f"cost-optimal ({grid[best]:.3f})")
+    ax.axvline(grid[best], ls="--", c="tab:green", label=f"oracle best ({grid[best]:.3f})")
     ax.axvline(default_thr, ls="--", c="tab:red", label=f"99th pctl ({default_thr:.3f})")
     ax.set_title(f"{cat} — escape:false-alarm = {COST_ESCAPE:.0f}:{COST_FALSE_ALARM:.0f}")
     ax.set_xlabel("threshold"); ax.set_ylabel("total cost"); ax.legend(fontsize=8)
 plt.tight_layout(); plt.show()
 
 for cat, c in cost_summary.items():
-    delta = c["cost_at_99th_pctl"] - c["best_cost"]
-    print(f"{cat:<10} cost-optimal {c['best_threshold']:.3f} (cost {c['best_cost']:.0f}, "
-          f"{c['escapes_at_best']} escapes) vs 99th-pctl cost {c['cost_at_99th_pctl']:.0f}"
-          f"  -> {delta:+.0f}")
-print("\nWhere that difference is large, the percentile heuristic everyone reaches for")
-print("first is quietly the wrong choice for the business it is running in.")
+    ratio = c["cost_at_99th_pctl"] / max(c["best_cost"], 1e-9)
+    print(f"{cat:<10} deployable 99th pctl: cost {c['cost_at_99th_pctl']:>7.0f} "
+          f"({c['escapes_at_99th_pctl']:>3d} escapes)   "
+          f"oracle best: cost {c['best_cost']:>7.0f} ({c['escapes_at_best']:>3d} escapes)"
+          f"   {ratio:>6.1f}x")
+
+print("\nREAD THIS BEFORE QUOTING THE RATIO. The 'oracle best' column was found by")
+print("searching thresholds against the test set WITH ITS LABELS. It is not a threshold")
+print("anyone could pick at commissioning, when no defects exist yet — it is a ceiling,")
+print("not a recipe. The honest claim is not that the percentile heuristic is bad; it is")
+print("that threshold selection is worth more here than the model is, and closing that")
+print("gap with defect-free data alone is an open problem.")
 ''')
 
 # ---------------------------------------------------------------- 10. summary md
@@ -551,7 +596,7 @@ md(r'''
 ''')
 
 code(r'''
-import json
+import json, os
 
 summary = {
     "dataset": DATASET_ID,

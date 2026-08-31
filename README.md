@@ -27,15 +27,27 @@ in `outputs/`, not from the literature.
 - [ ] MVTec AD 2 — the successor benchmark, where SOTA is still below 60% AU-PRO
 - [ ] Demo + write-up
 
-> **Read the sweep's cost totals with caution.** They are single-seed. Re-running four
-> categories with five coreset seeds each found that seed 0 sat at an extreme of its own
-> range in 11 of 17 non-degenerate cells. Arm A's `capsule` was recorded at 56 escapes
-> against a 5-seed mean of 31; arm B1's `screw` at 74 against a mean of 92. Correcting
-> only those four categories narrows B1's cost advantage over A from ~32% to ~9%.
+> **The sweep's cost totals were single-seed, and that mattered.** Re-running the six
+> categories that carry the cost with five coreset seeds each found seed 0 sitting at an
+> extreme of its own range in most cells. Arm A's `capsule` was recorded at 56 escapes
+> against a 5-seed mean of 31; arm B1's `screw` at 74 against a mean of 92. Every one of
+> A's committed values was pessimistic and every one of B1's was optimistic.
+>
+> | arm | committed | corrected |
+> |---|---|---|
+> | A WideResNet50-2 @224 | 19,527 | **15,748** |
+> | B0 DINOv2 @224 | 24,427 | 26,043 |
+> | B1 DINOv2 @392 | 13,223 | **15,182** |
+> | C ResNet18 @224 | 26,739 | 26,774 |
+>
+> **B1's lead over A is 3.6%, not the 32% first reported** — within the noise of the nine
+> categories still on a single seed. The defensible conclusion is not "B1 is the best
+> arm" but **"A and B1 are equivalent overall; choose per category"**, which is what the
+> per-class table said all along. D and E have not been re-seeded and their totals are
+> not comparable to these.
 >
 > The qualitative findings are unaffected — the resolution knee, quality-over-width, and
-> the category-dependent backbone choice are all gaps far larger than this noise. The
-> *margins* were oversold, not the conclusions.
+> category-dependent backbone choice are gaps far larger than this noise.
 
 ### Headline
 

@@ -7,9 +7,13 @@ starting point, which is seeded. That is a large gap for a supposedly determinis
 and it means every single-seed `screw` figure carries uncertainty the other numbers may not.
 
 This re-runs each arm with several coreset seeds and reports the spread. `screw` is the
-suspect; the other three categories are controls chosen to span the difficulty range, so
-the result can distinguish "screw is unstable" from "everything is unstable and we never
-looked".
+suspect; `grid` and `bottle` are controls, so the result can distinguish "screw is
+unstable" from "everything is unstable and we never looked". `capsule`, `pill` and
+`cable` are in because they carry the cost - those four categories are 78% of arm A's
+escapes and 95% of B1's, so they decide the arm comparison.
+
+Arms D and E were not completed; the run was stopped after C. Their totals in
+sweep_backbones.json remain single-seed and are not comparable to the corrected ones.
 
 Reuses sweep_backbones.py rather than reimplementing it, so the two cannot drift.
 
@@ -28,7 +32,12 @@ from sklearn.metrics import roc_auc_score
 import sweep_backbones as sb
 
 OUT = "outputs/seed_variance.json"
-CATEGORIES = ["screw", "capsule", "grid", "bottle"]   # suspect + 3 controls
+# Escapes are heavily concentrated: cable, capsule, pill and screw carry 78% of arm A's
+# total and 95% of B1's. Those four decide the cost comparison; the other eleven score
+# zero or single digits, so their seed noise cannot move the totals. grid and bottle stay
+# in as controls - they establish that stability is a property of easy categories rather
+# than of the measurement.
+CATEGORIES = ["screw", "capsule", "pill", "cable", "grid", "bottle"]
 SEEDS = [0, 1, 2, 3, 4]
 
 

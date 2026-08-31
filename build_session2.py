@@ -30,14 +30,18 @@ image, scored by distance to its nearest training neighbours. It was built to be
 
 This session changes two things, **one at a time**, and measures each separately.
 
-| run | method | backbone | what it isolates |
-|---|---|---|---|
-| baseline | pooled k-NN | WideResNet50-2 | *(session 1)* |
-| **A** | PatchCore | WideResNet50-2 | what spatial locality is worth |
-| **B** | PatchCore | DINOv2 ViT | what feature quality is worth |
+| run | method | backbone | descriptor | what it isolates |
+|---|---|---|---|---|
+| baseline | pooled k-NN | WideResNet50-2 | 1 x 2048 | *(session 1)* |
+| **A** | PatchCore | WideResNet50-2 | 784 x 1536 | what spatial locality is worth |
+| **B** | PatchCore | DINOv2 ViT | 784 x *d* | what feature quality is worth |
+| **C** | PatchCore | ResNet18 | 784 x 384 | what descriptor *width* is worth |
 
 Run A keeps the published PatchCore recipe so the numbers are checkable against the
-literature. Run B changes only the feature extractor. If both had moved at once, a gain
+literature. Run B changes only the feature extractor. Run C changes only the descriptor
+width — same layers, same strides, same 28x28 grid as A, a quarter of the channels — which
+tests whether high-dimensional nearest-neighbour search is buying separation or just
+concentrating distances. If several things had moved at once, a gain
 would be unattributable — which is exactly the trap that cost a week in
 [soccer-analytics](https://akshay131996.github.io/soccer-analytics/validation-trap.html),
 where a fine-tune and a label space changed together.
@@ -218,6 +222,12 @@ RUNS = [
     {"tag": "A · patchcore + wrn50",  "kind": "cnn", "name": "wide_resnet50_2",
      "out_indices": (2, 3)},
     {"tag": "B · patchcore + dinov2", "kind": "vit", "name": DINO_ID},
+    # Run C holds the spatial grid fixed and shrinks only the descriptor. ResNet18 at the
+    # same out_indices produces the same 28x28 and 14x14 maps as wrn50 — identical strides —
+    # but 128+256 = 384 channels against wrn50's 512+1024 = 1536. A clean 4x cut in
+    # dimensionality with resolution held constant.
+    {"tag": "C · patchcore + resnet18", "kind": "cnn", "name": "resnet18",
+     "out_indices": (2, 3)},
 ]
 
 
@@ -326,7 +336,7 @@ def patch_distances(bank, feats, n_patches, chunk=8192):
 
 # ---------------------------------------------------------------- 6
 md(r'''
-## 4. Run both backbones through identical code
+## 4. Run all three backbones through identical code
 
 The only thing that differs between run A and run B is the object constructed at the top of
 the loop. Everything after it — aggregation, coreset ratio, scoring rule, threshold rule —
@@ -483,7 +493,7 @@ md(r'''
 
 Accuracy is only half a deployment decision. A line has a takt time, and a memory bank that
 must be searched per part is the slowest thing in this pipeline. The descriptor
-dimensionality drives both the bank size and the search cost, and the two backbones differ
+dimensionality drives both the bank size and the search cost, and the three backbones differ
 substantially there.
 ''')
 
@@ -572,9 +582,22 @@ Read the three rows against each other in this order.
   category, the mechanism is behaving as predicted rather than as hoped.
 - **Run A to run B** is the value of *feature quality* — the same algorithm, a backbone
   trained without labels and without a classification objective pushing it to discard
-  texture. This is the only comparison in the project where a single variable moved.
+  texture.
+- **Run A to run C** is the value of *descriptor dimensionality*, and it is the cleanest
+  comparison here. ResNet18 at the same layers produces the same 28x28 and 14x14 maps, so
+  spatial resolution is held exactly constant while the descriptor drops from 1536 channels
+  to 384. If C holds up, the extra 1152 dimensions were not buying separation — which is
+  what nearest-neighbour search in high dimensions would predict, since distances
+  concentrate as dimensionality grows. Note the coreset already bets on this: it selects
+  after a random projection to 128 dimensions, then scores in the full space.
 - **Escapes, not AUROC**, decides which one you would actually ship, and the runtime table
   decides whether you could.
+
+**Stated before the numbers arrive.** MVTec image AUROC is saturated near 99%, so on
+`bottle` there is no room for any backbone to show anything. If DINOv2 earns its place it
+should show up on `screw` — small, rotated, subtle defects, and the category where the
+frozen-feature baseline was weakest at 0.678. A uniform lift across all three categories
+would mean something other than the proposed mechanism is doing the work.
 
 ### Next
 

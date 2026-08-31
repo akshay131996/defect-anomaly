@@ -16,7 +16,7 @@
   },
   "baseline1_knn_frozen_features_auroc": {
     "bottle": 0.9921,
-    "screw": 0.6788,
+    "screw": 0.6784,
     "carpet": 0.8716
   },
   "operating_point": {
@@ -53,22 +53,25 @@
   },
   "cost_sweep": {
     "bottle": {
-      "best_threshold": 0.2119,
+      "best_threshold": 0.2115,
       "best_cost": 5.0,
       "escapes_at_best": 0,
-      "cost_at_99th_pctl": 1500.0
+      "cost_at_99th_pctl": 1300.0,
+      "escapes_at_99th_pctl": 13
     },
     "screw": {
-      "best_threshold": 0.2366,
-      "best_cost": 1825.0,
-      "escapes_at_best": 18,
-      "cost_at_99th_pctl": 10901.0
+      "best_threshold": 0.2017,
+      "best_cost": 39.0,
+      "escapes_at_best": 0,
+      "cost_at_99th_pctl": 10902.0,
+      "escapes_at_99th_pctl": 109
     },
     "carpet": {
-      "best_threshold": 0.2113,
+      "best_threshold": 0.2111,
       "best_cost": 25.0,
       "escapes_at_best": 0,
-      "cost_at_99th_pctl": 414.0
+      "cost_at_99th_pctl": 314.0,
+      "escapes_at_99th_pctl": 3
     }
   }
 }

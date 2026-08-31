@@ -1,0 +1,143 @@
+{
+  "compared_against": "outputs/session1_baseline.json",
+  "dataset": "TheoM55/mvtec_all_objects_split",
+  "categories": [
+    "bottle",
+    "screw",
+    "carpet"
+  ],
+  "coreset_ratio": 0.01,
+  "calibration_split": {
+    "frac": 0.2,
+    "seed": 0
+  },
+  "threshold_rule": "99.0th percentile of held-out calibration scores (20% of train, unseen by the bank)",
+  "cost_ratio_escape_to_false_alarm": 100.0,
+  "runs": {
+    "A \u00b7 patchcore + wrn50": {
+      "backbone": "wide_resnet50_2",
+      "auroc": {
+        "bottle": 1.0,
+        "screw": 0.9549,
+        "carpet": 0.9864
+      },
+      "grid": [
+        28,
+        28
+      ],
+      "descriptor_dim": 1536,
+      "operating_point": {
+        "bottle": {
+          "threshold": 41.198,
+          "escapes": 0,
+          "false_alarms": 0,
+          "recall": 1.0,
+          "far": 0.0,
+          "cost": 0.0
+        },
+        "screw": {
+          "threshold": 47.1813,
+          "escapes": 33,
+          "false_alarms": 1,
+          "recall": 0.7227,
+          "far": 0.0244,
+          "cost": 3301.0
+        },
+        "carpet": {
+          "threshold": 36.7742,
+          "escapes": 2,
+          "false_alarms": 7,
+          "recall": 0.9775,
+          "far": 0.25,
+          "cost": 207.0
+        }
+      },
+      "seconds_total": 113.5
+    },
+    "B \u00b7 patchcore + dinov2": {
+      "backbone": "vit_base_patch14_dinov2.lvd142m",
+      "auroc": {
+        "bottle": 1.0,
+        "screw": 0.735,
+        "carpet": 0.9964
+      },
+      "grid": [
+        16,
+        16
+      ],
+      "descriptor_dim": 768,
+      "operating_point": {
+        "bottle": {
+          "threshold": 16.9928,
+          "escapes": 0,
+          "false_alarms": 0,
+          "recall": 1.0,
+          "far": 0.0,
+          "cost": 0.0
+        },
+        "screw": {
+          "threshold": 21.4116,
+          "escapes": 101,
+          "false_alarms": 3,
+          "recall": 0.1513,
+          "far": 0.0732,
+          "cost": 10103.0
+        },
+        "carpet": {
+          "threshold": 24.7563,
+          "escapes": 6,
+          "false_alarms": 1,
+          "recall": 0.9326,
+          "far": 0.0357,
+          "cost": 601.0
+        }
+      },
+      "seconds_total": 82.2
+    },
+    "C \u00b7 patchcore + resnet18": {
+      "backbone": "resnet18",
+      "auroc": {
+        "bottle": 1.0,
+        "screw": 0.9047,
+        "carpet": 0.9651
+      },
+      "grid": [
+        28,
+        28
+      ],
+      "descriptor_dim": 384,
+      "operating_point": {
+        "bottle": {
+          "threshold": 10.93,
+          "escapes": 0,
+          "false_alarms": 1,
+          "recall": 1.0,
+          "far": 0.05,
+          "cost": 1.0
+        },
+        "screw": {
+          "threshold": 15.7366,
+          "escapes": 53,
+          "false_alarms": 2,
+          "recall": 0.5546,
+          "far": 0.0488,
+          "cost": 5302.0
+        },
+        "carpet": {
+          "threshold": 10.9207,
+          "escapes": 8,
+          "false_alarms": 0,
+          "recall": 0.9101,
+          "far": 0.0,
+          "cost": 800.0
+        }
+      },
+      "seconds_total": 94.6
+    }
+  },
+  "baseline_session1_auroc": {
+    "bottle": 0.9921,
+    "screw": 0.6784,
+    "carpet": 0.8716
+  }
+}

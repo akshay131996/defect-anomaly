@@ -112,7 +112,11 @@ def extract(ex, sub, image_col, indices, batch=16):
 
 def coreset_indices(feats, ratio=CORESET_RATIO, proj_dim=128, seed=0, chunk=16384):
     n = feats.shape[0]
-    k = max(int(n * ratio), 32)
+    k = min(max(int(n * ratio), 32), n)
+    if k >= n:
+        # Selecting every point is a no-op, but the greedy loop below would still run n-1
+        # iterations to arrive there - O(n^2) for a result known in advance.
+        return list(range(n))
     g = torch.Generator().manual_seed(seed)
     P = (torch.randn(feats.shape[1], proj_dim, generator=g) / (proj_dim ** 0.5)).to(DEVICE)
     X = torch.cat([feats[i:i + chunk].to(DEVICE) @ P for i in range(0, n, chunk)])

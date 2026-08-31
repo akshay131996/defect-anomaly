@@ -113,18 +113,23 @@ runners producing JSON, not explanations. The narrative belongs in the notebooks
 
 Six arms, each differing from the reference in exactly one respect.
 
-| arm | backbone | input | grid | dims | mean AUROC | total cost |
-|---|---|---|---|---|---|---|
-| A | WideResNet50-2 | 224 | 28x28 | 1536 | 0.9785 | 19,527 |
-| B0 | DINOv2 ViT-B/14 | 224 | 16x16 | 768 | 0.9560 | 24,427 |
-| **B1** | **DINOv2 ViT-B/14** | **392** | **28x28** | **768** | **0.9828** | **13,223** |
-| C | ResNet18 | 224 | 28x28 | 384 | 0.9523 | 26,739 |
-| D | WideResNet50-2 | 320 | 40x40 | 1536 | 0.9826 | 18,721 |
-| E | ResNet50 | 224 | 28x28 | 1536 | 0.9717 | 17,032 |
+Costs below are the **seed-corrected** ones, not the single-seed values the sweep first
+produced — see the status block above for why that distinction matters.
 
-**Resolution has a knee near 28x28.** Going 16x16 → 28x28 buys +0.027 AUROC and cuts cost
-46%. Going 28x28 → 40x40 buys +0.004 for 33% more runtime. Below the knee it is the
-dominant variable; above it, it is not.
+| arm | backbone | input | grid | dims | mean AUROC | cost (corrected) |
+|---|---|---|---|---|---|---|
+| **B1** | **DINOv2 ViT-B/14** | **392** | **28x28** | **768** | **0.9828** | **15,182** |
+| **A** | **WideResNet50-2** | **224** | **28x28** | **1536** | **0.9785** | **15,748** |
+| D | WideResNet50-2 | 320 | 40x40 | 1536 | 0.9826 | 17,762 |
+| E | ResNet50 | 224 | 28x28 | 1536 | 0.9717 | 17,870 |
+| B0 | DINOv2 ViT-B/14 | 224 | 16x16 | 768 | 0.9560 | 26,043 |
+| C | ResNet18 | 224 | 28x28 | 384 | 0.9523 | 26,774 |
+
+**Resolution has a knee near 28x28.** Below it, resolution is the dominant variable:
+16x16 → 28x28 on the same DINOv2 backbone buys +0.027 AUROC and cuts cost 42%. Above it,
+the return goes negative — 28x28 → 40x40 on the same WideResNet50-2 buys +0.004 AUROC but
+costs 13% *more* at the operating point, for 33% more runtime. Past the knee you are
+paying for patches that no longer separate anything.
 
 **Descriptor width is not the driver.** B1 beats A with half the dimensions; C loses badly
 with a quarter. The relationship is not monotonic, so what matters is descriptor *quality*.

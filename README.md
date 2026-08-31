@@ -21,8 +21,8 @@ in `outputs/`, not from the literature.
 - [x] Backbone / resolution / width sweep — 6 arms x 15 categories (`sweep_backbones.py`)
 - [x] **Session 3 — data efficiency**, the question this project exists to answer
 - [x] All 15 categories, reported per category
-- [x] Seed-variance audit (`seed_variance.py`) — and it found a real problem, below
-- [ ] Re-seed the remaining 11 categories so the sweep's cost totals carry error bars
+- [x] Seed-variance audit (`seed_variance.py`) — all 6 arms, 5 seeds, and it found a real problem, below
+- [ ] Re-seed the 9 low-cost categories (they carry <25% of escapes; unlikely to move totals)
 - [ ] Pixel-level evaluation (the dataset ships masks; localisation is currently qualitative)
 - [ ] MVTec AD 2 — the successor benchmark, where SOTA is still below 60% AU-PRO
 - [ ] Demo + write-up
@@ -33,18 +33,26 @@ in `outputs/`, not from the literature.
 > against a 5-seed mean of 31; arm B1's `screw` at 74 against a mean of 92. Every one of
 > A's committed values was pessimistic and every one of B1's was optimistic.
 >
-> | arm | committed | corrected |
-> |---|---|---|
-> | A WideResNet50-2 @224 | 19,527 | **15,748** |
-> | B0 DINOv2 @224 | 24,427 | 26,043 |
-> | B1 DINOv2 @392 | 13,223 | **15,182** |
-> | C ResNet18 @224 | 26,739 | 26,774 |
+> | arm | committed | corrected | mean AUROC |
+> |---|---|---|---|
+> | B1 DINOv2 @392 | 13,223 | **15,182** | 0.9828 |
+> | A WideResNet50-2 @224 | 19,527 | **15,748** | 0.9785 |
+> | D WideResNet50-2 @320 | 18,721 | 17,762 | 0.9826 |
+> | E ResNet50 @224 | 17,032 | 17,870 | 0.9717 |
+> | B0 DINOv2 @224 | 24,427 | 26,043 | 0.9560 |
+> | C ResNet18 @224 | 26,739 | 26,774 | 0.9523 |
 >
-> **B1's lead over A is 3.6%, not the 32% first reported** — within the noise of the nine
-> categories still on a single seed. The defensible conclusion is not "B1 is the best
-> arm" but **"A and B1 are equivalent overall; choose per category"**, which is what the
-> per-class table said all along. D and E have not been re-seeded and their totals are
-> not comparable to these.
+> **B1's lead over A is 3.6%, not the 32% first reported.** Worse, the single-seed
+> ordering was wrong: it read B1 → E → D → A, and the truth is B1 → A → D → E. Arm A was
+> the most misreported in the sweep, sitting fourth when it is second.
+>
+> The defensible conclusion is not "B1 is the best arm" but **"A and B1 are equivalent;
+> choose per category"** — which is what the per-class table said all along. The top two
+> *are* clearly separated from the rest (15.2k/15.7k against 17.8k and up), so that split
+> is real.
+>
+> Nine categories remain single-seed, but they cannot move these totals much: the six
+> re-seeded ones carry 78% of arm A's escapes and 95% of B1's.
 >
 > The qualitative findings are unaffected — the resolution knee, quality-over-width, and
 > category-dependent backbone choice are gaps far larger than this noise.
@@ -131,11 +139,16 @@ which is why this repo reports per class.
 moved. At matched resolution the result reverses.
 
 **Resolution also buys reproducibility.** Arm D looked like a poor trade on accuracy alone
-— +0.004 AUROC for 33% more runtime. But it has the lowest seed-to-seed spread of any arm
-(0.0100 on `screw`, 0.0056 on `capsule`, against A's 0.0189 and 0.0084). With 1,600 patches
-instead of 784, greedy k-center is far less sensitive to where it starts. For a plant that
-has to certify an inspection system, halving run-to-run variance in the decision may be
-worth more than the accuracy that variance was hiding.
+— +0.004 AUROC for 33% more runtime. But across the six re-seeded categories it has the
+lowest mean AUROC spread of any arm (0.0105, against A's 0.0121 and C's 0.0234). With
+1,600 patches instead of 784, greedy k-center is far less sensitive to where it starts.
+For a plant that has to certify an inspection system, halving run-to-run variance in the
+decision may be worth more than the accuracy that variance was hiding.
+
+No arm wins on all three axes. D ties B1 on mean AUROC (0.9826 vs 0.9828) and is the most
+reproducible, but costs 17% more at the operating point. Ranking quality, decision quality
+and stability are separate properties and this project has now caught them disagreeing
+three times.
 
 `bottle` shows exactly 0.0000 spread on every arm and every seed, so this is confined to
 the hard categories rather than being noise everywhere.

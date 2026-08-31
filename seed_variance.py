@@ -76,11 +76,28 @@ def main():
                "note": "identical data and config per row; only the coreset seed varies",
                "arms": {}}
 
+    # Resume: arms already present in the output file are kept as-is. This run was stopped
+    # after arm C the first time, and each arm costs ~7 minutes, so re-deriving completed
+    # ones is pure waste. Requires that SEEDS and CATEGORIES have not changed - if either
+    # does, delete the file rather than merging incompatible rows.
+    if os.path.exists(OUT):
+        with open(OUT) as f:
+            prev = json.load(f)
+        if prev.get("seeds") == SEEDS and prev.get("categories") == CATEGORIES:
+            summary["arms"] = prev.get("arms", {})
+            print(f"resuming: {len(summary['arms'])} arm(s) already done "
+                  f"({', '.join(summary['arms'])})", flush=True)
+        else:
+            print(f"WARN: {OUT} has different seeds/categories; ignoring it", flush=True)
+
     for spec in sb.ARMS:
         spec = dict(spec)
         if spec["kind"] == "vit":
             spec["name"] = dino_id
         tag = spec["tag"]
+        if tag in summary["arms"]:
+            print(f"\n=== {tag} (cached, skipping) ===", flush=True)
+            continue
         print(f"\n=== {tag} ===", flush=True)
         ex = sb.PatchExtractor(spec)
         arm = {}

@@ -36,13 +36,18 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DATASET_ID = "TheoM55/mvtec_all_objects_split"
 OUT = "outputs/data_efficiency.json"
 
-# Backbone: the sweep's winning arm - DINOv2 at 392px, which gives a 28x28 grid matching
-# the CNN arms. Best mean AUROC (0.9828) and lowest cost (13223) of the six arms tested.
+# Backbone: DINOv2 at 392px, which gives a 28x28 grid matching the CNN arms. Best mean
+# AUROC of the six arms swept (0.9828).
 #
-# Caveat carried forward: B1 wins on average but loses badly on `screw` (0.8795 against
-# wrn50's 0.9549), and CNNs beat it on every small-part object. The data-efficiency curve
-# below is therefore the curve *for this backbone*; a line inspecting screws would pick
-# wide_resnet50_2 at 320px and should re-run this with those settings.
+# Its cost advantage did NOT survive the seed audit. The sweep put it 32% ahead of
+# wide_resnet50_2 @224 on single-seed totals; averaging five coreset seeds over the six
+# categories that carry the cost narrows that to 3.6% (15182 against 15748), which is
+# inside the noise of the nine categories still on one seed. Treat A and B1 as equivalent
+# overall and choose per category.
+#
+# Caveat carried forward: B1 loses badly on `screw` and on every small-part object. The
+# curve below is therefore the curve *for this backbone*; a line inspecting screws would
+# pick wide_resnet50_2 at 320px and should re-run this with those settings.
 BACKBONE, IMG, KIND = "vit_base_patch14_dinov2.lvd142m", 392, "vit"
 OUT_INDICES = (2, 3)          # CNN only; ignored when KIND == "vit"
 

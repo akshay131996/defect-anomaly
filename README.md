@@ -13,17 +13,48 @@ the same material pitched at an engineering manager, with an interactive thresho
 
 ## Status
 
-Measurements are **not in yet**. The notebooks are written and validated; nothing has been
-run end to end. No performance figures are claimed anywhere in this repo until they are.
+Measured on an RTX 4000 Ada, all 15 MVTec AD categories. Every number below is from a run
+in `outputs/`, not from the literature.
 
-- [x] Session 1 — baseline written: pooled k-NN on frozen features, honest threshold rule
-- [x] Session 2 — written: PatchCore, plus a single-variable backbone ablation
-- [ ] **Session 1 executed** — the first real numbers
-- [ ] Session 2 executed
-- [ ] Session 3 — data efficiency: how many good images before performance plateaus
-- [ ] All 15 categories, reported per category
+- [x] Session 1 — pooled k-NN baseline, executed
+- [x] Session 2 — PatchCore plus the backbone ablation, executed
+- [x] Backbone / resolution / width sweep — 6 arms x 15 categories (`sweep_backbones.py`)
+- [x] **Session 3 — data efficiency**, the question this project exists to answer
+- [x] All 15 categories, reported per category
+- [x] Seed-variance audit (`seed_variance.py`) — and it found a real problem, below
+- [ ] Re-seed the remaining 11 categories so the sweep's cost totals carry error bars
 - [ ] Pixel-level evaluation (the dataset ships masks; localisation is currently qualitative)
+- [ ] MVTec AD 2 — the successor benchmark, where SOTA is still below 60% AU-PRO
 - [ ] Demo + write-up
+
+> **Read the sweep's cost totals with caution.** They are single-seed. Re-running four
+> categories with five coreset seeds each found that seed 0 sat at an extreme of its own
+> range in 11 of 17 non-degenerate cells. Arm A's `capsule` was recorded at 56 escapes
+> against a 5-seed mean of 31; arm B1's `screw` at 74 against a mean of 92. Correcting
+> only those four categories narrows B1's cost advantage over A from ~32% to ~9%.
+>
+> The qualitative findings are unaffected — the resolution knee, quality-over-width, and
+> the category-dependent backbone choice are all gaps far larger than this noise. The
+> *margins* were oversold, not the conclusions.
+
+### Headline
+
+**A line needs a median of 10 defect-free photographs** to reach 99% of its full-data
+AUROC. The range across categories is 2 to 256 — four categories exceed 0.999 from *two*
+images, while `screw` never converges at all. At a few seconds per photo that is about a
+minute of production for the median part, and under an hour for the worst well-behaved one.
+
+The spread is the finding. A single number would have been the wrong answer.
+
+| knee (images) | categories |
+|---|---|
+| 2 | bottle, carpet, leather, tile |
+| 5 | grid, hazelnut, toothbrush |
+| 10 | wood |
+| 20 | metal_nut, transistor |
+| 40 | pill |
+| 80 | cable, capsule, zipper |
+| 256 (never converges) | screw |
 
 ---
 
@@ -48,8 +79,54 @@ make that answer trustworthy.
 |---|---|
 | `build_session1.py` → `run_session1.ipynb` | Baseline: frozen features, global pooling, k-NN. Built to be beaten |
 | `build_session2.py` → `run_session2.ipynb` | PatchCore, then the same code with a DINOv2 backbone |
+| `sweep_backbones.py` | 6 arms x 15 categories. Every pair differs in exactly one variable |
+| `data_efficiency.py` | Session 3. Bank size varied, calibration split held fixed |
 | `brief.html` | The write-up for a non-specialist decision-maker |
 | `outputs/` | Result JSON — each session reads the previous one's file |
+
+The two sweeps are plain scripts rather than notebooks on purpose: they are experiment
+runners producing JSON, not explanations. The narrative belongs in the notebooks.
+
+---
+
+## What the sweep found
+
+Six arms, each differing from the reference in exactly one respect.
+
+| arm | backbone | input | grid | dims | mean AUROC | total cost |
+|---|---|---|---|---|---|---|
+| A | WideResNet50-2 | 224 | 28x28 | 1536 | 0.9785 | 19,527 |
+| B0 | DINOv2 ViT-B/14 | 224 | 16x16 | 768 | 0.9560 | 24,427 |
+| **B1** | **DINOv2 ViT-B/14** | **392** | **28x28** | **768** | **0.9828** | **13,223** |
+| C | ResNet18 | 224 | 28x28 | 384 | 0.9523 | 26,739 |
+| D | WideResNet50-2 | 320 | 40x40 | 1536 | 0.9826 | 18,721 |
+| E | ResNet50 | 224 | 28x28 | 1536 | 0.9717 | 17,032 |
+
+**Resolution has a knee near 28x28.** Going 16x16 → 28x28 buys +0.027 AUROC and cuts cost
+46%. Going 28x28 → 40x40 buys +0.004 for 33% more runtime. Below the knee it is the
+dominant variable; above it, it is not.
+
+**Descriptor width is not the driver.** B1 beats A with half the dimensions; C loses badly
+with a quarter. The relationship is not monotonic, so what matters is descriptor *quality*.
+
+**The best backbone is category-dependent.** DINOv2 wins on textures (grid 1.000 vs 0.951,
+carpet 0.9996, tile 1.000) and loses on every small-part object, worst on `screw` — 0.8795
+against WideResNet50-2's 0.9549. Reporting only the mean would have hidden this entirely,
+which is why this repo reports per class.
+
+**Session 2's original conclusion was wrong, and the sweep is why.** It compared a CNN at
+28x28 against a ViT at 16x16 and attributed the gap to the backbone. Two variables had
+moved. At matched resolution the result reverses.
+
+**Resolution also buys reproducibility.** Arm D looked like a poor trade on accuracy alone
+— +0.004 AUROC for 33% more runtime. But it has the lowest seed-to-seed spread of any arm
+(0.0100 on `screw`, 0.0056 on `capsule`, against A's 0.0189 and 0.0084). With 1,600 patches
+instead of 784, greedy k-center is far less sensitive to where it starts. For a plant that
+has to certify an inspection system, halving run-to-run variance in the decision may be
+worth more than the accuracy that variance was hiding.
+
+`bottle` shows exactly 0.0000 spread on every arm and every seed, so this is confined to
+the hard categories rather than being noise everywhere.
 
 **Why builders rather than notebooks in git.** The `.ipynb` files are generated from the
 `build_*.py` scripts, which validate every code cell with `ast.parse` before writing. Editing

@@ -1,0 +1,1683 @@
+{
+  "dataset": "TheoM55/mvtec_all_objects_split",
+  "backbone": "vit_base_patch14_dinov2.lvd142m",
+  "img": 392,
+  "kind": "vit",
+  "coreset_ratio": 0.01,
+  "calibration_split": {
+    "frac": 0.2,
+    "seed": 0,
+    "note": "fixed across all N so the curve isolates bank size"
+  },
+  "threshold_rule": "99.0th percentile of held-out calibration scores",
+  "n_grid": [
+    2,
+    5,
+    10,
+    20,
+    40,
+    80,
+    160,
+    null
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "device": "NVIDIA RTX 4000 Ada Generation",
+  "categories": {
+    "bottle": {
+      "n_pool": 167,
+      "n_cal": 42,
+      "n_test": 83,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9994708994708995,
+          "auroc_std": 0.0007482611441127461,
+          "auroc_min": 0.9984126984126984,
+          "auroc_max": 1.0,
+          "cost_mean": 1.0,
+          "cost_std": 0.816496580927726,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9997354497354497,
+          "auroc_std": 0.000374130572056373,
+          "auroc_min": 0.9992063492063492,
+          "auroc_max": 1.0,
+          "cost_mean": 34.0,
+          "cost_std": 47.37791327893902,
+          "escapes_mean": 0.3333333333333333
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 1.0,
+          "cost_std": 0.816496580927726,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.6666666666666666,
+          "cost_std": 0.9428090415820634,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 1.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.6666666666666666,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 2.3333333333333335,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": null,
+          "n_used": 167,
+          "seeds": 1,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 1.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        }
+      ],
+      "full_pool_auroc": 1.0,
+      "knee_n_for_99pct_of_full": 2,
+      "seconds": 117.7
+    },
+    "cable": {
+      "n_pool": 179,
+      "n_cal": 45,
+      "n_test": 150,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.92460019990005,
+          "auroc_std": 0.013392522465991347,
+          "auroc_min": 0.9062968515742129,
+          "auroc_max": 0.9379685157421289,
+          "cost_mean": 3000.0,
+          "cost_std": 637.7042156569664,
+          "escapes_mean": 30.0
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9211644177911045,
+          "auroc_std": 0.008909631648867286,
+          "auroc_min": 0.9087331334332833,
+          "auroc_max": 0.9291604197901049,
+          "cost_mean": 2700.3333333333335,
+          "cost_std": 571.8393325246369,
+          "escapes_mean": 27.0
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.9280984507746126,
+          "auroc_std": 0.006733310010829136,
+          "auroc_min": 0.9192278860569715,
+          "auroc_max": 0.9355322338830584,
+          "cost_mean": 2333.3333333333335,
+          "cost_std": 498.88765156985886,
+          "escapes_mean": 23.333333333333332
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9464017991004497,
+          "auroc_std": 0.0012241328049891265,
+          "auroc_min": 0.9449025487256372,
+          "auroc_max": 0.9479010494752624,
+          "cost_mean": 1868.0,
+          "cost_std": 497.10629312720096,
+          "escapes_mean": 18.666666666666668
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9601449275362319,
+          "auroc_std": 0.004244199837946851,
+          "auroc_min": 0.9557721139430284,
+          "auroc_max": 0.9658920539730136,
+          "cost_mean": 1934.0,
+          "cost_std": 376.1808075912433,
+          "escapes_mean": 19.333333333333332
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.9689530234882558,
+          "auroc_std": 0.007916052232715423,
+          "auroc_min": 0.9578335832083957,
+          "auroc_max": 0.9756371814092955,
+          "cost_mean": 1734.0,
+          "cost_std": 367.3944292809387,
+          "escapes_mean": 17.333333333333332
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.9842578710644677,
+          "auroc_std": 0.005168700548085358,
+          "auroc_min": 0.9775112443778111,
+          "auroc_max": 0.9900674662668666,
+          "cost_mean": 1500.3333333333333,
+          "cost_std": 424.0285629792198,
+          "escapes_mean": 15.0
+        },
+        {
+          "n_requested": null,
+          "n_used": 179,
+          "seeds": 1,
+          "auroc_mean": 0.973575712143928,
+          "auroc_std": 0.0,
+          "auroc_min": 0.973575712143928,
+          "auroc_max": 0.973575712143928,
+          "cost_mean": 1600.0,
+          "cost_std": 0.0,
+          "escapes_mean": 16.0
+        }
+      ],
+      "full_pool_auroc": 0.973575712143928,
+      "knee_n_for_99pct_of_full": 80,
+      "seconds": 155.0
+    },
+    "capsule": {
+      "n_pool": 175,
+      "n_cal": 44,
+      "n_test": 132,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.8224970083765456,
+          "auroc_std": 0.0220386687980551,
+          "auroc_min": 0.7917830075787795,
+          "auroc_max": 0.8424411647387315,
+          "cost_mean": 6166.666666666667,
+          "cost_std": 895.6685895029601,
+          "escapes_mean": 61.666666666666664
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.7943092673846563,
+          "auroc_std": 0.05781864093695627,
+          "auroc_min": 0.7136019146390109,
+          "auroc_max": 0.8460311128839251,
+          "cost_mean": 6366.666666666667,
+          "cost_std": 205.48046676563254,
+          "escapes_mean": 63.666666666666664
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.8445685414173648,
+          "auroc_std": 0.04439425650574892,
+          "auroc_min": 0.782608695652174,
+          "auroc_max": 0.884323893099322,
+          "cost_mean": 5900.333333333333,
+          "cost_std": 803.6999163590572,
+          "escapes_mean": 59.0
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9404334529982714,
+          "auroc_std": 0.009491593297473608,
+          "auroc_min": 0.932189868368568,
+          "auroc_max": 0.9537295572397287,
+          "cost_mean": 4533.333333333333,
+          "cost_std": 531.2459150169742,
+          "escapes_mean": 45.333333333333336
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9388379204892967,
+          "auroc_std": 0.015620517684032793,
+          "auroc_min": 0.9214200239329877,
+          "auroc_max": 0.9593139210211408,
+          "cost_mean": 4566.666666666667,
+          "cost_std": 1161.416759345623,
+          "escapes_mean": 45.666666666666664
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.9477463103310729,
+          "auroc_std": 0.005862360772516568,
+          "auroc_min": 0.9405664140406861,
+          "auroc_max": 0.9549262066214599,
+          "cost_mean": 4033.3333333333335,
+          "cost_std": 329.98316455372213,
+          "escapes_mean": 40.333333333333336
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.9554580507911182,
+          "auroc_std": 0.004445752824704282,
+          "auroc_min": 0.9517351416035102,
+          "auroc_max": 0.9617072197846032,
+          "cost_mean": 3301.3333333333335,
+          "cost_std": 81.65101890906743,
+          "escapes_mean": 33.0
+        },
+        {
+          "n_requested": null,
+          "n_used": 175,
+          "seeds": 1,
+          "auroc_mean": 0.9509373753490228,
+          "auroc_std": 0.0,
+          "auroc_min": 0.9509373753490228,
+          "auroc_max": 0.9509373753490228,
+          "cost_mean": 3301.0,
+          "cost_std": 0.0,
+          "escapes_mean": 33.0
+        }
+      ],
+      "full_pool_auroc": 0.9509373753490228,
+      "knee_n_for_99pct_of_full": 80,
+      "seconds": 149.8
+    },
+    "carpet": {
+      "n_pool": 224,
+      "n_cal": 56,
+      "n_test": 117,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9998662386302836,
+          "auroc_std": 0.000189167143174583,
+          "auroc_min": 0.9995987158908507,
+          "auroc_max": 1.0,
+          "cost_mean": 33.666666666666664,
+          "cost_std": 47.6118565998942,
+          "escapes_mean": 0.3333333333333333
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9991974317817015,
+          "auroc_std": 0.0008668727525960241,
+          "auroc_min": 0.9979935794542536,
+          "auroc_max": 1.0,
+          "cost_mean": 1.6666666666666667,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.9994649545211343,
+          "auroc_std": 0.00018916714317453065,
+          "auroc_min": 0.9991974317817015,
+          "auroc_max": 0.9995987158908507,
+          "cost_mean": 1.3333333333333333,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9995987158908508,
+          "auroc_std": 0.00032764710310098855,
+          "auroc_min": 0.9991974317817015,
+          "auroc_max": 1.0,
+          "cost_mean": 1.3333333333333333,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9994649545211344,
+          "auroc_std": 0.0005004892170644466,
+          "auroc_min": 0.9987961476725522,
+          "auroc_max": 1.0,
+          "cost_mean": 1.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.9997324772605672,
+          "auroc_std": 0.0003783342863491136,
+          "auroc_min": 0.9991974317817015,
+          "auroc_max": 1.0,
+          "cost_mean": 1.3333333333333333,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.9997324772605672,
+          "auroc_std": 0.0003783342863491136,
+          "auroc_min": 0.9991974317817015,
+          "auroc_max": 1.0,
+          "cost_mean": 35.333333333333336,
+          "cost_std": 47.14045207910317,
+          "escapes_mean": 0.3333333333333333
+        },
+        {
+          "n_requested": null,
+          "n_used": 224,
+          "seeds": 1,
+          "auroc_mean": 0.9991974317817015,
+          "auroc_std": 0.0,
+          "auroc_min": 0.9991974317817015,
+          "auroc_max": 0.9991974317817015,
+          "cost_mean": 102.0,
+          "cost_std": 0.0,
+          "escapes_mean": 1.0
+        }
+      ],
+      "full_pool_auroc": 0.9991974317817015,
+      "knee_n_for_99pct_of_full": 2,
+      "seconds": 161.2
+    },
+    "grid": {
+      "n_pool": 211,
+      "n_cal": 53,
+      "n_test": 78,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9883040935672515,
+          "auroc_std": 0.004725859857554202,
+          "auroc_min": 0.9849624060150376,
+          "auroc_max": 0.9949874686716792,
+          "cost_mean": 100.66666666666667,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 1.0
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9969367864104707,
+          "auroc_std": 0.004332038202758045,
+          "auroc_min": 0.9908103592314118,
+          "auroc_max": 1.0,
+          "cost_mean": 100.0,
+          "cost_std": 0.0,
+          "escapes_mean": 1.0
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.9980506822612085,
+          "auroc_std": 0.0027567515835732583,
+          "auroc_min": 0.9941520467836258,
+          "auroc_max": 1.0,
+          "cost_mean": 66.66666666666667,
+          "cost_std": 47.14045207910317,
+          "escapes_mean": 0.6666666666666666
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.3333333333333333,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.3333333333333333,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.3333333333333333,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": null,
+          "n_used": 211,
+          "seeds": 1,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 1.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        }
+      ],
+      "full_pool_auroc": 1.0,
+      "knee_n_for_99pct_of_full": 5,
+      "seconds": 118.0
+    },
+    "hazelnut": {
+      "n_pool": 313,
+      "n_cal": 78,
+      "n_test": 110,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.969047619047619,
+          "auroc_std": 0.012611183533411117,
+          "auroc_min": 0.9546428571428571,
+          "auroc_max": 0.9853571428571429,
+          "cost_mean": 1734.3333333333333,
+          "cost_std": 376.4167312375415,
+          "escapes_mean": 17.333333333333332
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9903571428571428,
+          "auroc_std": 0.004403152859263542,
+          "auroc_min": 0.9846428571428572,
+          "auroc_max": 0.9953571428571428,
+          "cost_mean": 834.0,
+          "cost_std": 402.38290222125494,
+          "escapes_mean": 8.333333333333334
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.995952380952381,
+          "auroc_std": 0.003478961713381548,
+          "auroc_min": 0.9910714285714286,
+          "auroc_max": 0.9989285714285715,
+          "cost_mean": 867.0,
+          "cost_std": 942.5734277321139,
+          "escapes_mean": 8.666666666666666
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9979761904761905,
+          "auroc_std": 0.000937381889763268,
+          "auroc_min": 0.9971428571428572,
+          "auroc_max": 0.9992857142857142,
+          "cost_mean": 466.6666666666667,
+          "cost_std": 235.70226039551585,
+          "escapes_mean": 4.666666666666667
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9996428571428572,
+          "auroc_std": 0.0005050762722761245,
+          "auroc_min": 0.9989285714285714,
+          "auroc_max": 1.0,
+          "cost_mean": 266.6666666666667,
+          "cost_std": 169.96731711975949,
+          "escapes_mean": 2.6666666666666665
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 233.33333333333334,
+          "cost_std": 124.72191289246472,
+          "escapes_mean": 2.3333333333333335
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 67.0,
+          "cost_std": 46.66904755831214,
+          "escapes_mean": 0.6666666666666666
+        },
+        {
+          "n_requested": null,
+          "n_used": 313,
+          "seeds": 1,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        }
+      ],
+      "full_pool_auroc": 1.0,
+      "knee_n_for_99pct_of_full": 5,
+      "seconds": 169.5
+    },
+    "leather": {
+      "n_pool": 196,
+      "n_cal": 49,
+      "n_test": 124,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9996603260869565,
+          "auroc_std": 0.000480371454610399,
+          "auroc_min": 0.9989809782608696,
+          "auroc_max": 1.0,
+          "cost_mean": 700.0,
+          "cost_std": 282.842712474619,
+          "escapes_mean": 7.0
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9995471014492754,
+          "auroc_std": 0.0006404952728139177,
+          "auroc_min": 0.998641304347826,
+          "auroc_max": 1.0,
+          "cost_mean": 533.3333333333334,
+          "cost_std": 188.56180831641268,
+          "escapes_mean": 5.333333333333333
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 300.0,
+          "cost_std": 282.842712474619,
+          "escapes_mean": 3.0
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 100.0,
+          "cost_std": 81.64965809277261,
+          "escapes_mean": 1.0
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 133.33333333333334,
+          "cost_std": 47.14045207910317,
+          "escapes_mean": 1.3333333333333333
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 300.0,
+          "cost_std": 216.02468994692867,
+          "escapes_mean": 3.0
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 33.333333333333336,
+          "cost_std": 47.14045207910317,
+          "escapes_mean": 0.3333333333333333
+        },
+        {
+          "n_requested": null,
+          "n_used": 196,
+          "seeds": 1,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        }
+      ],
+      "full_pool_auroc": 1.0,
+      "knee_n_for_99pct_of_full": 2,
+      "seconds": 143.8
+    },
+    "metal_nut": {
+      "n_pool": 176,
+      "n_cal": 44,
+      "n_test": 115,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9620397523623331,
+          "auroc_std": 0.004794375682490156,
+          "auroc_min": 0.9560117302052785,
+          "auroc_max": 0.967741935483871,
+          "cost_mean": 2068.0,
+          "cost_std": 927.3147613764522,
+          "escapes_mean": 20.666666666666668
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9682306940371457,
+          "auroc_std": 0.003116833898616646,
+          "auroc_min": 0.9638318670576735,
+          "auroc_max": 0.9706744868035191,
+          "cost_mean": 1867.3333333333333,
+          "cost_std": 93.80949963741531,
+          "escapes_mean": 18.666666666666668
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.9859889214727925,
+          "auroc_std": 0.004413886342177925,
+          "auroc_min": 0.9809384164222874,
+          "auroc_max": 0.9916911045943304,
+          "cost_mean": 501.3333333333333,
+          "cost_std": 0.9428090415820634,
+          "escapes_mean": 5.0
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9920169436298468,
+          "auroc_std": 0.003916850857012479,
+          "auroc_min": 0.9892473118279569,
+          "auroc_max": 0.9975562072336266,
+          "cost_mean": 334.0,
+          "cost_std": 47.37791327893902,
+          "escapes_mean": 3.3333333333333335
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9949494949494949,
+          "auroc_std": 0.0021979044580045667,
+          "auroc_min": 0.9921798631476051,
+          "auroc_max": 0.9975562072336266,
+          "cost_mean": 234.66666666666666,
+          "cost_std": 124.36594746508744,
+          "escapes_mean": 2.3333333333333335
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.9973932877158683,
+          "auroc_std": 0.0019685640230685175,
+          "auroc_min": 0.9946236559139785,
+          "auroc_max": 0.9990224828934506,
+          "cost_mean": 67.66666666666667,
+          "cost_std": 94.28090415820634,
+          "escapes_mean": 0.6666666666666666
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.9982078853046595,
+          "auroc_std": 0.00023040299158896932,
+          "auroc_min": 0.9980449657869013,
+          "auroc_max": 0.998533724340176,
+          "cost_mean": 34.333333333333336,
+          "cost_std": 47.14045207910317,
+          "escapes_mean": 0.3333333333333333
+        },
+        {
+          "n_requested": null,
+          "n_used": 176,
+          "seeds": 1,
+          "auroc_mean": 0.9980449657869013,
+          "auroc_std": 0.0,
+          "auroc_min": 0.9980449657869013,
+          "auroc_max": 0.9980449657869013,
+          "cost_mean": 1.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        }
+      ],
+      "full_pool_auroc": 0.9980449657869013,
+      "knee_n_for_99pct_of_full": 20,
+      "seconds": 99.0
+    },
+    "pill": {
+      "n_pool": 214,
+      "n_cal": 53,
+      "n_test": 167,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.926259319876341,
+          "auroc_std": 0.009001177429179616,
+          "auroc_min": 0.9162575013638842,
+          "auroc_max": 0.9380796508456083,
+          "cost_mean": 3767.6666666666665,
+          "cost_std": 590.6122999810357,
+          "escapes_mean": 37.666666666666664
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9310783778868884,
+          "auroc_std": 0.014696798705580027,
+          "auroc_min": 0.9108019639934533,
+          "auroc_max": 0.9451718494271686,
+          "cost_mean": 3267.3333333333335,
+          "cost_std": 805.067422987389,
+          "escapes_mean": 32.666666666666664
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.9534460811056557,
+          "auroc_std": 0.004678916286695255,
+          "auroc_min": 0.9476268412438626,
+          "auroc_max": 0.9590834697217677,
+          "cost_mean": 2700.6666666666665,
+          "cost_std": 588.5583139238531,
+          "escapes_mean": 27.0
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9723586106564831,
+          "auroc_std": 0.006394599371710162,
+          "auroc_min": 0.9637206764866341,
+          "auroc_max": 0.9789961811238407,
+          "cost_mean": 1934.0,
+          "cost_std": 249.88930882826233,
+          "escapes_mean": 19.333333333333332
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9796326604837242,
+          "auroc_std": 0.0062215986159505614,
+          "auroc_min": 0.9713584288052373,
+          "auroc_max": 0.9863611565739225,
+          "cost_mean": 1467.3333333333333,
+          "cost_std": 124.36594746508744,
+          "escapes_mean": 14.666666666666666
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.9756319330787416,
+          "auroc_std": 0.005224861938010118,
+          "auroc_min": 0.9686306601200217,
+          "auroc_max": 0.9811783960720132,
+          "cost_mean": 1534.6666666666667,
+          "cost_std": 307.8986124612379,
+          "escapes_mean": 15.333333333333334
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.9842698672485906,
+          "auroc_std": 0.0025717649797656044,
+          "auroc_min": 0.98063284233497,
+          "auroc_max": 0.986088379705401,
+          "cost_mean": 1134.3333333333333,
+          "cost_std": 204.99485088384267,
+          "escapes_mean": 11.333333333333334
+        },
+        {
+          "n_requested": null,
+          "n_used": 214,
+          "seeds": 1,
+          "auroc_mean": 0.9849972722313147,
+          "auroc_std": 0.0,
+          "auroc_min": 0.9849972722313147,
+          "auroc_max": 0.9849972722313147,
+          "cost_mean": 1100.0,
+          "cost_std": 0.0,
+          "escapes_mean": 11.0
+        }
+      ],
+      "full_pool_auroc": 0.9849972722313147,
+      "knee_n_for_99pct_of_full": 40,
+      "seconds": 125.3
+    },
+    "screw": {
+      "n_pool": 256,
+      "n_cal": 64,
+      "n_test": 160,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.6178861788617885,
+          "auroc_std": 0.004632681152740201,
+          "auroc_min": 0.6126255380200861,
+          "auroc_max": 0.6238983398237343,
+          "cost_mean": 11566.666666666666,
+          "cost_std": 94.28090415820634,
+          "escapes_mean": 115.66666666666667
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.628885700621712,
+          "auroc_std": 0.05383972321781924,
+          "auroc_min": 0.5535970485755277,
+          "auroc_max": 0.6763681082188974,
+          "cost_mean": 11068.0,
+          "cost_std": 632.3880665119059,
+          "escapes_mean": 110.66666666666667
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.6066133770581404,
+          "auroc_std": 0.07632302375109308,
+          "auroc_min": 0.5179340028694405,
+          "auroc_max": 0.7042426726788277,
+          "cost_mean": 11368.666666666666,
+          "cost_std": 124.72191289246472,
+          "escapes_mean": 113.66666666666667
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.6716540274646444,
+          "auroc_std": 0.02650305735680768,
+          "auroc_min": 0.6355810616929699,
+          "auroc_max": 0.6985037917606067,
+          "cost_mean": 11234.666666666666,
+          "cost_std": 169.70824637856845,
+          "escapes_mean": 112.33333333333333
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.7370362779258044,
+          "auroc_std": 0.027730014343414242,
+          "auroc_min": 0.7056773929083829,
+          "auroc_max": 0.7731092436974789,
+          "cost_mean": 10634.0,
+          "cost_std": 623.2532925437832,
+          "escapes_mean": 106.33333333333333
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.776456924233108,
+          "auroc_std": 0.012886248004757597,
+          "auroc_min": 0.7606066816970691,
+          "auroc_max": 0.7921705267472843,
+          "cost_mean": 9500.333333333334,
+          "cost_std": 431.8953062439502,
+          "escapes_mean": 95.0
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.7962697274031564,
+          "auroc_std": 0.02585151937205088,
+          "auroc_min": 0.7597868415658946,
+          "auroc_max": 0.8165607706497233,
+          "cost_mean": 9967.0,
+          "cost_std": 872.6079684868038,
+          "escapes_mean": 99.66666666666667
+        },
+        {
+          "n_requested": null,
+          "n_used": 256,
+          "seeds": 1,
+          "auroc_mean": 0.8251690920270548,
+          "auroc_std": 0.0,
+          "auroc_min": 0.8251690920270548,
+          "auroc_max": 0.8251690920270548,
+          "cost_mean": 8700.0,
+          "cost_std": 0.0,
+          "escapes_mean": 87.0
+        }
+      ],
+      "full_pool_auroc": 0.8251690920270548,
+      "knee_n_for_99pct_of_full": 256,
+      "seconds": 140.8
+    },
+    "tile": {
+      "n_pool": 184,
+      "n_cal": 46,
+      "n_test": 117,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9998797498797499,
+          "auroc_std": 0.0001700593509347055,
+          "auroc_min": 0.9996392496392497,
+          "auroc_max": 1.0,
+          "cost_mean": 34.333333333333336,
+          "cost_std": 46.435139950496776,
+          "escapes_mean": 0.3333333333333333
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.3333333333333333,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.6666666666666666,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 1.0,
+          "cost_std": 0.816496580927726,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 1.3333333333333333,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 1.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": null,
+          "n_used": 184,
+          "seeds": 1,
+          "auroc_mean": 1.0,
+          "auroc_std": 0.0,
+          "auroc_min": 1.0,
+          "auroc_max": 1.0,
+          "cost_mean": 0.0,
+          "cost_std": 0.0,
+          "escapes_mean": 0.0
+        }
+      ],
+      "full_pool_auroc": 1.0,
+      "knee_n_for_99pct_of_full": 2,
+      "seconds": 128.2
+    },
+    "toothbrush": {
+      "n_pool": 48,
+      "n_cal": 12,
+      "n_test": 42,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9342592592592593,
+          "auroc_std": 0.03471913566528274,
+          "auroc_min": 0.9083333333333333,
+          "auroc_max": 0.9833333333333334,
+          "cost_mean": 634.3333333333334,
+          "cost_std": 236.40971967234248,
+          "escapes_mean": 6.333333333333333
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9712962962962962,
+          "auroc_std": 0.021073716068038997,
+          "auroc_min": 0.9416666666666667,
+          "auroc_max": 0.9888888888888889,
+          "cost_mean": 368.0,
+          "cost_std": 48.09019304043878,
+          "escapes_mean": 3.6666666666666665
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.9629629629629628,
+          "auroc_std": 0.0057077907434897246,
+          "auroc_min": 0.9555555555555556,
+          "auroc_max": 0.9694444444444443,
+          "cost_mean": 137.0,
+          "cost_std": 45.9782557302906,
+          "escapes_mean": 1.3333333333333333
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9777777777777777,
+          "auroc_std": 0.010393492741038778,
+          "auroc_min": 0.9638888888888888,
+          "auroc_max": 0.9888888888888889,
+          "cost_mean": 102.66666666666667,
+          "cost_std": 0.4714045207910317,
+          "escapes_mean": 1.0
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9805555555555556,
+          "auroc_std": 0.00600068583185916,
+          "auroc_min": 0.9722222222222222,
+          "auroc_max": 0.9861111111111112,
+          "cost_mean": 4.333333333333333,
+          "cost_std": 1.699673171197595,
+          "escapes_mean": 0.0
+        },
+        {
+          "n_requested": 80,
+          "n_used": 48,
+          "seeds": 3,
+          "auroc_mean": 0.9750000000000001,
+          "auroc_std": 0.00226804605813261,
+          "auroc_min": 0.9722222222222222,
+          "auroc_max": 0.9777777777777779,
+          "cost_mean": 70.33333333333333,
+          "cost_std": 93.10328792380119,
+          "escapes_mean": 0.6666666666666666
+        },
+        {
+          "n_requested": 160,
+          "n_used": 48,
+          "seeds": 3,
+          "auroc_mean": 0.9750000000000001,
+          "auroc_std": 0.00226804605813261,
+          "auroc_min": 0.9722222222222222,
+          "auroc_max": 0.9777777777777779,
+          "cost_mean": 70.33333333333333,
+          "cost_std": 93.10328792380119,
+          "escapes_mean": 0.6666666666666666
+        },
+        {
+          "n_requested": null,
+          "n_used": 48,
+          "seeds": 1,
+          "auroc_mean": 0.9777777777777779,
+          "auroc_std": 0.0,
+          "auroc_min": 0.9777777777777779,
+          "auroc_max": 0.9777777777777779,
+          "cost_mean": 202.0,
+          "cost_std": 0.0,
+          "escapes_mean": 2.0
+        }
+      ],
+      "full_pool_auroc": 0.9777777777777779,
+      "knee_n_for_99pct_of_full": 5,
+      "seconds": 67.9
+    },
+    "transistor": {
+      "n_pool": 170,
+      "n_cal": 43,
+      "n_test": 100,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.8850000000000001,
+          "auroc_std": 0.033511675687846604,
+          "auroc_min": 0.8441666666666666,
+          "auroc_max": 0.92625,
+          "cost_mean": 1671.3333333333333,
+          "cost_std": 93.12476696465995,
+          "escapes_mean": 16.666666666666668
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.8869444444444444,
+          "auroc_std": 0.031345840687323476,
+          "auroc_min": 0.8524999999999999,
+          "auroc_max": 0.9283333333333333,
+          "cost_mean": 1704.6666666666667,
+          "cost_std": 82.05824489687527,
+          "escapes_mean": 17.0
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.9341666666666667,
+          "auroc_std": 0.01601865232228422,
+          "auroc_min": 0.91875,
+          "auroc_max": 0.9562499999999999,
+          "cost_mean": 1504.6666666666667,
+          "cost_std": 140.2576993331283,
+          "escapes_mean": 15.0
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9708333333333332,
+          "auroc_std": 0.005682575707077466,
+          "auroc_min": 0.9645833333333333,
+          "auroc_max": 0.9783333333333334,
+          "cost_mean": 804.0,
+          "cost_std": 216.64256276179896,
+          "escapes_mean": 8.0
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9666666666666667,
+          "auroc_std": 0.011921813185486078,
+          "auroc_min": 0.9525,
+          "auroc_max": 0.9816666666666667,
+          "cost_mean": 539.0,
+          "cost_std": 496.57225053359554,
+          "escapes_mean": 5.333333333333333
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.9747222222222223,
+          "auroc_std": 0.009932255099322855,
+          "auroc_min": 0.9670833333333333,
+          "auroc_max": 0.98875,
+          "cost_mean": 271.6666666666667,
+          "cost_std": 170.16527913244295,
+          "escapes_mean": 2.6666666666666665
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.9795833333333333,
+          "auroc_std": 0.0003402069087198937,
+          "auroc_min": 0.9791666666666666,
+          "auroc_max": 0.98,
+          "cost_mean": 107.0,
+          "cost_std": 81.64965809277261,
+          "escapes_mean": 1.0
+        },
+        {
+          "n_requested": null,
+          "n_used": 170,
+          "seeds": 1,
+          "auroc_mean": 0.975,
+          "auroc_std": 0.0,
+          "auroc_min": 0.975,
+          "auroc_max": 0.975,
+          "cost_mean": 405.0,
+          "cost_std": 0.0,
+          "escapes_mean": 4.0
+        }
+      ],
+      "full_pool_auroc": 0.975,
+      "knee_n_for_99pct_of_full": 20,
+      "seconds": 158.0
+    },
+    "wood": {
+      "n_pool": 198,
+      "n_cal": 49,
+      "n_test": 79,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9739766081871345,
+          "auroc_std": 0.001490941378243509,
+          "auroc_min": 0.9719298245614035,
+          "auroc_max": 0.9754385964912281,
+          "cost_mean": 733.3333333333334,
+          "cost_std": 169.96731711975949,
+          "escapes_mean": 7.333333333333333
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9722222222222222,
+          "auroc_std": 0.004072628151223426,
+          "auroc_min": 0.9666666666666667,
+          "auroc_max": 0.9763157894736842,
+          "cost_mean": 533.6666666666666,
+          "cost_std": 125.1674434063782,
+          "escapes_mean": 5.333333333333333
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.981578947368421,
+          "auroc_std": 0.005593896628569874,
+          "auroc_min": 0.9771929824561403,
+          "auroc_max": 0.9894736842105263,
+          "cost_mean": 466.6666666666667,
+          "cost_std": 94.28090415820634,
+          "escapes_mean": 4.666666666666667
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9798245614035088,
+          "auroc_std": 0.004472824134730564,
+          "auroc_min": 0.9736842105263157,
+          "auroc_max": 0.9842105263157895,
+          "cost_mean": 467.3333333333333,
+          "cost_std": 46.197643037521104,
+          "escapes_mean": 4.666666666666667
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9842105263157895,
+          "auroc_std": 0.0012405382126079558,
+          "auroc_min": 0.9824561403508772,
+          "auroc_max": 0.9850877192982457,
+          "cost_mean": 400.6666666666667,
+          "cost_std": 140.94995171651848,
+          "escapes_mean": 4.0
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.9862573099415205,
+          "auroc_std": 0.001490941378243458,
+          "auroc_min": 0.9842105263157895,
+          "auroc_max": 0.987719298245614,
+          "cost_mean": 433.6666666666667,
+          "cost_std": 124.36594746508744,
+          "escapes_mean": 4.333333333333333
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.9885964912280701,
+          "auroc_std": 0.0018949534205870997,
+          "auroc_min": 0.9859649122807017,
+          "auroc_max": 0.9903508771929824,
+          "cost_mean": 367.3333333333333,
+          "cost_std": 169.31495963309195,
+          "escapes_mean": 3.6666666666666665
+        },
+        {
+          "n_requested": null,
+          "n_used": 198,
+          "seeds": 1,
+          "auroc_mean": 0.9868421052631579,
+          "auroc_std": 0.0,
+          "auroc_min": 0.9868421052631579,
+          "auroc_max": 0.9868421052631579,
+          "cost_mean": 301.0,
+          "cost_std": 0.0,
+          "escapes_mean": 3.0
+        }
+      ],
+      "full_pool_auroc": 0.9868421052631579,
+      "knee_n_for_99pct_of_full": 10,
+      "seconds": 154.1
+    },
+    "zipper": {
+      "n_pool": 192,
+      "n_cal": 48,
+      "n_test": 151,
+      "grid": [
+        28,
+        28
+      ],
+      "points": [
+        {
+          "n_requested": 2,
+          "n_used": 2,
+          "seeds": 3,
+          "auroc_mean": 0.9671743697478993,
+          "auroc_std": 0.012496983723835828,
+          "auroc_min": 0.9506302521008404,
+          "auroc_max": 0.9808298319327731,
+          "cost_mean": 4200.333333333333,
+          "cost_std": 1070.4517218860872,
+          "escapes_mean": 42.0
+        },
+        {
+          "n_requested": 5,
+          "n_used": 5,
+          "seeds": 3,
+          "auroc_mean": 0.9806547619047619,
+          "auroc_std": 0.0031243992117602416,
+          "auroc_min": 0.9779411764705883,
+          "auroc_max": 0.985031512605042,
+          "cost_mean": 3067.0,
+          "cost_std": 543.9160474435984,
+          "escapes_mean": 30.666666666666668
+        },
+        {
+          "n_requested": 10,
+          "n_used": 10,
+          "seeds": 3,
+          "auroc_mean": 0.9880952380952381,
+          "auroc_std": 0.004767243979058195,
+          "auroc_min": 0.9813550420168067,
+          "auroc_max": 0.9915966386554622,
+          "cost_mean": 1367.6666666666667,
+          "cost_std": 402.7681991198191,
+          "escapes_mean": 13.666666666666666
+        },
+        {
+          "n_requested": 20,
+          "n_used": 20,
+          "seeds": 3,
+          "auroc_mean": 0.9870448179271709,
+          "auroc_std": 0.0013950785583428896,
+          "auroc_min": 0.9852941176470589,
+          "auroc_max": 0.9887079831932774,
+          "cost_mean": 1834.6666666666667,
+          "cost_std": 601.3874698469273,
+          "escapes_mean": 18.333333333333332
+        },
+        {
+          "n_requested": 40,
+          "n_used": 40,
+          "seeds": 3,
+          "auroc_mean": 0.9887079831932774,
+          "auroc_std": 0.0026780564672231424,
+          "auroc_min": 0.9860819327731092,
+          "auroc_max": 0.9923844537815126,
+          "cost_mean": 1167.6666666666667,
+          "cost_std": 205.48046676563257,
+          "escapes_mean": 11.666666666666666
+        },
+        {
+          "n_requested": 80,
+          "n_used": 80,
+          "seeds": 3,
+          "auroc_mean": 0.990983893557423,
+          "auroc_std": 0.006321943307166621,
+          "auroc_min": 0.985031512605042,
+          "auroc_max": 0.9997373949579832,
+          "cost_mean": 734.0,
+          "cost_std": 464.7343327106359,
+          "escapes_mean": 7.333333333333333
+        },
+        {
+          "n_requested": 160,
+          "n_used": 160,
+          "seeds": 3,
+          "auroc_mean": 0.998424369747899,
+          "auroc_std": 0.0006432483568233113,
+          "auroc_min": 0.9976365546218487,
+          "auroc_max": 0.9992121848739496,
+          "cost_mean": 201.0,
+          "cost_std": 0.816496580927726,
+          "escapes_mean": 2.0
+        },
+        {
+          "n_requested": null,
+          "n_used": 192,
+          "seeds": 1,
+          "auroc_mean": 0.9994747899159664,
+          "auroc_std": 0.0,
+          "auroc_min": 0.9994747899159664,
+          "auroc_max": 0.9994747899159664,
+          "cost_mean": 100.0,
+          "cost_std": 0.0,
+          "escapes_mean": 1.0
+        }
+      ],
+      "full_pool_auroc": 0.9994747899159664,
+      "knee_n_for_99pct_of_full": 80,
+      "seconds": 182.3
+    }
+  },
+  "knee_median": 10.0,
+  "knee_max": 256
+}

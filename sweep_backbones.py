@@ -44,6 +44,10 @@ ARMS = [
      "out_indices": (2, 3)},
     {"tag": "E_resnet50_224", "kind": "cnn", "name": "resnet50", "img": 224,
      "out_indices": (2, 3)},
+    # F: DINOv3, the successor to the backbone that won textures and lost small parts.
+    # 448px because patch16 at 448 gives a 28x28 grid, matching every CNN arm - the one
+    # variable that must not move again. Dropped automatically if timm has no DINOv3.
+    {"tag": "F_dinov3_448", "kind": "vit", "name": None, "img": 448, "family": "dinov3"},
 ]
 
 
@@ -54,6 +58,25 @@ def resolve_dinov2():
         if hit:
             return hit
     raise RuntimeError(f"no dinov2 model in timm; saw {found[:10]}")
+
+
+def resolve_dinov3():
+    """DINOv3, resolved the same way as v2 - by asking timm what it actually ships.
+
+    Prefer a base ViT at patch16. The patch size drives the grid, and the sweep already
+    established that grid resolution dominates everything else here: at 224px a /16 model
+    gives 14x14 and a /14 gives 16x16, so the arm below runs at 448px to reach 28x28 and
+    stay comparable with the CNN arms. Returns None rather than raising - DINOv3 is newer
+    than the pinned timm in some environments, and one missing arm should not abort a
+    sweep of five that do exist.
+    """
+    found = timm.list_models("*dinov3*", pretrained=True)
+    for want in ("vit_base_patch16_dinov3", "vit_base_patch14_dinov3",
+                 "vit_small_patch16_dinov3", "vit_small_patch14_dinov3"):
+        hit = next((m for m in found if m.startswith(want)), None)
+        if hit:
+            return hit
+    return found[0] if found else None
 
 
 class PatchExtractor:
@@ -160,7 +183,9 @@ def operating(scores, cal_scores, truth, pctl):
 def main():
     os.makedirs("outputs", exist_ok=True)
     dino_id = resolve_dinov2()
-    print(f"dinov2 resolved to {dino_id}", flush=True)
+    dino3_id = resolve_dinov3()
+    print(f"dinov2 -> {dino_id}", flush=True)
+    print(f"dinov3 -> {dino3_id or 'NOT AVAILABLE in this timm'}", flush=True)
 
     dd = load_dataset(DATASET_ID)
     parts = []
@@ -208,8 +233,12 @@ def main():
 
     for spec in ARMS:
         spec = dict(spec)
-        if spec["kind"] == "vit":
-            spec["name"] = dino_id
+        if spec["kind"] == "vit" and spec["name"] is None:
+            spec["name"] = dino3_id if spec.get("family") == "dinov3" else dino_id
+            if spec["name"] is None:
+                print(f"SKIP {spec['tag']}: timm has no pretrained model for "
+                      f"{spec.get('family')}", flush=True)
+                continue
         tag = spec["tag"]
         print(f"\n=== {tag}  ({spec['name']} @ {spec['img']}px) ===", flush=True)
         t_arm = time.time()

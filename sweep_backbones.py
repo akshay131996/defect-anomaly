@@ -14,6 +14,7 @@ Results are written after every arm, so a crash mid-sweep keeps what already ran
 import json
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import timm
@@ -48,6 +49,13 @@ ARMS = [
     # 448px because patch16 at 448 gives a 28x28 grid, matching every CNN arm - the one
     # variable that must not move again. Dropped automatically if timm has no DINOv3.
     {"tag": "F_dinov3_448", "kind": "vit", "name": None, "img": 448, "family": "dinov3"},
+    # G: the input-matched counterpart to F. patch14 and patch16 cannot both match grid
+    # AND input size, but 448 is a multiple of 14 and 16, so it is the one input where
+    # both backbones are directly comparable. F vs B1 holds the grid fixed (28x28) and
+    # lets input differ; G vs F holds the input fixed (448) and lets the grid differ
+    # (32x32 vs 28x28). If DINOv2 wins both framings the result is not a resolution
+    # artefact.
+    {"tag": "G_dinov2_448", "kind": "vit", "name": None, "img": 448},
 ]
 
 
@@ -79,6 +87,11 @@ def resolve_dinov3():
     return found[0] if found else None
 
 
+# Sized from the box rather than hardcoded, but capped: past ~16 the decode is no longer
+# the limit and extra threads just add contention.
+_POOL = ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 8)))
+
+
 class PatchExtractor:
     """Identical to build_session2.py except that IMG is per-arm rather than global."""
 
@@ -101,9 +114,19 @@ class PatchExtractor:
         self.grid = None
         self.dim = None
 
+    def _one(self, im):
+        return self.tfm(im.convert("RGB"))
+
     @torch.no_grad()
     def __call__(self, pil_batch):
-        x = torch.stack([self.tfm(im.convert("RGB")) for im in pil_batch]).to(DEVICE)
+        # Decode and transform in parallel. Measured on the RTX 4000 Ada: with this done
+        # serially the GPU was idle in 12 of 14 samples and peaked at 764 MiB of 20 GB -
+        # the bottleneck was one CPU core doing PIL decode, not the card. PIL and the
+        # torchvision transforms release the GIL in their C paths, so threads are enough
+        # and avoid the pickling problems that fork-based workers hit with an
+        # arrow-backed HF dataset. `executor.map` preserves input order, so the batch is
+        # assembled identically to the serial version - this is a speed change only.
+        x = torch.stack(list(_POOL.map(self._one, pil_batch))).to(DEVICE)
         if self.kind == "cnn":
             fs = self.model(x)
             ref = fs[0].shape[-2:]
@@ -227,12 +250,35 @@ def main():
         "calibration_split": {"frac": CAL_FRAC, "seed": CAL_SEED},
         "threshold_rule": f"{PCTL}th percentile of held-out calibration scores",
         "cost_ratio_escape_to_false_alarm": COST_ESCAPE,
+        # Record the whole software/hardware stack, not just the GPU. The driver and the
+        # torch build have both changed under us mid-project; a number that moves needs a
+        # place to look before anyone blames the method.
         "device": torch.cuda.get_device_name(0) if DEVICE == "cuda" else "cpu",
+        "torch": torch.__version__,
+        "timm": timm.__version__,
+        "driver": torch.version.cuda,
         "arms": {},
     }
 
+    # Resume: arms already in the output file are kept. Adding one arm should cost one
+    # arm of compute, not a full re-sweep - and re-deriving a finished arm on a stack that
+    # has since changed would silently mix provenance inside a single file.
+    if os.path.exists(OUT):
+        with open(OUT) as f:
+            prev = json.load(f)
+        if (prev.get("torch") == torch.__version__
+                and prev.get("device") == summary["device"]):
+            summary["arms"] = prev.get("arms", {})
+            print(f"resuming: {len(summary['arms'])} arm(s) cached", flush=True)
+        else:
+            print("WARN: existing results came from a different torch/device; ignoring",
+                  flush=True)
+
     for spec in ARMS:
         spec = dict(spec)
+        if spec["tag"] in summary["arms"]:
+            print(f"=== {spec['tag']} (cached) ===", flush=True)
+            continue
         if spec["kind"] == "vit" and spec["name"] is None:
             spec["name"] = dino3_id if spec.get("family") == "dinov3" else dino_id
             if spec["name"] is None:

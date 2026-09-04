@@ -176,14 +176,17 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Work §7's queue in order, starting at E0.** The AD 2 pixel results are being
-re-measured after the coordinate-frame bug (see §6); until E1-E3 land, no AU-PRO number
-in this document should be quoted externally.
+**Run E0, then E2.** In that order — E0 is the guard that makes E2's number trustworthy,
+costs no GPU, and takes minutes.
 
-The previous entry here — scale-conditioned post-processing for `sheet_metal` — is
-**suspended, not done**. It was tuning a filter against a metric that was misregistered by
-81% of the frame on that exact scenario. Revisit it only after the geometry is fixed; the
-problem it describes may not survive.
+- **E0** — registration unit test. Nothing in this repo asserts that a map and a mask
+  describe the same place, which is why the coordinate-frame bug survived four sessions.
+- **E2** — letterbox geometry, all 8 scenarios. E1 proved registration is worth 2.3x but
+  bought it with aspect distortion; E2 is the first geometry that gets registration
+  *without* paying for it.
+
+E1 is done (§6). E3-E6 are queued behind E2 in §7 and should not be started early —
+E3 is a direct comparison against E2 and is meaningless without it.
 
 ---
 
@@ -540,7 +543,7 @@ produces**. If it comes back refuted, that is a completed item, not a failed one
 
 ---
 
-### E0 — registration unit test *(no GPU, do this first)*
+### E0 — registration unit test  **<- NEXT** *(no GPU)*
 
 **Why first:** the coordinate-frame bug survived four sessions because no test asserted
 that a map and a mask describe the same place. Until this exists, every item below can
@@ -549,15 +552,25 @@ regress silently in the same way.
 Add `test_registration.py` alongside `test_aupro.py`, numpy-only, no GPU:
 
 - Build a synthetic mask with one filled rectangle at a known normalised location, in a
-  deliberately non-square frame (use 4224x1056, `sheet_metal`'s shape).
+  deliberately non-square frame (use 4224x1056, `sheet_metal`'s shape, where the old crop
+  kept only 19% of the width).
 - Build a "perfect" anomaly map that is high exactly on that rectangle, pushed through
   the **same geometry the evaluator uses**.
 - Assert `au_pro@0.05 > 0.95`.
-- Repeat with the map offset by 20% of the width; assert it collapses (`< 0.2`).
+- Repeat with the map offset by 20% of the width; assert it collapses (`< 0.2`). Without
+  this second case the test passes trivially for a detector that flags everything.
 
-**Hypothesis:** the current default geometry (`resize+centre-crop` image, full-frame mask)
-fails the first assertion. **Verdict `supports` = the test fails on the old path and
-passes with `--squash`.** Commit the failing-then-passing pair.
+**Parameterise it over geometry**, not just over the current default. Write it so a new
+geometry is one line to add, and it becomes the standing regression guard for E2 and E3
+rather than a one-off. `crop` is expected to fail; `squash` is expected to pass. Do not
+delete the failing case once E2 lands — a test that only ever passes proves nothing.
+
+Also place the rectangle **near the frame edge** in at least one case. A centred defect
+survives a centre-crop and would have hidden this bug just as thoroughly as no test at all.
+
+**Hypothesis:** the old default geometry (`resize+centre-crop` image, full-frame mask)
+fails the first assertion. **Verdict `supports` = it fails on `crop` and passes on
+`squash`.** Commit the failing-then-passing pair so the diff shows the bug being caught.
 
 **Deliverable:** the test file, plus `logs/E0.log` showing both outcomes.
 
@@ -572,26 +585,65 @@ and `fabric` individually fell — the aspect-distortion cost E2/E3 exist to rem
 
 *Deviation on record:* the first process was killed after 5 scenarios with no traceback
 and no cgroup OOM; cause not established. The remaining 3 ran separately with identical
-flags and commit. If a long AD 2 run dies silently again, capture it — this is currently
+flags and identical script hashes. If a long AD 2 run dies silently again, capture it — this is currently
 an unexplained failure, not a known one.
 
 ---
 
-### E2 — letterbox geometry, all 8
+### E2 — letterbox geometry, all 8  **<- THEN THIS**
 
-Resize the **longest** side to `img` preserving aspect, pad the short side to square with
-a constant, and apply *identical* letterboxing to the masks. Exclude padded pixels from
-the FPR denominator — they are not image, and counting them inflates the normal-pixel
-mass that AU-PRO's false-positive axis is normalised by.
+**The idea.** Resize the **longest** side to `img` preserving aspect, pad the short side
+to square, and apply *identical* letterboxing to the masks. Registration is preserved (as
+in E1) but nothing is stretched, so the aspect distortion that cost `can` and `fabric`
+their image AUROC in E1 goes away.
 
-**Hypothesis:** letterbox beats squash on mean image AUROC (no aspect distortion) and
-matches it within 0.02 on mean AU-PRO@5% (registration is preserved either way).
+**Hypothesis:** letterbox beats squash on mean image AUROC, and matches it within 0.02 on
+mean AU-PRO@5% — registration is preserved either way, only distortion differs.
 
-**If it fails**, the interesting question is *which* — a drop in AU-PRO points at the
-padding borders generating false anomalies, which is testable by reporting AU-PRO with and
-without the border pixels excluded.
+This one needs code, not just a flag. Three changes, all specified here so you do not have
+to invent an API:
 
----
+**(a) `--geometry {crop,squash,letterbox}` in `ad2_pixel_eval.py`**, replacing the boolean
+`--squash`. Keep `--squash` as a hidden alias for `--geometry squash` so E1's recorded
+command still reproduces — do not silently change what an existing run record means.
+
+**(b) Pad with the normalisation mean** (i.e. zero *after* `Normalize`), which is the
+conventional letterbox. Two things to watch and report on:
+
+- Padded regions are perfectly uniform, so they sit far off the normal manifold and will
+  likely score as strongly anomalous. Excluding them from the metric (below) handles the
+  score, but **not** the `avg_pool2d(k=3)` neighbourhood aggregation in
+  `PatchExtractor.forward_feats`, which will bleed padding into genuine border patches.
+- If E2 underperforms, that bleed is the first suspect. The diagnostic is to report
+  AU-PRO with a 1-patch border of real image also excluded; if the number jumps, it is
+  contamination and not geometry.
+
+**(c) `evaluate(..., valid=None)` in `aupro.py`.** Padded pixels are not image, and
+counting them inflates the normal-pixel mass that AU-PRO's false-positive axis is
+normalised by — which would flatter E2 for a spurious reason. `valid` is a boolean array
+broadcastable to a map, True on real-image pixels. Apply it at all three accumulation
+sites:
+
+```python
+for m in maps_good:
+    h_norm += hist(m[valid].ravel())          # was m.ravel()
+
+for m, mask in zip(maps_bad, masks):
+    if mask.any():
+        h_norm += hist(m[valid & ~mask].ravel())
+        h_anom += hist(m[valid & mask].ravel())
+    else:
+        h_norm += hist(m[valid].ravel())
+```
+
+Regions need no change — the masks are letterboxed identically, so padding is never
+labelled defective. **Assert that** rather than assuming it: `assert not (mask & ~valid).any()`.
+Also compute the histogram range (`allv` in `ad2_pixel_eval.main`) over valid pixels only,
+or the padding's extreme scores will stretch the bins and cost you resolution everywhere else.
+
+Default `valid=None` must behave exactly as today, so E1 and the existing tests are
+unaffected. **Extend `test_aupro.py` to cover it**: a letterboxed perfect detector with
+padding excluded should still score ~1.0, and should *not* if `valid` is ignored.
 
 ### E3 — aspect-preserving rectangular input, all 8
 

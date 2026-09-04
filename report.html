@@ -1,0 +1,1211 @@
+<title>Finding Defects Without Examples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+:root{
+  --paper:#faf9f6; --surface:#ffffff; --sunken:#f2f0ec;
+  --ink:#131820; --ink-2:#3c4553; --ink-3:#6b7382;
+  --rule:#ddd9d1; --rule-2:#c8c3b9;
+  --s1:#0a8f7d; --s2:#c85a12; --s3:#4a56cc; --s4:#b23b7c;
+  --good:#0a8f7d; --bad:#c85a12;
+  --wash-1:#0a8f7d18; --wash-2:#c85a1218;
+  --shadow:0 1px 2px #1318200d, 0 8px 24px #1318200a;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --disp:"Archivo","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#14151a; --surface:#1c1e24; --sunken:#111216;
+    --ink:#eceef2; --ink-2:#b9bfca; --ink-3:#868e9c;
+    --rule:#2b2e36; --rule-2:#3a3e48;
+    --s1:#18a690; --s2:#d9702a; --s3:#6a74dc; --s4:#c4519a;
+    --good:#18a690; --bad:#d9702a;
+    --wash-1:#18a69022; --wash-2:#d9702a22;
+    --shadow:0 1px 2px #0006, 0 8px 24px #0004;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14151a; --surface:#1c1e24; --sunken:#111216;
+  --ink:#eceef2; --ink-2:#b9bfca; --ink-3:#868e9c;
+  --rule:#2b2e36; --rule-2:#3a3e48;
+  --s1:#18a690; --s2:#d9702a; --s3:#6a74dc; --s4:#c4519a;
+  --good:#18a690; --bad:#d9702a;
+  --wash-1:#18a69022; --wash-2:#d9702a22;
+  --shadow:0 1px 2px #0006, 0 8px 24px #0004;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--body); font-size:18px; line-height:1.68;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px}
+.col{max-width:68ch; margin-inline:auto}
+
+h1,h2,h3,h4{font-family:var(--disp); text-wrap:balance; line-height:1.15; margin:0}
+h1{font-size:clamp(2.4rem,6vw,4rem); font-weight:700; letter-spacing:-.025em}
+h2{font-size:clamp(1.6rem,3.4vw,2.3rem); font-weight:600; letter-spacing:-.018em}
+h3{font-size:1.22rem; font-weight:600; letter-spacing:-.008em}
+h4{font-size:1rem; font-weight:600}
+p{margin:0 0 1.1em}
+a{color:var(--s3)}
+strong{font-weight:600}
+code{font-family:var(--mono); font-size:.86em; background:var(--sunken);
+  padding:.12em .38em; border-radius:3px; border:1px solid var(--rule)}
+
+.eyebrow{font-family:var(--disp); font-size:.72rem; font-weight:600;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+
+/* ---------- masthead ---------- */
+header.mast{border-bottom:1px solid var(--rule); background:var(--surface)}
+.mast-in{max-width:1180px; margin:0 auto; padding:72px 24px 56px}
+.mast h1{margin:14px 0 20px; max-width:16ch}
+.lede{font-size:1.24rem; color:var(--ink-2); max-width:56ch; margin:0 0 28px}
+.meta{display:flex; flex-wrap:wrap; gap:10px 28px; font-family:var(--mono);
+  font-size:.76rem; color:var(--ink-3); border-top:1px solid var(--rule); padding-top:20px}
+.meta b{color:var(--ink-2); font-weight:600}
+
+/* ---------- sections ---------- */
+section{padding:60px 0; border-bottom:1px solid var(--rule)}
+.snum{font-family:var(--mono); font-size:.78rem; color:var(--s2); font-weight:600}
+.shead{display:flex; flex-direction:column; gap:10px; margin-bottom:32px}
+
+/* ---------- components ---------- */
+.card{background:var(--surface); border:1px solid var(--rule);
+  border-radius:10px; padding:22px 24px; box-shadow:var(--shadow)}
+.callout{background:var(--surface); border:1px solid var(--rule);
+  border-left:3px solid var(--s2); border-radius:8px; padding:18px 22px; margin:26px 0}
+.callout .eyebrow{color:var(--s2); display:block; margin-bottom:6px}
+.callout p:last-child{margin-bottom:0}
+.plain{background:var(--wash-1); border:1px solid var(--rule); border-radius:8px;
+  padding:16px 20px; margin:22px 0; font-size:.97rem}
+.plain .eyebrow{color:var(--s1); display:block; margin-bottom:6px}
+.plain p:last-child{margin-bottom:0}
+
+.figure{margin:34px 0}
+.figure figcaption{font-size:.86rem; color:var(--ink-3); margin-top:12px;
+  padding-left:12px; border-left:2px solid var(--rule-2)}
+.bleed{max-width:1180px; margin-inline:auto}
+
+table{width:100%; border-collapse:collapse; font-size:.9rem;
+  font-variant-numeric:tabular-nums}
+.tw{overflow-x:auto; border:1px solid var(--rule); border-radius:8px; background:var(--surface)}
+th,td{padding:9px 14px; text-align:right; border-bottom:1px solid var(--rule); white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font-family:var(--disp); font-size:.74rem; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--ink-3); font-weight:600; background:var(--sunken)}
+tbody tr:last-child td{border-bottom:none}
+td.num{font-family:var(--mono); font-size:.84rem}
+tr.hl td{background:var(--wash-1); font-weight:600}
+tr.bad td{background:var(--wash-2)}
+
+.kgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin:28px 0}
+.kpi{background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:18px 20px}
+.kpi .v{font-family:var(--disp); font-size:2.1rem; font-weight:700; line-height:1;
+  letter-spacing:-.02em; display:block; margin:8px 0 6px}
+.kpi .l{font-size:.8rem; color:var(--ink-3); line-height:1.4}
+.kpi.a .v{color:var(--s1)} .kpi.b .v{color:var(--s2)}
+.kpi.c .v{color:var(--s3)} .kpi.d .v{color:var(--s4)}
+
+svg{max-width:100%; height:auto; display:block}
+.legend{display:flex; flex-wrap:wrap; gap:8px 20px; font-size:.82rem;
+  color:var(--ink-2); margin-top:14px; align-items:center}
+.legend i{width:22px; height:3px; border-radius:2px; display:inline-block;
+  margin-right:7px; vertical-align:middle}
+
+/* interactive */
+.tool{background:var(--surface); border:1px solid var(--rule); border-radius:12px;
+  padding:24px; box-shadow:var(--shadow)}
+.ctl{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:18px 0 6px}
+.ctl label{font-family:var(--disp); font-size:.8rem; font-weight:600; color:var(--ink-2)}
+input[type=range]{flex:1; min-width:200px; accent-color:var(--s3); height:22px}
+button{font-family:var(--disp); font-size:.82rem; font-weight:600; cursor:pointer;
+  background:var(--surface); color:var(--ink-2); border:1px solid var(--rule-2);
+  border-radius:6px; padding:7px 13px}
+button[aria-pressed=true]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--s3); outline-offset:2px}
+.readout{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:12px; margin-top:18px}
+.ro{background:var(--sunken); border-radius:8px; padding:12px 14px}
+.ro b{font-family:var(--mono); font-size:1.35rem; display:block; line-height:1.2}
+.ro span{font-size:.74rem; color:var(--ink-3)}
+
+details{border:1px solid var(--rule); border-radius:8px; background:var(--surface);
+  padding:0 18px; margin:14px 0}
+summary{font-family:var(--disp); font-weight:600; font-size:.95rem;
+  padding:14px 0; cursor:pointer}
+details[open] summary{border-bottom:1px solid var(--rule); margin-bottom:14px}
+details > :last-child{margin-bottom:16px}
+
+ul,ol{padding-left:1.3em; margin:0 0 1.1em}
+li{margin-bottom:.5em}
+
+.tl{border-left:2px solid var(--rule-2); padding-left:22px; margin:28px 0;
+  display:flex; flex-direction:column; gap:26px}
+.tl-item{position:relative}
+.tl-item::before{content:""; position:absolute; left:-28px; top:7px; width:11px; height:11px;
+  border-radius:50%; background:var(--s2); border:2px solid var(--paper)}
+.tl-item h4{margin-bottom:4px}
+.tl-item .when{font-family:var(--mono); font-size:.72rem; color:var(--ink-3)}
+.tl-item p{font-size:.94rem; margin:6px 0 0; color:var(--ink-2)}
+
+footer{padding:48px 0 72px; color:var(--ink-3); font-size:.86rem}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+@media (max-width:640px){ body{font-size:17px} .mast-in{padding:48px 20px 40px} section{padding:44px 0} }
+</style>
+
+<header class="mast">
+  <div class="mast-in">
+    <span class="eyebrow">Industrial anomaly detection · engineering report</span>
+    <h1>Finding Defects Without Examples</h1>
+    <p class="lede">How do you build an inspector that catches faults it has never
+      seen? And what happens when you measure it honestly — including the four times
+      our own conclusions turned out to be wrong.</p>
+    <div class="meta">
+      <span><b>Dataset</b> MVTec AD · 5,354 images · 15 categories</span>
+      <span><b>Runs</b> 9 experiments · 300+ configurations · 2 datasets</span>
+      <span><b>Hardware</b> RTX 4000 Ada, RTX A4000</span>
+      <span><b>Audience</b> engineers new to the problem</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 1 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">01</span>
+      <h2>The problem, and why it isn't classification</h2>
+    </div>
+
+    <p>A factory line makes parts. Occasionally one comes out wrong — a scratch, a
+      dent, a missing wire, a smear of contamination. You want a camera to catch
+      those before they ship.</p>
+
+    <p>The obvious approach is to train a classifier: show it good parts, show it
+      bad parts, let it learn the difference. That approach fails immediately, and
+      understanding <em>why</em> is the foundation for everything else here.</p>
+
+    <div class="plain">
+      <span class="eyebrow">In plain terms</span>
+      <p>You can photograph a thousand good parts in an afternoon. Collecting a
+        thousand <em>defective</em> parts might take a year — and the moment a
+        supplier changes or a tool wears down, a brand-new kind of defect appears
+        that was in none of your photos.</p>
+    </div>
+
+    <p>This is a fundamental asymmetry. <strong>"Normal" is a compact, densely
+      sampled thing</strong> — good parts all look much alike, and you have
+      thousands. <strong>"Defective" is unbounded</strong> — there are infinitely
+      many ways to be wrong, and you can never enumerate them.</p>
+
+    <p>So the problem gets reframed. Instead of learning the boundary between two
+      classes, you <strong>describe what normal looks like</strong>, and flag
+      anything that sits far enough outside that description. In the literature this
+      is <em>one-class modelling</em> or <em>out-of-distribution detection</em>.</p>
+
+    <div class="callout">
+      <span class="eyebrow">The consequence that surprises people</span>
+      <p><strong>There is no loss function. There are no epochs. Nothing is
+        trained.</strong> A loss function measures how wrong a prediction was, so it
+        needs a right answer to compare against. Here there are no labelled defects
+        to be wrong about. There is nothing to backpropagate.</p>
+    </div>
+
+    <p>If nothing is trained, where does the intelligence come from? From a network
+      someone else trained years ago, on a completely different task, which we use
+      frozen and never modify. Section 3 explains why that works.</p>
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">02</span>
+      <h2>The dataset: MVTec AD</h2>
+    </div>
+
+    <p>Published in 2019 by <strong>MVTec Software GmbH</strong>, a Munich company
+      that sells industrial machine-vision systems. That origin matters — it was
+      built by people who sell inspection equipment, to answer a question their
+      customers kept asking.</p>
+
+    <div class="kgrid">
+      <div class="kpi a"><span class="v">3,629</span><span class="l">training images —
+        every one defect-free, by design</span></div>
+      <div class="kpi b"><span class="v">1,725</span><span class="l">test images,
+        good and defective mixed</span></div>
+      <div class="kpi c"><span class="v">15</span><span class="l">categories:
+        5 textures, 10 objects</span></div>
+      <div class="kpi d"><span class="v">~73</span><span class="l">distinct defect
+        types across them</span></div>
+    </div>
+
+    <p>Four design decisions worth understanding, because each one shapes what the
+      results can and cannot tell you.</p>
+
+    <h3>The defects were made on purpose</h3>
+    <p>Researchers physically damaged real objects — scratched, bent, dented,
+      contaminated them. They did not wait for a factory to produce failures,
+      because that would have taken years. This gives controlled coverage of failure
+      modes, but staged damage may not match how parts actually fail in service.</p>
+
+    <h3>Training data is defect-free by construction</h3>
+    <p>This mirrors the real constraint rather than a convenient split. It is also
+      an assumption worth <em>checking</em> rather than trusting: if even a few
+      defective images leak into training, the model learns that defects are normal,
+      scores collapse, and you get a plausible-looking number that measures
+      nothing.</p>
+
+    <h3>Every defect ships with a pixel-precise mask</h3>
+    <p>So you can evaluate not just <em>whether</em> a part is bad but <em>where</em>.
+      We have not used these yet — it is the largest remaining gap in this work.</p>
+
+    <h3>Acquisition is controlled — and some categories rotate</h3>
+    <p>Fixed lighting, roughly centred objects. But <code>screw</code>,
+      <code>hazelnut</code> and <code>metal_nut</code> are randomly rotated on
+      purpose, to test rotation robustness. Remember <code>screw</code> — it becomes
+      the villain of this report.</p>
+
+    <figure class="figure bleed">
+      <svg viewBox="0 0 1000 250" role="img" aria-label="Bar chart of training and test image counts for all fifteen MVTec AD categories">
+        <g id="catbars"></g>
+      </svg>
+      <div class="legend">
+        <span><i style="background:var(--s1)"></i>train (all defect-free)</span>
+        <span><i style="background:var(--s2)"></i>test (good + defective)</span>
+      </div>
+      <figcaption>Image counts per category. <code>toothbrush</code> is the
+        smallest at 60 training images — which later gives us a free preview of the
+        "how little data is enough?" question.</figcaption>
+    </figure>
+
+    <div class="plain">
+      <span class="eyebrow">Licence, because it matters commercially</span>
+      <p>MVTec AD is CC BY-NC-SA 4.0 — <strong>non-commercial research only</strong>.
+        It legally cannot ship inside a product. What transfers to industry is the
+        <em>method</em>, validated on a benchmark everyone shares.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">03</span>
+      <h2>Features: borrowed intelligence</h2>
+    </div>
+
+    <p>A digital image is a grid of brightness numbers. Comparing two images by
+      subtracting those numbers directly is almost useless — shift a photo one pixel
+      to the left and every number changes, though nothing meaningful did.</p>
+
+    <p>What you want is a <strong>representation</strong>: a way of turning an image
+      into a list of numbers where <em>distance means visual difference</em>. That is
+      what a pretrained neural network gives you.</p>
+
+    <div class="plain">
+      <span class="eyebrow">In plain terms</span>
+      <p>A network trained to recognise a thousand everyday objects had to learn, on
+        the way, what edges, textures, and materials look like. We throw away its
+        final answer ("this is a dog") and keep its <em>intermediate</em> impressions
+        — which turn out to be an excellent general-purpose description of surfaces.
+        These are called <strong>features</strong>.</p>
+    </div>
+
+    <h3>Does it actually work? We measured it.</h3>
+    <p>Our very first experiment compared raw pixel distance against distance in
+      feature space, everything else identical:</p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 640 220" role="img" aria-label="Grouped bar chart comparing raw-pixel AUROC against pretrained-feature AUROC for three categories">
+        <g id="featbars"></g>
+      </svg>
+      <div class="legend">
+        <span><i style="background:var(--s3)"></i>raw pixels</span>
+        <span><i style="background:var(--s1)"></i>pretrained features</span>
+        <span style="color:var(--ink-3)">dashed line = 0.5, pure chance</span>
+      </div>
+      <figcaption>AUROC on three categories. Raw pixels score <em>below chance</em>
+        on <code>screw</code> and <code>carpet</code> — worse than a coin flip. The
+        same algorithm on pretrained features works. That gap is the entire
+        justification for the approach.</figcaption>
+    </figure>
+
+    <details>
+      <summary>What is AUROC?</summary>
+      <p><strong>Area Under the Receiver Operating Characteristic curve.</strong> A
+        single number from 0 to 1 measuring how well a score <em>ranks</em> defective
+        items above good ones.</p>
+      <p>Concretely: pick one random defective part and one random good part. AUROC
+        is the probability the defective one gets the higher anomaly score.
+        <strong>1.0</strong> means perfect ranking; <strong>0.5</strong> means the
+        score is useless; <strong>below 0.5</strong> means it is actively
+        backwards.</p>
+      <p>The critical property — and a theme of this whole report — is that AUROC is
+        <em>threshold-free</em>. It measures ranking, not decisions. A factory has to
+        actually decide "ship or reject", and Section 6 shows those two things
+        disagree badly.</p>
+    </details>
+
+    <h3>Which layer to borrow from</h3>
+    <p>A network processes an image in stages. Early stages see edges and colour
+      blobs; late stages see whole-object concepts. We take the <strong>middle</strong>,
+      and the reasoning is specific:</p>
+
+    <figure class="figure bleed">
+      <svg viewBox="0 0 1000 300" role="img" aria-label="Diagram of a convolutional network's four stages showing why middle layers are chosen for defect detection">
+        <g id="layerdiag"></g>
+      </svg>
+      <figcaption>The deepest layer is the most committed to the original training
+        task — it is tuned to separate dog breeds, not to notice a scratch — and it
+        is spatially coarsest. Layers 2 and 3 carry texture and local structure,
+        which is what a defect physically <em>is</em>.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">04</span>
+      <h2>The method, step by step</h2>
+    </div>
+    <p>The algorithm is called <strong>PatchCore</strong>. It has four moving parts,
+      and no training anywhere.</p>
+  </div>
+
+  <figure class="figure bleed">
+    <svg viewBox="0 0 1000 420" role="img" aria-label="Flow diagram of the PatchCore pipeline from input image through patch features, memory bank, distance scoring, and threshold decision">
+      <g id="pipeline"></g>
+    </svg>
+    <figcaption class="col">The whole pipeline. Everything above the dashed line
+      happens once, at commissioning. Everything below happens for each part on the
+      line.</figcaption>
+  </figure>
+
+  <div class="col">
+    <h3>1 · Keep the grid, don't average it</h3>
+    <p>A naive approach squashes the whole image into one list of numbers. That
+      destroys small defects: a 20-pixel scratch on a 700-pixel screw barely moves
+      the average, so the image lands right back in the middle of "normal".</p>
+    <p>Instead we keep a <strong>grid</strong> — a 224-pixel image becomes a 28×28
+      grid, so <strong>784 separate descriptions</strong> of 784 small regions. This
+      single change is what makes the method work.</p>
+
+    <h3>2 · Let each patch peek at its neighbours</h3>
+    <p>Each patch description is averaged with the eight around it. This widens what
+      each one "sees" without making the grid coarser — you normally trade those
+      against each other, and this buys a little of one without paying in the
+      other.</p>
+
+    <h3>3 · Build a memory bank, then shrink it</h3>
+    <p>Store every patch from every good training image. That is hundreds of
+      thousands of vectors per category — too slow to search for every part coming
+      down a line. So keep a <strong>coreset</strong>: a subset chosen by repeatedly
+      adding whichever patch is <em>furthest</em> from everything already picked.</p>
+
+    <div class="plain">
+      <span class="eyebrow">Why furthest, not random?</span>
+      <p>Because we care about the <em>outline</em> of normal, not its centre. The
+        decision boundary lives at the edges. Random sampling would keep the crowded
+        middle and lose the rare-but-perfectly-normal patches — the unusual-looking
+        good parts that, if forgotten, become false alarms.</p>
+    </div>
+
+    <h3>4 · Score by distance, take the worst patch</h3>
+    <p>For a new part: every patch measures its distance to the nearest patch in the
+      memory bank. The part's score is the <strong>maximum</strong> over its patches
+      — one bad region is enough to condemn a part. Averaging would dilute a single
+      anomalous patch across 783 innocent ones, which is the arithmetic opposite of
+      what inspection means.</p>
+
+    <div class="callout">
+      <span class="eyebrow">A common misconception</span>
+      <p>This is <em>not</em> finding the peak of a probability distribution. Nothing
+        here estimates a density. The score is literally "how far is this from the
+        nearest good thing I have ever seen" — a question about the
+        <strong>boundary</strong> of normal, not its centre. That is also why normal
+        can be lumpy and multi-shaped (a screw at 0° and one at 90° are both fine)
+        without breaking anything.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">05</span>
+      <h2>The threshold: where scores become decisions</h2>
+    </div>
+
+    <p>Everything so far produces a <em>number</em> per part. A factory needs a
+      <em>verdict</em>. Somewhere you draw a line: above it, reject.</p>
+
+    <p>You cannot tune that line against defects — you have none. So you set it from
+      good parts alone: score a batch of known-good items and put the line at some
+      percentile of those scores. The 99th percentile means "accept the most unusual
+      1% of genuinely good parts being flagged".</p>
+
+    <p>Two kinds of mistake, and they are not equal:</p>
+
+    <div class="kgrid">
+      <div class="kpi b"><span class="v">Escape</span><span class="l">a defective part
+        passes inspection and reaches a customer. Expensive.</span></div>
+      <div class="kpi a"><span class="v">False alarm</span><span class="l">a good part
+        gets flagged and needs a human look. Cheap.</span></div>
+    </div>
+
+    <p>Throughout this project we priced an escape at <strong>100× a false alarm</strong>.
+      Move the slider and watch what that does.</p>
+
+    <div class="tool">
+      <h3 style="margin-bottom:4px">Where would you put the line?</h3>
+      <p style="font-size:.9rem; color:var(--ink-2); margin-bottom:4px">Real measured
+        data: category <code>screw</code>, cost at each threshold percentile.</p>
+      <figure class="figure" style="margin:14px 0 0">
+        <svg viewBox="0 0 640 260" role="img" aria-label="Interactive line chart of total cost against threshold percentile for the screw category">
+          <g id="thrchart"></g>
+        </svg>
+      </figure>
+      <div class="ctl">
+        <label for="thr">Threshold percentile</label>
+        <input type="range" id="thr" min="0" max="13" step="1" value="11">
+      </div>
+      <div class="readout">
+        <div class="ro"><b id="ro-p">99</b><span>percentile used</span></div>
+        <div class="ro"><b id="ro-c" style="color:var(--s2)">3,734</b><span>total cost</span></div>
+        <div class="ro"><b id="ro-x">24.8×</b><span>vs the best setting</span></div>
+      </div>
+      <p style="font-size:.86rem; color:var(--ink-3); margin:16px 0 0">The project
+        used the 99th percentile from its very first notebook. Drag left.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">06</span>
+      <h2>Results, and four times we were wrong</h2>
+    </div>
+    <p>This is the part worth reading. Each finding below was overturned by the next
+      experiment — which is what measuring carefully actually looks like.</p>
+
+    <div class="tl">
+      <div class="tl-item">
+        <span class="when">Experiment 2</span>
+        <h4>"DINOv2 is much worse than a CNN"</h4>
+        <p>A modern self-supervised transformer scored 0.735 on <code>screw</code>
+          against the old CNN's 0.955. Conclusion: newer backbone, worse results.</p>
+      </div>
+      <div class="tl-item">
+        <span class="when">Experiment 3 — overturned</span>
+        <h4>Two things had changed at once</h4>
+        <p>Switching CNN→transformer also changed the grid from 28×28 to 16×16.
+          Matched on resolution, the transformer <em>won</em>. The comparison had a
+          confound: two variables moved, and we credited the wrong one.</p>
+      </div>
+      <div class="tl-item">
+        <span class="when">Experiment 4 — overturned again</span>
+        <h4>The winning margin was luck</h4>
+        <p>Re-running with five different random starts: the "32% better" arm was
+          really 3.6% better, and the ranking of four arms was in the wrong order.
+          One value we had published was the worst of five draws.</p>
+      </div>
+      <div class="tl-item">
+        <span class="when">Experiment 6 — overturned a third time</span>
+        <h4>Every comparison used a broken threshold</h4>
+        <p>The 99th percentile was <strong>15× worse</strong> than simply using the
+          median. Re-ranked at a sane threshold, the arm we had dismissed as a poor
+          trade came first.</p>
+      </div>
+      <div class="tl-item">
+        <span class="when">The last check — the whole metric was wrong</span>
+        <h4>Rejecting every part beats our best model</h4>
+        <p>MVTec's test set is 73% defective. A real line is under 2%. On that
+          inverted balance, a policy of scrapping everything unexamined costs 467 —
+          and our best detector costs 559.</p>
+      </div>
+      <div class="tl-item">
+        <span class="when">Experiment 8 — a fourth reversal</span>
+        <h4>The newest backbone is the wrong one</h4>
+        <p>DINOv3, released after DINOv2 and better on every public benchmark, placed
+          <em>fifth of eight</em> — behind a 2015 WideResNet. Checked twice, once
+          holding the patch grid fixed and once holding input size fixed, because
+          those cannot both be matched across the two models. DINOv2 won both.</p>
+      </div>
+      <div class="tl-item">
+        <span class="when">A hardware assumption, measured</span>
+        <h4>The GPU was idle 85% of the time</h4>
+        <p>We were about to buy a card three times faster. Sampling utilisation showed
+          0% in twelve of fourteen readings, and 764 MiB used of 20 GB. The bottleneck
+          was one CPU core decoding PNGs while 128 sat idle. Threading it was
+          <strong>9.8× faster</strong> and provably bit-identical — and the faster GPU
+          would have idled just the same.</p>
+      </div>
+      <div class="tl-item">
+        <span class="when">And the measuring instrument itself</span>
+        <h4>The new metric was broken</h4>
+        <p>Our first pixel-level score came out 16× below a published baseline, using a
+          <em>better</em> configuration than that baseline. Rather than believe it, we
+          fed the metric predictors whose answer is known by construction. A perfect
+          detector scored <strong>0.879 instead of 1.0</strong> — the integral stopped
+          short of its own limit.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>The headline result: how little data is enough?</h3>
+    <p>This is the question the published literature does not answer, and the one a
+      plant commissioning a new product actually asks. How many photographs of good
+      parts before the inspector works?</p>
+
+    <div class="kgrid">
+      <div class="kpi a"><span class="v">10</span><span class="l">median images to reach
+        99% of full-data performance</span></div>
+      <div class="kpi c"><span class="v">2</span><span class="l">enough for four
+        categories to exceed 0.999</span></div>
+      <div class="kpi b"><span class="v">256</span><span class="l">and
+        <code>screw</code> never gets there at all</span></div>
+    </div>
+
+    <figure class="figure bleed">
+      <svg viewBox="0 0 1000 330" role="img" aria-label="Line chart of AUROC against number of training images for four representative categories">
+        <g id="dechart"></g>
+      </svg>
+      <div class="legend" id="delegend"></div>
+      <figcaption>Each line is one category. <code>bottle</code> and
+        <code>grid</code> are essentially perfect from a handful of photographs.
+        <code>pill</code> climbs steadily. <code>screw</code> never converges —
+        and its shaded band, the spread across random draws, is wider than the
+        progress it makes.</figcaption>
+    </figure>
+
+    <div class="plain">
+      <span class="eyebrow">What this means on a factory floor</span>
+      <p>At a few seconds per photograph, ten images is about a minute of
+        production. Even the hardest well-behaved category is under an hour. The
+        answer to "two hours or two weeks?" is <strong>minutes — except when it
+        isn't</strong>, and the spread is the finding. A single number would have
+        been the wrong answer.</p>
+    </div>
+
+    <h3>Every category, ranked by appetite for data</h3>
+    <figure class="figure bleed">
+      <svg viewBox="0 0 1000 260" role="img" aria-label="Bar chart of the number of images each category needs to reach 99 percent of its full-data performance">
+        <g id="kneechart"></g>
+      </svg>
+      <figcaption>Images needed to reach 99% of full-data AUROC. Textures
+        (<code>carpet</code>, <code>tile</code>, <code>leather</code>) saturate
+        instantly; complex assemblies (<code>cable</code>, <code>capsule</code>)
+        need dozens.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">07</span>
+      <h2>Three knobs, and what each one really controls</h2>
+    </div>
+
+    <h3>Resolution has a knee</h3>
+    <p>How finely you chop the image into patches matters enormously — up to a
+      point, then it reverses.</p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>change</th><th>AUROC</th><th>cost</th><th>verdict</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>16×16 → 28×28 grid</td><td class="num">+0.027</td>
+            <td class="num">−42%</td><td>transformative</td></tr>
+          <tr class="bad"><td>28×28 → 40×40 grid</td><td class="num">+0.004</td>
+            <td class="num">+13%</td><td>costs more, gains nothing</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:18px">Below the knee, resolution is the dominant variable.
+      Above it you are paying for patches that no longer separate anything.</p>
+
+    <h3>A newer backbone is not automatically a better one</h3>
+    <p>DINOv3 is the successor to DINOv2 — larger, newer, better on public benchmarks.
+      On this task it placed fifth of eight, <strong>behind a WideResNet from 2015</strong>.</p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>comparison</th><th>DINOv2</th><th>DINOv3</th><th>winner</th></tr></thead>
+        <tbody>
+          <tr><td>grid matched (28×28)</td><td class="num">0.9786</td>
+            <td class="num">0.9744</td><td>v2 by 0.0042</td></tr>
+          <tr class="hl"><td>input matched (448 px)</td><td class="num">0.9813</td>
+            <td class="num">0.9744</td><td>v2 by 0.0069</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:18px">Two framings, because a patch-14 and a patch-16 model cannot
+      match both grid <em>and</em> input size. The margin <em>widens</em> when input is held
+      fixed, so this is not a resolution artefact.</p>
+    <p>Per category it is not a uniform loss, and that is the interesting part. DINOv3 wins
+      the small structured objects — <code>screw</code> +0.016, <code>capsule</code> +0.015,
+      <code>transistor</code> +0.013 — and loses the textures badly, <code>wood</code>
+      <strong>−0.101</strong>. One category accounts for most of the gap. "DINOv3 is worse"
+      really means "much worse at one thing, mildly better at four others".</p>
+
+    <h3>Descriptor width is not the driver</h3>
+    <p>Each patch is described by a list of numbers — 1536 of them for one backbone,
+      384 for another. Intuition says more is better. It is not even monotonic: a
+      768-number description beat the 1536 one, while the 384 one lost badly. What
+      matters is descriptor <em>quality</em>, not quantity.</p>
+
+    <h3>The memory bank is a stability knob, not an accuracy knob</h3>
+    <p>We had used 1% of patches because the original paper does. Across a
+      <strong>125× range</strong> of bank sizes, total cost varied by only 7% — but
+      run-to-run reproducibility improved <strong>4.5×</strong>.</p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 640 250" role="img" aria-label="Chart showing that coreset ratio barely affects cost while strongly affecting reproducibility">
+        <g id="corechart"></g>
+      </svg>
+      <div class="legend">
+        <span><i style="background:var(--s2)"></i>total cost (flat)</span>
+        <span><i style="background:var(--s3)"></i>run-to-run spread (falls steadily)</span>
+      </div>
+      <figcaption>Two quantities, two panels — never two y-axes on one chart. Cost
+        is essentially flat; reproducibility improves monotonically.</figcaption>
+    </figure>
+
+    <div class="plain">
+      <span class="eyebrow">Why an engineer should care</span>
+      <p>If you have to <em>certify</em> an inspection system, a result that shifts
+        when you rebuild it is a problem regardless of its average accuracy. Pick 1%
+        for cost; pick 25% if the system has to give the same answer twice, and pay
+        25× the memory for it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">08</span>
+      <h2>The finding that undoes the rest</h2>
+    </div>
+
+    <p>Late in the work we checked something we should have checked first: what does
+      the <em>dumbest possible policy</em> cost?</p>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>policy</th><th>escapes</th><th>false alarms</th><th>total cost</th></tr></thead>
+        <tbody>
+          <tr class="bad"><td>Scrap every part unexamined</td><td class="num">0</td>
+            <td class="num">467</td><td class="num">467</td></tr>
+          <tr><td>Our best detector (arm D, p20)</td><td class="num">—</td>
+            <td class="num">—</td><td class="num">559</td></tr>
+          <tr><td>Ship everything unexamined</td><td class="num">1,258</td>
+            <td class="num">0</td><td class="num">125,800</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:20px"><strong>A policy of throwing away every part, with no
+      camera at all, beats our best model.</strong> Not because the model is bad —
+      because the <em>measurement</em> is.</p>
+
+    <p>MVTec's test set is <strong>73% defective</strong>. A real production line runs
+      at well under 2%. On a benchmark where most parts are already broken, and
+      escapes are priced at 100× a false alarm, indiscriminate rejection is close to
+      optimal — and no detector can look good against it.</p>
+
+    <div class="callout">
+      <span class="eyebrow">What this invalidates, and what survives</span>
+      <p>Every cost figure in this report is computed on an inverted class balance,
+        which means the <em>absolute</em> costs are not meaningful and the "median
+        beats 99th percentile" result is partly an artefact of it. At a realistic 1%
+        defect rate the weighting flips almost exactly, false alarms start to
+        dominate, and the optimum swings back toward a high threshold.</p>
+      <p>What survives untouched: every AUROC, the data-efficiency curves, the
+        resolution knee, and the reproducibility findings. Those are all
+        threshold-free or class-balance-free.</p>
+    </div>
+
+    <p>The fix is to reweight each error by the defect rate a real line would see,
+      which is the next experiment queued.</p>
+  </div>
+</section>
+
+<!-- ============ 9 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">09</span>
+      <h2>The harder benchmark, and where it hurts</h2>
+    </div>
+
+    <p>Everything above is MVTec AD, which is close to solved. Its successor,
+      <strong>MVTec AD 2</strong>, was built because of that: 8 scenarios, images at
+      2448×2048, and defects deliberately chosen to be hard. Published methods sit
+      <strong>below 60%</strong> on its headline metric, so unlike AD there is real room
+      to move.</p>
+
+    <p>It also asks a question we had never asked. Everything so far answered <em>is this
+      part defective</em>. AD 2 is scored on <em>where</em> — per-region overlap, which
+      weights a one-pixel scratch the same as a defect covering a quarter of the frame.</p>
+
+    <div class="callout">
+      <span class="eyebrow">First contact went badly, and instructively</span>
+      <p>Our first AD 2 score was <strong>16× below a published baseline</strong> — while
+        using a <em>better</em> feature configuration than that baseline. Rather than
+        report it, we tested the measuring instrument, found a real bug, fixed it… and the
+        number barely moved. The result was genuine.</p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>input size</th><th>image AUROC</th><th>AU-PRO@5%</th></tr></thead>
+        <tbody>
+          <tr><td>224 px</td><td class="num">0.5289</td><td class="num">0.0056</td></tr>
+          <tr class="hl"><td>448 px</td><td class="num">0.4823</td><td class="num">0.0111</td></tr>
+          <tr><td>768 px</td><td class="num">0.5144</td><td class="num">0.0108</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:20px">Localisation doubled from 224 to 448 — expected, since we
+      were downsampling 2448 px images to 224 and erasing the small defects the benchmark
+      exists to test. Then it <strong>stopped</strong>. Doubling again to 768 gained
+      nothing, and image AUROC hovers around 0.5 throughout — a coin flip.</p>
+
+    <p>That plateau is the informative part. If small defects were the whole problem,
+      resolution would keep paying. It doesn't. So something else is dominating, and more
+      pixels cannot reach it.</p>
+
+    <p>The obvious suspect was <strong>distribution shift</strong>. AD 2 deliberately
+      varies lighting between training and test, and a method that flags whatever sits far
+      from its training images has no defence: a perfectly good part under new lighting
+      <em>is</em> far from them. That would drown the defect signal entirely.</p>
+
+    <p>So we tested it rather than asserting it — scoring three defect-free sets against
+      the same memory bank and measuring how far each had drifted, in units of the
+      training set's own spread.</p>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>scenario</th><th>lighting shift</th><th>defect signal</th></tr></thead>
+        <tbody>
+          <tr class="bad"><td>can</td><td class="num">2.7σ</td><td class="num">−0.0σ</td></tr>
+          <tr><td>fabric</td><td class="num">0.5σ</td><td class="num">0.1σ</td></tr>
+          <tr><td>rice</td><td class="num">0.0σ</td><td class="num">0.1σ</td></tr>
+          <tr><td>wallplugs</td><td class="num">0.1σ</td><td class="num">0.2σ</td></tr>
+          <tr class="hl"><td>fruit_jelly</td><td class="num">−0.3σ</td><td class="num">1.2σ</td></tr>
+          <tr class="hl"><td>walnuts</td><td class="num">0.3σ</td><td class="num">1.8σ</td></tr>
+          <tr class="hl"><td>sheet_metal</td><td class="num">−0.7σ</td><td class="num">1.9σ</td></tr>
+          <tr class="hl"><td>vial</td><td class="num">−0.1σ</td><td class="num">2.7σ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="eyebrow">The hypothesis was wrong, and the way it was wrong matters</span>
+      <p>Across all eight, defect signal beats lighting shift roughly <strong>3 to 1</strong>.
+        Distribution shift is <em>not</em> the general problem.</p>
+      <p>But <code>can</code> — the one scenario every number above was measured on — has
+        2.7σ of shift and <strong>zero</strong> defect signal. Good and defective parts
+        score identically there. Of eight scenarios we had picked the single most
+        unrepresentative one, alphabetically, and drawn a dataset-wide conclusion from
+        it.</p>
+    </div>
+
+    <p>Four scenarios carry real signal — <code>vial</code> at 2.7σ, <code>sheet_metal</code>
+      1.9σ, <code>walnuts</code> 1.8σ. Three others have neither shift nor signal and are
+      simply hard. One is a domain-gap problem wearing a defect-detection costume.</p>
+
+    <h3>Running all eight, which we should have done first</h3>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>scenario</th><th>image AUROC</th><th>AU-PRO@5%</th><th>defect regions</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>vial</td><td class="num">0.858</td><td class="num">0.436</td><td class="num">174</td></tr>
+          <tr class="hl"><td>fruit_jelly</td><td class="num">0.863</td><td class="num">0.226</td><td class="num">320</td></tr>
+          <tr><td>wallplugs</td><td class="num">0.623</td><td class="num">0.124</td><td class="num">84</td></tr>
+          <tr><td>walnuts</td><td class="num">0.796</td><td class="num">0.112</td><td class="num">450</td></tr>
+          <tr><td>rice</td><td class="num">0.465</td><td class="num">0.097</td><td class="num">126</td></tr>
+          <tr><td>sheet_metal</td><td class="num">0.701</td><td class="num">0.034</td><td class="num">1539</td></tr>
+          <tr class="bad"><td>can</td><td class="num">0.482</td><td class="num">0.011</td><td class="num">96</td></tr>
+          <tr class="bad"><td>fabric</td><td class="num">0.516</td><td class="num">0.005</td><td class="num">150</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="kgrid">
+      <div class="kpi a"><span class="v">0.131</span><span class="l">our mean AU-PRO@5%
+        across all eight</span></div>
+      <div class="kpi c"><span class="v">0.089</span><span class="l">the published
+        baseline we thought we were 16× below</span></div>
+      <div class="kpi b"><span class="v">0.005</span><span class="l">what one
+        unrepresentative scenario had suggested</span></div>
+    </div>
+
+    <p>So the real figure is <strong>above the published baseline</strong>, not a
+      catastrophe — and the diagnostic predicted the ordering before we ran it. The two
+      strongest scenarios by measured defect signal are the two strongest by localisation.</p>
+
+    <div class="callout">
+      <span class="eyebrow">One more disagreement, in a new place</span>
+      <p><code>sheet_metal</code> breaks the pattern: strong image-level signal (1.9σ,
+        AUROC 0.70) but almost no localisation (0.034). It has <strong>1,539 defect
+        regions</strong> — far more than any other scenario, most of them tiny. The model
+        knows the part is bad and cannot say where.</p>
+      <p>Detectable is not localisable, which is the same lesson as ranking-is-not-deciding,
+        arriving from a new direction.</p>
+    </div>
+
+    <div class="plain">
+      <span class="eyebrow">Why this is the most useful thing on this page</span>
+      <p>A single diagnostic, needing no labels beyond the folder names, separated "the
+        model can't see the defect" from "the model is looking at the wrong thing" — and
+        showed they demand opposite fixes. More resolution would have helped the first
+        group and done nothing for <code>can</code>, which is exactly the plateau we
+        measured before understanding why.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section>
+  <div class="col">
+    <div class="shead">
+      <span class="snum">10</span>
+      <h2>What a junior engineer should take from this</h2>
+    </div>
+
+    <ol>
+      <li><strong>AUROC is not a decision.</strong> It measures ranking. Four separate
+        times in this project, the model that ranked best made the worst decisions.
+        Always report the operating point too.</li>
+      <li><strong>Change one thing at a time.</strong> Our CNN-vs-transformer
+        comparison moved the backbone <em>and</em> the resolution, and we credited
+        the wrong one for a whole experiment.</li>
+      <li><strong>Run it more than once.</strong> A single random seed put four
+        configurations in the wrong order and made one look 32% better than it
+        was.</li>
+      <li><strong>Check the trivial baseline first.</strong> If "reject everything"
+        beats your model, the problem is your metric, not your model — and it is
+        embarrassing to discover that at the end rather than the start.</li>
+      <li><strong>Report per class, never just the mean.</strong> The average hid
+        that one backbone wins on textures and loses on small parts. There is no
+        universal best; the right choice is category-dependent.</li>
+      <li><strong>Write down predictions before running.</strong> One of ours was
+        flatly wrong, and the wrongness was more informative than a confirmation
+        would have been.</li>
+    </ol>
+
+    <h3>Still open</h3>
+    <ul>
+      <li><strong>Pixel-level evaluation.</strong> The dataset ships masks; we have
+        only ever asked "is this part bad", never "where".</li>
+      <li><strong>Realistic class balance</strong>, per Section 8.</li>
+      <li><strong>Diagnosing <code>screw</code>.</strong> It fails on every axis and
+        we have never once looked at <em>what</em> it gets wrong.</li>
+      <li><strong>MVTec AD 2</strong> — the successor benchmark, where the best
+        published methods are still under 60%, and results are verified by an
+        evaluation server rather than self-reported.</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="col">
+  <p>Every figure on this page is measured, not illustrative. Numbers come from six
+    experiment runs over all 15 MVTec AD categories, on RTX 4000 Ada and RTX A4000
+    hardware. Where a result was later overturned, both the original and the
+    correction are shown.</p>
+</footer>
+</div>
+
+<script>
+const D = {
+  cats: [["bottle",209,83],["cable",224,150],["capsule",219,132],["carpet",280,117],
+    ["grid",264,78],["hazelnut",391,110],["leather",245,124],["metal_nut",220,115],
+    ["pill",267,167],["screw",320,160],["tile",230,117],["toothbrush",60,42],
+    ["transistor",213,100],["wood",247,79],["zipper",240,151]],
+  feat: [["bottle",0.859,0.992],["screw",0.372,0.678],["carpet",0.429,0.872]],
+  knees: {"bottle":2,"cable":80,"capsule":80,"carpet":2,"grid":5,"hazelnut":5,
+    "leather":2,"metal_nut":20,"pill":40,"screw":256,"tile":2,"toothbrush":5,
+    "transistor":20,"wood":10,"zipper":80},
+  pct: [[50,151],[60,313],[70,444],[75,576],[80,574],[85,839],[90,1105],[93,1305],
+    [95,2103],[97,2702],[98,3135],[99,3734],[99.5,3834],[100,4134]],
+  de: {
+    bottle:[[2,.9995,.0007],[5,.9997,.0004],[10,1,0],[20,1,0],[40,1,0],[80,1,0],[160,1,0],[167,1,0]],
+    grid:[[2,.9883,.0047],[5,.9969,.0043],[10,.9981,.0028],[20,1,0],[40,1,0],[80,1,0],[160,1,0],[211,1,0]],
+    pill:[[2,.9263,.009],[5,.9311,.0147],[10,.9534,.0047],[20,.9724,.0064],[40,.9796,.0062],[80,.9756,.0052],[160,.9843,.0026],[214,.985,0]],
+    screw:[[2,.6179,.0046],[5,.6289,.0538],[10,.6066,.0763],[20,.6717,.0265],[40,.737,.0277],[80,.7765,.0129],[160,.7963,.0259],[256,.8252,0]]
+  },
+  core: [[0.002,21404,0.0188],[0.01,19938,0.0102],[0.05,20808,0.0088],[0.25,21038,0.0042]]
+};
+const NS="http://www.w3.org/2000/svg";
+const el=(n,a={})=>{const e=document.createElementNS(NS,n);
+  for(const k in a) e.setAttribute(k,a[k]); return e;};
+const txt=(x,y,s,a={})=>{const t=el("text",Object.assign(
+  {x,y,"font-family":"JetBrains Mono, monospace","font-size":"11",fill:"var(--ink-3)"},a));
+  t.textContent=s; return t;};
+const V=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---- category counts ---- */
+(()=>{const g=document.getElementById("catbars"); if(!g)return;
+  const W=1000,H=250,L=64,R=16,T=14,B=54, iw=(W-L-R)/D.cats.length;
+  const mx=Math.max(...D.cats.map(c=>c[1]));
+  const sy=v=>H-B-(v/mx)*(H-T-B);
+  [0,100,200,300,400].forEach(t=>{
+    g.appendChild(el("line",{x1:L,x2:W-R,y1:sy(t),y2:sy(t),stroke:"var(--rule)","stroke-width":1}));
+    g.appendChild(txt(L-9,sy(t)+4,t,{"text-anchor":"end"}));});
+  D.cats.forEach((c,i)=>{
+    const x=L+i*iw, bw=(iw-10)/2;
+    g.appendChild(el("rect",{x:x+3,y:sy(c[1]),width:bw,height:H-B-sy(c[1]),
+      fill:"var(--s1)",rx:3}));
+    g.appendChild(el("rect",{x:x+5+bw,y:sy(c[2]),width:bw,height:H-B-sy(c[2]),
+      fill:"var(--s2)",rx:3}));
+    const t=txt(x+iw/2,H-B+15,c[0],{"text-anchor":"end","font-size":"10",
+      transform:`rotate(-40 ${x+iw/2} ${H-B+15})`}); g.appendChild(t);});
+})();
+
+/* ---- raw pixels vs features ---- */
+(()=>{const g=document.getElementById("featbars"); if(!g)return;
+  const W=640,H=220,L=52,R=14,T=14,B=42, iw=(W-L-R)/3;
+  const sy=v=>H-B-v*(H-T-B);
+  [0,.25,.5,.75,1].forEach(t=>{
+    g.appendChild(el("line",{x1:L,x2:W-R,y1:sy(t),y2:sy(t),stroke:"var(--rule)"}));
+    g.appendChild(txt(L-8,sy(t)+4,t.toFixed(2),{"text-anchor":"end"}));});
+  g.appendChild(el("line",{x1:L,x2:W-R,y1:sy(.5),y2:sy(.5),stroke:"var(--ink-3)",
+    "stroke-width":1.5,"stroke-dasharray":"5 4"}));
+  D.feat.forEach((f,i)=>{
+    const x=L+i*iw, bw=(iw-30)/2;
+    [[f[1],"var(--s3)"],[f[2],"var(--s1)"]].forEach((p,j)=>{
+      g.appendChild(el("rect",{x:x+12+j*(bw+5),y:sy(p[0]),width:bw,
+        height:H-B-sy(p[0]),fill:p[1],rx:3}));
+      g.appendChild(txt(x+12+j*(bw+5)+bw/2,sy(p[0])-6,p[0].toFixed(3),
+        {"text-anchor":"middle","font-size":"10",fill:"var(--ink-2)"}));});
+    g.appendChild(txt(x+iw/2,H-B+18,f[0],{"text-anchor":"middle","font-size":"11",
+      fill:"var(--ink-2)"}));});
+})();
+
+/* ---- layer diagram ---- */
+(()=>{const g=document.getElementById("layerdiag"); if(!g)return;
+  const stages=[
+    ["Layer 1","edges, colour blobs","too generic — a scratch and a\nclean surface look alike","var(--ink-3)",0],
+    ["Layer 2","texture, local structure","28×28 grid","var(--s1)",1],
+    ["Layer 3","parts and materials","14×14 grid","var(--s1)",1],
+    ["Layer 4","whole-object concepts","too committed to 'is it a dog',\nand only 7×7 — a defect smears\ninto one cell","var(--ink-3)",0]];
+  const W=1000,bw=210,gap=(W-4*bw)/5;
+  stages.forEach((s,i)=>{
+    const x=gap+i*(bw+gap), use=s[4];
+    g.appendChild(el("rect",{x,y:40,width:bw,height:110,rx:9,
+      fill:use?"var(--wash-1)":"var(--sunken)",
+      stroke:use?"var(--s1)":"var(--rule-2)","stroke-width":use?2:1}));
+    const t1=txt(x+16,68,s[0],{"font-family":"Archivo, sans-serif","font-size":"14",
+      "font-weight":"600",fill:use?"var(--s1)":"var(--ink-3)"}); g.appendChild(t1);
+    const t2=txt(x+16,90,s[1],{"font-size":"11.5",fill:"var(--ink-2)"}); g.appendChild(t2);
+    s[2].split("\n").forEach((ln,k)=>g.appendChild(
+      txt(x+16,114+k*14,ln,{"font-size":"10.5",fill:"var(--ink-3)"})));
+    if(i<3) g.appendChild(el("path",{d:`M${x+bw+6} 95 L${x+bw+gap-6} 95`,
+      stroke:"var(--rule-2)","stroke-width":1.5,"marker-end":"url(#ah)"}));
+    g.appendChild(txt(x+bw/2,178,use?"USED":"skipped",{"text-anchor":"middle",
+      "font-size":"11","font-weight":"600",fill:use?"var(--s1)":"var(--ink-3)",
+      "letter-spacing":"0.1em"}));});
+  const d=el("defs"); const m=el("marker",{id:"ah",viewBox:"0 0 10 10",refX:"9",refY:"5",
+    markerWidth:"6",markerHeight:"6",orient:"auto"});
+  m.appendChild(el("path",{d:"M0 0 L10 5 L0 10 z",fill:"var(--rule-2)"}));
+  d.appendChild(m); g.appendChild(d);
+  g.appendChild(txt(500,230,"A defect is a local texture anomaly — so the layers that describe texture",
+    {"text-anchor":"middle","font-size":"12.5",fill:"var(--ink-2)"}));
+  g.appendChild(txt(500,250,"at a useful spatial resolution are the ones that carry the signal.",
+    {"text-anchor":"middle","font-size":"12.5",fill:"var(--ink-2)"}));
+})();
+
+/* ---- pipeline ---- */
+(()=>{const g=document.getElementById("pipeline"); if(!g)return;
+  const d=el("defs"); const m=el("marker",{id:"ah2",viewBox:"0 0 10 10",refX:"9",refY:"5",
+    markerWidth:"7",markerHeight:"7",orient:"auto"});
+  m.appendChild(el("path",{d:"M0 0 L10 5 L0 10 z",fill:"var(--s3)"}));
+  d.appendChild(m); g.appendChild(d);
+  const box=(x,y,w,h,title,sub,accent)=>{
+    g.appendChild(el("rect",{x,y,width:w,height:h,rx:9,fill:"var(--surface)",
+      stroke:accent||"var(--rule-2)","stroke-width":accent?2:1}));
+    g.appendChild(txt(x+w/2,y+26,title,{"text-anchor":"middle",
+      "font-family":"Archivo, sans-serif","font-size":"13.5","font-weight":"600",
+      fill:accent||"var(--ink)"}));
+    sub.split("\n").forEach((ln,k)=>g.appendChild(txt(x+w/2,y+46+k*14,ln,
+      {"text-anchor":"middle","font-size":"10.5",fill:"var(--ink-3)"})));};
+  const arrow=(x1,y1,x2,y2)=>g.appendChild(el("path",{d:`M${x1} ${y1} L${x2} ${y2}`,
+    stroke:"var(--s3)","stroke-width":1.6,"marker-end":"url(#ah2)"}));
+
+  g.appendChild(txt(20,26,"SETUP — ONCE, AT COMMISSIONING",{"font-size":"10.5",
+    "font-weight":"600","letter-spacing":"0.12em",fill:"var(--ink-3)"}));
+  box(20,40,180,86,"Good parts only","photograph 10–200\ndefect-free items","var(--s1)");
+  arrow(206,83,246,83);
+  box(252,40,180,86,"Frozen network","split into a 28×28 grid\n= 784 descriptions");
+  arrow(438,83,478,83);
+  box(484,40,180,86,"Memory bank","keep 1% — the ones\nat the outer edge");
+  arrow(670,83,710,83);
+  box(716,40,180,86,"Set the line","a percentile of\ngood-part scores","var(--s2)");
+
+  g.appendChild(el("line",{x1:20,x2:980,y1:158,y2:158,stroke:"var(--rule-2)",
+    "stroke-dasharray":"6 5"}));
+
+  g.appendChild(txt(20,192,"RUNTIME — FOR EVERY PART ON THE LINE",{"font-size":"10.5",
+    "font-weight":"600","letter-spacing":"0.12em",fill:"var(--ink-3)"}));
+  box(20,206,180,86,"New part","one photograph");
+  arrow(206,249,246,249);
+  box(252,206,180,86,"Same network","784 patch\ndescriptions");
+  arrow(438,249,478,249);
+  box(484,206,180,86,"Distance","each patch → nearest\nin the memory bank");
+  arrow(670,249,710,249);
+  box(716,206,180,86,"Worst patch wins","score = the single\nhighest distance","var(--s3)");
+
+  arrow(806,298,806,330);
+  box(646,336,320,64,"Above the line?","reject → a human looks at it     ·     below → ship it","var(--s2)");
+  g.appendChild(txt(20,352,"No training. No loss function.",{"font-family":"Archivo, sans-serif",
+    "font-size":"15","font-weight":"600",fill:"var(--ink-2)"}));
+  g.appendChild(txt(20,374,"No epochs. Nothing here",{"font-family":"Archivo, sans-serif",
+    "font-size":"15","font-weight":"600",fill:"var(--ink-2)"}));
+  g.appendChild(txt(20,396,"learns anything.",{"font-family":"Archivo, sans-serif",
+    "font-size":"15","font-weight":"600",fill:"var(--ink-2)"}));
+})();
+
+/* ---- interactive threshold ---- */
+(()=>{const g=document.getElementById("thrchart"), sl=document.getElementById("thr");
+  if(!g||!sl)return;
+  const W=640,H=260,L=62,R=18,T=18,B=46;
+  const mx=4300, sx=i=>L+(i/(D.pct.length-1))*(W-L-R), sy=v=>H-B-(v/mx)*(H-T-B);
+  const draw=()=>{
+    g.textContent="";
+    [0,1000,2000,3000,4000].forEach(t=>{
+      g.appendChild(el("line",{x1:L,x2:W-R,y1:sy(t),y2:sy(t),stroke:"var(--rule)"}));
+      g.appendChild(txt(L-8,sy(t)+4,t.toLocaleString(),{"text-anchor":"end"}));});
+    const pts=D.pct.map((p,i)=>`${sx(i)},${sy(p[1])}`).join(" ");
+    g.appendChild(el("polyline",{points:pts,fill:"none",stroke:"var(--s2)","stroke-width":2,
+      "stroke-linejoin":"round"}));
+    const i=+sl.value;
+    g.appendChild(el("line",{x1:sx(i),x2:sx(i),y1:T,y2:H-B,stroke:"var(--s3)",
+      "stroke-width":1.5,"stroke-dasharray":"4 3"}));
+    D.pct.forEach((p,k)=>{
+      g.appendChild(el("circle",{cx:sx(k),cy:sy(p[1]),r:k===i?6:3.2,
+        fill:k===i?"var(--s3)":"var(--s2)",stroke:"var(--surface)","stroke-width":2}));});
+    [0,4,9,11,13].forEach(k=>g.appendChild(txt(sx(k),H-B+18,"p"+D.pct[k][0],
+      {"text-anchor":"middle","font-size":"10.5"})));
+    g.appendChild(txt(L,H-8,"more eager to reject  ←",{"font-size":"10.5"}));
+    g.appendChild(txt(W-R,H-8,"→  more permissive",{"text-anchor":"end","font-size":"10.5"}));
+    const best=Math.min(...D.pct.map(p=>p[1]));
+    document.getElementById("ro-p").textContent=D.pct[i][0];
+    document.getElementById("ro-c").textContent=D.pct[i][1].toLocaleString();
+    document.getElementById("ro-x").textContent=(D.pct[i][1]/best).toFixed(1)+"×";
+  };
+  sl.addEventListener("input",draw); draw();
+  new MutationObserver(draw).observe(document.documentElement,{attributes:true,
+    attributeFilter:["data-theme"]});
+})();
+
+/* ---- data efficiency ---- */
+(()=>{const g=document.getElementById("dechart"); if(!g)return;
+  const W=1000,H=330,L=62,R=150,T=20,B=54;
+  const series=[["bottle","var(--s1)"],["grid","var(--s3)"],["pill","var(--s4)"],["screw","var(--s2)"]];
+  const sx=n=>L+(Math.log10(n)-Math.log10(2))/(Math.log10(256)-Math.log10(2))*(W-L-R);
+  const sy=v=>H-B-((v-0.55)/0.45)*(H-T-B);
+  [0.6,0.7,0.8,0.9,1.0].forEach(t=>{
+    g.appendChild(el("line",{x1:L,x2:W-R,y1:sy(t),y2:sy(t),stroke:"var(--rule)"}));
+    g.appendChild(txt(L-8,sy(t)+4,t.toFixed(2),{"text-anchor":"end"}));});
+  [2,5,10,20,40,80,160,256].forEach(n=>
+    g.appendChild(txt(sx(n),H-B+18,n,{"text-anchor":"middle","font-size":"10.5"})));
+  g.appendChild(txt((L+W-R)/2,H-16,"images used to build the memory bank (log scale)",
+    {"text-anchor":"middle","font-size":"11.5",fill:"var(--ink-2)"}));
+  series.forEach(([name,col])=>{
+    const pts=D.de[name];
+    const up=pts.map(p=>`${sx(p[0])},${sy(Math.min(1,p[1]+p[2]))}`);
+    const dn=pts.slice().reverse().map(p=>`${sx(p[0])},${sy(p[1]-p[2])}`);
+    g.appendChild(el("polygon",{points:up.concat(dn).join(" "),fill:col,opacity:.13}));
+    g.appendChild(el("polyline",{points:pts.map(p=>`${sx(p[0])},${sy(p[1])}`).join(" "),
+      fill:"none",stroke:col,"stroke-width":2,"stroke-linejoin":"round"}));
+    pts.forEach(p=>g.appendChild(el("circle",{cx:sx(p[0]),cy:sy(p[1]),r:3.4,fill:col,
+      stroke:"var(--surface)","stroke-width":1.5})));
+    const last=pts[pts.length-1];
+    g.appendChild(txt(sx(last[0])+12,sy(last[1])+4,name,{"font-size":"12",
+      "font-family":"Archivo, sans-serif","font-weight":"600",fill:col}));});
+  const lg=document.getElementById("delegend");
+  if(lg) lg.innerHTML=series.map(([n,c])=>
+    `<span><i style="background:${c}"></i>${n}</span>`).join("")+
+    `<span style="color:var(--ink-3)">shaded band = spread over 3 random draws</span>`;
+})();
+
+/* ---- knees ---- */
+(()=>{const g=document.getElementById("kneechart"); if(!g)return;
+  const W=1000,H=260,L=90,R=40,T=14,B=48;
+  const rows=Object.entries(D.knees).sort((a,b)=>a[1]-b[1]);
+  const iw=(W-L-R)/rows.length;
+  const sy=v=>H-B-(Math.log10(v)/Math.log10(256))*(H-T-B);
+  [2,5,10,20,40,80,160,256].forEach(t=>{
+    g.appendChild(el("line",{x1:L,x2:W-R,y1:sy(t),y2:sy(t),stroke:"var(--rule)"}));
+    g.appendChild(txt(L-8,sy(t)+4,t,{"text-anchor":"end"}));});
+  g.appendChild(txt(L-8,sy(256)-14,"images",{"text-anchor":"end","font-size":"10"}));
+  rows.forEach(([name,k],i)=>{
+    const x=L+i*iw+iw*0.16, bw=iw*0.68;
+    const col=k<=5?"var(--s1)":k<=40?"var(--s3)":"var(--s2)";
+    g.appendChild(el("rect",{x,y:sy(k),width:bw,height:H-B-sy(k),fill:col,rx:3}));
+    g.appendChild(txt(x+bw/2,sy(k)-6,k,{"text-anchor":"middle","font-size":"10.5",
+      fill:"var(--ink-2)"}));
+    g.appendChild(txt(x+bw/2,H-B+14,name,{"text-anchor":"end","font-size":"10",
+      transform:`rotate(-40 ${x+bw/2} ${H-B+14})`}));});
+})();
+
+/* ---- coreset: two panels, never two axes ---- */
+(()=>{const g=document.getElementById("corechart"); if(!g)return;
+  const W=640,H=250,L=54,T=16,B=54, panelW=(W-L-30)/2, gapX=30;
+  const xs=D.core.map((_,i)=>i);
+  const p1x=i=>L+(i/(D.core.length-1))*(panelW-20)+10;
+  const p2x=i=>L+panelW+gapX+(i/(D.core.length-1))*(panelW-20)+10;
+  const mid=H-B;
+  // panel 1: cost
+  const cmax=24000, cy=v=>mid-(v/cmax)*(mid-T-24);
+  [0,8000,16000,24000].forEach(t=>{
+    g.appendChild(el("line",{x1:L,x2:L+panelW,y1:cy(t),y2:cy(t),stroke:"var(--rule)"}));
+    g.appendChild(txt(L-6,cy(t)+4,(t/1000)+"k",{"text-anchor":"end","font-size":"10"}));});
+  g.appendChild(el("polyline",{points:D.core.map((c,i)=>`${p1x(i)},${cy(c[1])}`).join(" "),
+    fill:"none",stroke:"var(--s2)","stroke-width":2}));
+  D.core.forEach((c,i)=>g.appendChild(el("circle",{cx:p1x(i),cy:cy(c[1]),r:4,
+    fill:"var(--s2)",stroke:"var(--surface)","stroke-width":1.5})));
+  g.appendChild(txt(L+panelW/2,T+4,"total cost — flat",{"text-anchor":"middle",
+    "font-size":"11.5","font-family":"Archivo, sans-serif","font-weight":"600",
+    fill:"var(--ink-2)"}));
+  // panel 2: spread
+  const smax=0.02, sy2=v=>mid-(v/smax)*(mid-T-24);
+  [0,0.005,0.01,0.015,0.02].forEach(t=>{
+    g.appendChild(el("line",{x1:L+panelW+gapX,x2:W,y1:sy2(t),y2:sy2(t),stroke:"var(--rule)"}));
+    g.appendChild(txt(L+panelW+gapX-6,sy2(t)+4,t.toFixed(3),{"text-anchor":"end","font-size":"10"}));});
+  g.appendChild(el("polyline",{points:D.core.map((c,i)=>`${p2x(i)},${sy2(c[2])}`).join(" "),
+    fill:"none",stroke:"var(--s3)","stroke-width":2}));
+  D.core.forEach((c,i)=>g.appendChild(el("circle",{cx:p2x(i),cy:sy2(c[2]),r:4,
+    fill:"var(--s3)",stroke:"var(--surface)","stroke-width":1.5})));
+  g.appendChild(txt(L+panelW+gapX+panelW/2,T+4,"run-to-run spread — falls 4.5×",
+    {"text-anchor":"middle","font-size":"11.5","font-family":"Archivo, sans-serif",
+     "font-weight":"600",fill:"var(--ink-2)"}));
+  D.core.forEach((c,i)=>{
+    const lab=(c[0]*100)+"%";
+    g.appendChild(txt(p1x(i),mid+16,lab,{"text-anchor":"middle","font-size":"10"}));
+    g.appendChild(txt(p2x(i),mid+16,lab,{"text-anchor":"middle","font-size":"10"}));});
+  g.appendChild(txt(W/2,H-10,"share of patches kept in the memory bank",
+    {"text-anchor":"middle","font-size":"11",fill:"var(--ink-3)"}));
+})();
+</script>

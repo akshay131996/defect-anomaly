@@ -1,0 +1,113 @@
+{
+  "img": 448,
+  "bank_cap": 4000,
+  "scenarios": {
+    "can": {
+      "val_good_mean": 55.315773010253906,
+      "test_good_mean": 62.57568359375,
+      "test_bad_mean": 62.48524475097656,
+      "val_good_std": 2.654007911682129,
+      "shift_sigmas": 2.7354516983032227,
+      "defect_signal_sigmas": -0.034076329320669174,
+      "n": [
+        46,
+        72,
+        90
+      ]
+    },
+    "fabric": {
+      "val_good_mean": 59.27435302734375,
+      "test_good_mean": 60.76752471923828,
+      "test_bad_mean": 61.10342788696289,
+      "val_good_std": 2.730111598968506,
+      "shift_sigmas": 0.5469269752502441,
+      "defect_signal_sigmas": 0.12303642183542252,
+      "n": [
+        43,
+        66,
+        90
+      ]
+    },
+    "fruit_jelly": {
+      "val_good_mean": 62.08030319213867,
+      "test_good_mean": 60.15342330932617,
+      "test_bad_mean": 66.96659088134766,
+      "val_good_std": 5.906819820404053,
+      "shift_sigmas": -0.32621273398399353,
+      "defect_signal_sigmas": 1.1534409523010254,
+      "n": [
+        37,
+        20,
+        60
+      ]
+    },
+    "rice": {
+      "val_good_mean": 47.915428161621094,
+      "test_good_mean": 47.93168258666992,
+      "test_bad_mean": 48.070655822753906,
+      "val_good_std": 1.9306654930114746,
+      "shift_sigmas": 0.008419078774750233,
+      "defect_signal_sigmas": 0.07198204100131989,
+      "n": [
+        35,
+        42,
+        90
+      ]
+    },
+    "sheet_metal": {
+      "val_good_mean": 61.96924591064453,
+      "test_good_mean": 60.12410354614258,
+      "test_bad_mean": 65.516845703125,
+      "val_good_std": 2.790010452270508,
+      "shift_sigmas": -0.6613388657569885,
+      "defect_signal_sigmas": 1.9328752756118774,
+      "n": [
+        19,
+        24,
+        90
+      ]
+    },
+    "vial": {
+      "val_good_mean": 59.76523208618164,
+      "test_good_mean": 59.38957214355469,
+      "test_bad_mean": 68.25724029541016,
+      "val_good_std": 3.2383275032043457,
+      "shift_sigmas": -0.11600431054830551,
+      "defect_signal_sigmas": 2.7383482456207275,
+      "n": [
+        41,
+        35,
+        105
+      ]
+    },
+    "wallplugs": {
+      "val_good_mean": 66.98970031738281,
+      "test_good_mean": 67.34700775146484,
+      "test_bad_mean": 68.09201049804688,
+      "val_good_std": 3.379342555999756,
+      "shift_sigmas": 0.10573282837867737,
+      "defect_signal_sigmas": 0.22045789659023285,
+      "n": [
+        33,
+        60,
+        90
+      ]
+    },
+    "walnuts": {
+      "val_good_mean": 59.18806076049805,
+      "test_good_mean": 60.29850387573242,
+      "test_bad_mean": 67.61561584472656,
+      "val_good_std": 4.040750503540039,
+      "shift_sigmas": 0.27481111884117126,
+      "defect_signal_sigmas": 1.8108298778533936,
+      "n": [
+        48,
+        60,
+        90
+      ]
+    }
+  },
+  "mean_shift_sigmas": 0.32097322365734726,
+  "mean_defect_signal_sigmas": 1.0021117976866663,
+  "shift_to_signal_ratio": 0.3202968215705081
+}

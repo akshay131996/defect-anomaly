@@ -178,9 +178,23 @@ def extract_paths(ex, paths, pool, batch=8):
     return torch.cat(out)
 
 
-def coreset_indices(feats, ratio=CORESET_RATIO, proj_dim=128, seed=0, chunk=16384):
+def coreset_indices(feats, ratio=CORESET_RATIO, proj_dim=128, seed=0, chunk=16384,
+                    max_k=None):
+    """Greedy k-center coreset.
+
+    `max_k` caps the bank in absolute terms rather than as a fraction. This matters at
+    high input resolution: scoring cost is (test patches x bank size) and a fixed ratio
+    makes the bank grow with patch count, so cost becomes quadratic in resolution -
+    768px is ~138x the work of 224px. Capping the bank makes it linear instead.
+
+    The cap is cheap because bank size barely affects accuracy: the coreset sweep
+    measured total cost varying only 7% across a 125x range of bank sizes, while
+    reproducibility improved steadily. It is a stability knob, not an accuracy knob.
+    """
     n = feats.shape[0]
     k = min(max(int(n * ratio), 32), n)
+    if max_k:
+        k = min(k, max_k)
     if k >= n:
         # Selecting every point is a no-op, but the greedy loop below would still run n-1
         # iterations to arrive there - O(n^2) for a result known in advance.

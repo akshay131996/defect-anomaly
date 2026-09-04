@@ -48,10 +48,13 @@ import timm
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from scipy import ndimage
 from sklearn.metrics import roc_auc_score
 
 import sweep_backbones as sb
+# The metric lives in its own numpy-only module so it can be unit-tested
+# without a GPU - see test_aupro.py. It had an under-reporting bug that a
+# local copy here would have silently reintroduced.
+from aupro import evaluate, NBINS, PRO_LIMITS
 
 AD2_ROOT = "/opt/ad2/mvtec_ad_2"
 OUT = "outputs/ad2_pixel_eval.json"
@@ -63,8 +66,6 @@ ARM = {"tag": "A_wrn50_224", "kind": "cnn", "name": "wide_resnet50_2", "img": 22
 
 CORESET_RATIO = 0.01
 SEED = 0
-NBINS = 2048                 # score histogram resolution
-PRO_LIMITS = [0.05, 0.30]    # AD 2 headlines @5%; 30% is the classic MVTec AD number
 GAUSS_SIGMA = 4.0            # standard PatchCore map smoothing, in grid cells
 EVAL_SIDE = 512              # masks and maps are compared at this resolution - see below
 
@@ -116,62 +117,15 @@ def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8):
     return np.array(scores), maps
 
 
-def evaluate(maps_good, maps_bad, masks, lo, hi):
-    """Histogram-based pixel AUROC and AU-PRO.
-
-    Bins are shared across every image so the curves compose. Returns pixel AUROC plus
-    AU-PRO at each limit in PRO_LIMITS.
-    """
-    edges = np.linspace(lo, hi, NBINS + 1)
-
-    def hist(v):
-        return np.histogram(v, bins=edges)[0].astype(np.float64)
-
-    h_norm = np.zeros(NBINS)     # scores over all genuinely-normal pixels
-    h_anom = np.zeros(NBINS)     # scores over all defective pixels
-    region_hists = []            # one histogram per connected ground-truth component
-
-    for m in maps_good:
-        h_norm += hist(m.ravel())
-
-    for m, mask in zip(maps_bad, masks):
-        h_norm += hist(m[~mask].ravel())
-        h_anom += hist(m[mask].ravel())
-        lab, n = ndimage.label(mask)
-        for r in range(1, n + 1):
-            sel = lab == r
-            if sel.sum() >= 4:                 # ignore specks - they are annotation noise
-                region_hists.append(hist(m[sel].ravel()) / sel.sum())
-
-    # survival curves: fraction above threshold, walking thresholds high -> low
-    def survival(h):
-        tot = h.sum()
-        return np.cumsum(h[::-1])[::-1] / tot if tot > 0 else np.zeros_like(h)
-
-    fpr = survival(h_norm)
-    tpr = survival(h_anom)
-    order = np.argsort(fpr)
-    pixel_auroc = float(np.trapezoid(tpr[order], fpr[order])) if h_anom.sum() > 0 else None
-
-    out = {"pixel_auroc": pixel_auroc, "n_regions": len(region_hists)}
-    if region_hists:
-        pro = np.mean([np.cumsum(h[::-1])[::-1] for h in region_hists], axis=0)
-        for lim in PRO_LIMITS:
-            keep = fpr <= lim
-            if keep.sum() > 1:
-                f, p = fpr[keep], pro[keep]
-                o = np.argsort(f)
-                out[f"au_pro@{lim}"] = float(np.trapezoid(p[o], f[o]) / lim)
-            else:
-                out[f"au_pro@{lim}"] = None
-    return out
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenarios", default="")
     ap.add_argument("--limit", type=int, default=0,
                     help="cap images per split, for a fast smoke run")
+    ap.add_argument("--bank-cap", type=int, default=0,
+                    help="cap the memory bank in absolute vectors. Without this, cost is "
+                         "quadratic in input resolution and 768px is ~138x the work of "
+                         "224px.")
     ap.add_argument("--img", type=int, default=0,
                     help="override input resolution. AD 2 images are ~2448x2048; the "
                          "default 224 is a 10x linear downsample that erases the small "
@@ -189,7 +143,7 @@ def main():
         arm["tag"] = f"{ARM['name']}_{args.img}"
     ex = sb.PatchExtractor(arm)
     summary = {"arm": arm["tag"], "img": arm["img"], "root": AD2_ROOT, "coreset_ratio": CORESET_RATIO,
-               "eval_side": EVAL_SIDE, "gauss_sigma": GAUSS_SIGMA, "nbins": NBINS,
+               "eval_side": EVAL_SIDE, "bank_cap": args.bank_cap, "gauss_sigma": GAUSS_SIGMA, "nbins": NBINS,
                "device": torch.cuda.get_device_name(0) if sb.DEVICE == "cuda" else "cpu",
                "torch": torch.__version__, "scenarios": {}}
 
@@ -214,7 +168,8 @@ def main():
         # bank from train, threshold calibration data from validation
         f_tr = sb.extract_paths(ex, train, _POOL)
         n_patches = ex.grid[0] * ex.grid[1]
-        keep = sb.coreset_indices(f_tr, ratio=CORESET_RATIO, seed=SEED)
+        keep = sb.coreset_indices(f_tr, ratio=CORESET_RATIO, seed=SEED,
+                                  max_k=args.bank_cap or None)
         bank = f_tr[keep]
         del f_tr
 

@@ -24,6 +24,7 @@ import collections
 import json
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import timm
@@ -60,6 +61,11 @@ N_GRID = [2, 5, 10, 20, 40, 80, 160, None]   # None = every fit image available
 SEEDS = [0, 1, 2]
 
 
+# Sized from the box rather than hardcoded, but capped: past ~16 the decode is no longer
+# the limit and extra threads just add contention.
+_POOL = ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 8)))
+
+
 class PatchExtractor:
     """Same extractor as sweep_backbones.py, restricted to the one chosen arm."""
 
@@ -78,9 +84,11 @@ class PatchExtractor:
         self.grid = None
         self.dim = None
 
+    def _one(self, im):
+        return self.tfm(im.convert("RGB"))
+
     @torch.no_grad()
-    def __call__(self, pil_batch):
-        x = torch.stack([self.tfm(im.convert("RGB")) for im in pil_batch]).to(DEVICE)
+    def forward_feats(self, x):
         if KIND == "cnn":
             fs = self.model(x)
             ref = fs[0].shape[-2:]
@@ -99,6 +107,18 @@ class PatchExtractor:
         b, c, h, w = fmap.shape
         self.grid, self.dim = (h, w), c
         return fmap.permute(0, 2, 3, 1).reshape(b * h * w, c).cpu()
+
+    @torch.no_grad()
+    def __call__(self, pil_batch):
+        # Decode and transform in parallel. Measured on the RTX 4000 Ada: with this done
+        # serially the GPU was idle in 12 of 14 samples and peaked at 764 MiB of 20 GB -
+        # the bottleneck was one CPU core doing PIL decode, not the card. PIL and the
+        # torchvision transforms release the GIL in their C paths, so threads are enough
+        # and avoid the pickling problems that fork-based workers hit with an
+        # arrow-backed HF dataset. `executor.map` preserves input order, so the batch is
+        # assembled identically to the serial version - this is a speed change only.
+        x = torch.stack(list(_POOL.map(self._one, pil_batch))).to(DEVICE)
+        return self.forward_feats(x)
 
 
 @torch.no_grad()

@@ -50,8 +50,9 @@ MVTec AD 1, all 15 categories, everything below measured not inferred:
 
 ### Known-broken or void
 
-- **Every AD 2 number produced before 2026-09-04 is void.** The AU-PRO implementation
-  had a bug (see §5). The one AD 2 run gave AU-PRO@5% = 0.0055 with the broken metric.
+- ~~Every AD 2 number produced before 2026-09-04 is void.~~ **Resolved** - AD 2 is now
+  measured across all 8 scenarios: **mean AU-PRO@5% = 0.131**, above the published
+  baseline of 0.0887. See §6.
 - **The cost metric is measured on an inverted class balance.** MVTec's test set is
   **73% defective**; a real line is under 2%. At 100:1 escape:false-alarm, "scrap every
   part unexamined" costs **467** and beats our best detector's **559**. So absolute cost
@@ -66,8 +67,11 @@ MVTec AD 1, all 15 categories, everything below measured not inferred:
 
 ### Immediate next step
 
-**Re-run AD 2 with the corrected AU-PRO.** Everything is in place; only the metric was
-wrong. Expect the number to rise, possibly a lot, since the bug under-reported.
+**Diagnose `sheet_metal`.** It has strong image-level signal (1.9 sigma, AUROC 0.70) and
+almost no localisation (AU-PRO 0.034), with **1,539 defect regions** - far more than any
+other scenario and mostly tiny. The model knows the part is bad and cannot say where.
+That is the clearest open lead in the project, and it is the same
+ranking-is-not-deciding theme arriving between image and pixel level.
 
 ---
 
@@ -215,6 +219,47 @@ Three things that differ from AD 1:
   resizes to 224/448 before the network) but **PNG decode cost scales with source
   pixels**, so AD 2 is heavily decode-bound.
 
+### What AD 2 actually measures — read this before trusting any single scenario
+
+Full run, arm A at 448px with a 4,000-vector bank cap:
+
+| scenario | image AUROC | AU-PRO@5% | regions | measured defect signal |
+|---|---|---|---|---|
+| vial | 0.858 | **0.436** | 174 | 2.7 sigma |
+| fruit_jelly | 0.863 | **0.226** | 320 | 1.2 sigma |
+| wallplugs | 0.623 | 0.124 | 84 | 0.2 sigma |
+| walnuts | 0.796 | 0.112 | 450 | 1.8 sigma |
+| rice | 0.465 | 0.097 | 126 | 0.1 sigma |
+| sheet_metal | 0.701 | 0.034 | **1539** | 1.9 sigma |
+| can | 0.482 | 0.011 | 96 | **-0.0 sigma** |
+| fabric | 0.516 | 0.005 | 150 | 0.1 sigma |
+| **mean** | **0.663** | **0.131** | | |
+
+**Never evaluate on `can` alone.** It is alphabetically first, which makes it the default
+choice, and it is the least representative scenario in the set: 2.7 sigma of lighting
+shift between validation and test, and **zero** defect signal - good and defective parts
+score identically. A dataset-wide conclusion was drawn from it once already, and it was
+wrong by a factor of 24.
+
+`ad2_shift_check.py` is the diagnostic that caught this. It scores `validation/good`,
+`test_public/good` and `test_public/bad` against one bank and reports the drift in units
+of the training set's own spread. It needs no labels beyond the folder names, runs in
+minutes, and **predicted the AU-PRO ordering before the evaluation was run**. Run it
+first on any new dataset - it separates "the model cannot see the defect" from "the model
+is looking at the wrong thing", and those need opposite fixes.
+
+Across all eight, defect signal beats lighting shift roughly 3:1, so distribution shift
+is **not** AD 2's general problem despite being `can`'s entire problem.
+
+### Resolution is not the lever on AD 2
+
+Measured on `can`: 224px -> AU-PRO 0.0056, 448px -> 0.0111, 768px -> 0.0108. It doubles
+once and then plateaus, while pixel AUROC falls to 0.43 at 768. Use **448** unless there
+is a reason not to.
+
+(1024px produced no output; the launch piped stderr through `grep` and discarded the
+traceback. Never filter a run's stderr. Not rerun - the trend was already unambiguous.)
+
 ### The scaling law that constrains everything
 
 `patch_distances` cost is *test patches x bank size*, and both grow with patches per
@@ -240,12 +285,12 @@ min per scenario. Our own coreset experiment supports this - cost varied only 7%
 
 ## 7. What to do next, in order
 
-1. **Re-run AD 2 `can` with the corrected metric.** One scenario, 224px, ~1 min. This
-   tells you whether the 0.0055 was the bug or the resolution.
-2. **Resolution sweep on `can`**: 224 / 448 / 768. Find AD 2's knee.
-3. **Full 8 scenarios** at the winning resolution. That is the real AD 2 baseline.
-4. **Fixed-size bank** experiment, if step 2 shows resolution still climbing at 768.
-5. **Port the threaded decode into `data_efficiency.py`.**
+1. **Diagnose `sheet_metal`** - detectable but not localisable, 1539 tiny regions. Look
+   at its anomaly maps against ground truth before theorising.
+2. **A second arm on AD 2.** Everything so far is arm A. DINOv2 @448 (arm G) won on AD 1;
+   does that survive on a harder dataset?
+3. **Port the threaded decode into `data_efficiency.py`** - it still has its own
+   un-patched `PatchExtractor` and runs ~1.6x slower than it needs to.
 6. **Re-weight cost by a realistic defect rate** (~1%) rather than MVTec's 73%. This is
    the open item that would make every cost number in the repo meaningful. At 1% the
    weighting roughly inverts and the optimal threshold should swing back toward a high

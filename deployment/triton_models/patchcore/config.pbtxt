@@ -1,0 +1,82 @@
+# Triton Inference Server Model Configuration for PatchCore Anomaly Detection
+# Architecture: Triton Python Backend with GPU acceleration
+# Supports dynamic batch sizes, dynamic image input dimensions, and returns:
+# 1. ANOMALY_SCORE: Image-level anomaly score (scalar float32 per image)
+# 2. ANOMALY_MAP: Pixel-level anomaly localization heatmap (1 x H x W float32 per image)
+# 3. IS_DEFECTIVE: Binary decision flag (bool per image) evaluated against calibrated threshold
+
+name: "patchcore"
+backend: "python"
+max_batch_size: 16
+
+# Input image tensor:
+# Format: [ 3, -1, -1 ] (channels, height, width) in float32.
+# Normalized with ImageNet mean/std or [0, 1] range; the Python backend
+# also gracefully handles uint8 [0, 255] and automatically normalizes.
+input [
+  {
+    name: "IMAGE"
+    data_type: TYPE_FP32
+    dims: [ 3, -1, -1 ]
+  }
+]
+
+# Output tensors:
+output [
+  {
+    name: "ANOMALY_SCORE"
+    data_type: TYPE_FP32
+    dims: [ 1 ]
+  },
+  {
+    name: "ANOMALY_MAP"
+    data_type: TYPE_FP32
+    dims: [ 1, -1, -1 ]
+  },
+  {
+    name: "IS_DEFECTIVE"
+    data_type: TYPE_BOOL
+    dims: [ 1 ]
+  }
+]
+
+# Instance configuration: run 1 instance on GPU 0
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+    gpus: [ 0 ]
+  }
+]
+
+# Dynamic batching allows grouping incoming camera frames / DeepStream probe requests
+# within a 5ms window (e.g. 200 FPS throughput) up to max_batch_size.
+dynamic_batching {
+  max_queue_delay_microseconds: 5000
+}
+
+# Optional custom parameters passed to Triton Python backend initialize()
+parameters: {
+  key: "metadata_file"
+  value: { string_value: "metadata.json" }
+}
+parameters: {
+  key: "bank_file"
+  value: { string_value: "bank.pt" }
+}
+
+# -----------------------------------------------------------------------------
+# Alternative Ensemble Configuration Note:
+# In DeepStream or Triton, PatchCore can also be deployed as a 2-stage Ensemble:
+#
+#   1. "patchcore_backbone" (backend: "onnxruntime" or "tensorrt_plan")
+#      Input:  IMAGE [3, H, W]
+#      Output: FEAT_MAP [C, H/8, W/8] (layers 2+3 concatenated with 3x3 avgpool)
+#
+#   2. "patchcore_knn" (backend: "python")
+#      Input:  FEAT_MAP [C, H/8, W/8]
+#      Output: ANOMALY_SCORE [1], ANOMALY_MAP [1, H, W], IS_DEFECTIVE [1]
+#
+# The single Python backend model below provides zero-overhead in-memory GPU
+# feature-to-distance execution without intermediate tensor IPC overhead.
+# -----------------------------------------------------------------------------

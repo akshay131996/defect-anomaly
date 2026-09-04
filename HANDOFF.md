@@ -180,9 +180,9 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 been run**, and the current E5 plan skips it; E5 is approved with modifications but must not
 start until E5a reports.
 
-**Also: this pod has a concurrent workload that is not ours** — `blender` at ~3.9 GB plus
-Triton at ~1.4 GB. E5's 768 arm needs ~24 GB, so check what that process is and coordinate
-before launching it. It is also a live candidate for E1's unexplained silent kill.
+**Pod memory:** a `blender` process holding ~3.9 GB has since exited; only Triton (~1.4 GB)
+remains. E5's 768 arm needs ~24 GB against a 57.7 GiB ceiling, so check free memory
+immediately before launching rather than assuming the box is empty.
 
 E4 refuted the last evaluation-protocol hypothesis: sweeping the evaluation frame 16x moved
 mean AU-PRO@5% by 0.0002, and 1,530 of 1,530 regions were already active at 512, so there
@@ -994,16 +994,19 @@ The prealloc fix is **necessary, not precautionary** — verified independently:
 | with `torch.cat` transient doubling | 48.7 GB |
 | plus concurrent Blender + Triton | **54.0 GB vs a 57.7 GiB ceiling** |
 
-**M3 — there is a concurrent workload on this pod that is not ours.** `blender` is resident
-at 3.9 GB right now and the plan cites 11.4 GB for it; `tritonserver` and a Triton python
-backend add ~1.4 GB. Headroom for a 24 GB job therefore depends on a process we do not
-control and cannot predict.
+**M3 — resolved, but keep the guard.** A `blender` process was resident at ~3.9 GB while
+this plan was being reviewed; the user confirmed it could be stopped, and it exited on its
+own before the 768 arm was launched. Only Triton remains (~1.4 GB), which is small enough
+to ignore.
 
-Two consequences. **Check what Blender is and coordinate before launching the 768 arm** —
-do not simply assume the headroom holds. And note this as a live candidate for **E1's
-unexplained silent kill**: a run died after 5 scenarios with no traceback and a zero cgroup
-OOM counter, which is consistent with a host-level OOM kill driven by another tenant rather
-than by our own cgroup accounting.
+Two things survive its departure. **Check free memory immediately before launching the 768
+arm rather than assuming the pod is empty** — this is a shared box and another tenant
+appearing mid-run is exactly the failure mode that is hardest to diagnose afterwards. And
+note it as a live candidate for **E1's unexplained silent kill**: that run died after 5
+scenarios with no traceback and a zero cgroup OOM counter, which is consistent with a
+host-level OOM kill driven by another process rather than by our own cgroup accounting.
+The user has said experiments take priority, so a competing workload can be stopped if one
+reappears.
 
 **M4 — arm 2 reuse is legitimate, but the code hash will differ.** Reusing
 `E4-evalside-512` for the 448 arm is correct and saves an hour; its config matches exactly.

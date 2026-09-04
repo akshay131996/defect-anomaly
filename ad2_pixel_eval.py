@@ -50,6 +50,9 @@ import torch.nn.functional as F
 from PIL import Image
 from sklearn.metrics import roc_auc_score
 
+# Pod target RTX 4000 Ada in container: disable cuDNN
+torch.backends.cudnn.enabled = False
+
 import sweep_backbones as sb
 # The metric lives in its own numpy-only module so it can be unit-tested
 # without a GPU - see test_aupro.py. It had an under-reporting bug that a
@@ -135,8 +138,38 @@ def squash_transform(ex):
     return ex
 
 
+class LetterboxTransform:
+    """Resize longest side to target_size, pad short side to square with zero after Normalize."""
+
+    def __init__(self, target_size, norm):
+        self.target_size = target_size
+        self.norm = norm
+
+    def __call__(self, img):
+        w, h = img.size
+        s = self.target_size / max(w, h)
+        nw, nh = int(round(w * s)), int(round(h * s))
+        from torchvision import transforms as T
+        resized = img.resize((nw, nh), Image.BICUBIC)
+        t = T.functional.to_tensor(resized)
+        if self.norm is not None:
+            t = self.norm(t)
+        pad_left = (self.target_size - nw) // 2
+        pad_right = self.target_size - nw - pad_left
+        pad_top = (self.target_size - nh) // 2
+        pad_bottom = self.target_size - nh - pad_top
+        return F.pad(t, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0.0)
+
+
+def letterbox_transform(ex):
+    from torchvision import transforms as T
+    norm = [t for t in ex.tfm.transforms if isinstance(t, T.Normalize)][0]
+    ex.tfm = LetterboxTransform(ex.img, norm)
+    return ex
+
+
 @torch.no_grad()
-def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8):
+def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None):
     """Returns (image_scores, list of HxW float maps at EVAL_SIDE resolution)."""
     scores, maps = [], []
     for i in range(0, len(paths), batch):
@@ -145,20 +178,14 @@ def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8):
         x = torch.stack(list(_POOL.map(ex._one, imgs))).to(sb.DEVICE)
         feats = ex.forward_feats(x)
         d = sb.patch_distances(bank, feats, n_patches)          # (b, n_patches)
-        scores.extend(d.max(dim=1).values.tolist())
         g = d.view(-1, 1, grid[0], grid[1])
+        if valid_grid is not None:
+            g_top, g_bottom, g_left, g_right = valid_grid
+            d_valid = g[:, 0, g_top:g_bottom, g_left:g_right].reshape(d.shape[0], -1)
+            scores.extend(d_valid.max(dim=1).values.tolist())
+        else:
+            scores.extend(d.max(dim=1).values.tolist())
         # UPSAMPLE FIRST, then smooth at pixel scale.
-        #
-        # The previous version smoothed on the grid and claimed that was "equivalent up
-        # to the interpolation". It is not: blurring before upsampling scales the kernel
-        # by the upsampling factor. A 9x9 grid kernel at 448px input became 82 px of blur
-        # on a 512 px map - about 20x what PatchCore intends (a Gaussian of sigma=4
-        # PIXELS on the upsampled map). Measured against a perfect detector, that alone
-        # caps AU-PRO@5% at 0.71-0.89 for small defects, and at ~0.3 for the 224px
-        # setting. It also masked the benefit of higher input resolution, because the
-        # damage shrinks as the grid gets finer.
-        #
-        # It was also a box filter, not the Gaussian its constant name claimed.
         up = F.interpolate(g, size=(EVAL_SIDE, EVAL_SIDE), mode="bilinear",
                            align_corners=False)
         if GAUSS_SIGMA > 0:
@@ -176,25 +203,31 @@ def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8):
 
 
 def main():
+    import argparse
+    import sys
+    import hashlib
+    from datetime import datetime, timezone
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenarios", default="")
     ap.add_argument("--limit", type=int, default=0,
                     help="cap images per split, for a fast smoke run")
     ap.add_argument("--bank-cap", type=int, default=0,
-                    help="cap the memory bank in absolute vectors. Without this, cost is "
-                         "quadratic in input resolution and 768px is ~138x the work of "
-                         "224px.")
+                    help="cap the memory bank in absolute vectors.")
     ap.add_argument("--img", type=int, default=0,
-                    help="override input resolution. AD 2 images are ~2448x2048; the "
-                         "default 224 is a 10x linear downsample that erases the small "
-                         "defects the benchmark is built around.")
-    ap.add_argument("--squash", action="store_true",
-                    help="resize straight to (img,img) instead of resize+centre-crop, so "
-                         "the anomaly map and the ground-truth mask share one coordinate "
-                         "frame. See squash_transform.")
+                    help="override input resolution.")
+    ap.add_argument("--geometry", choices=["crop", "squash", "letterbox"], default="crop",
+                    help="Coordinate frame geometry (crop, squash, or letterbox)")
+    ap.add_argument("--squash", action="store_true", help=argparse.SUPPRESS)
+    ap.add_argument("--out", default=OUT, help="Path for output JSON record")
+    ap.add_argument("--run-id", default="", help="Optional run identifier for LEDGER tracking")
+    ap.add_argument("--hypothesis", default="", help="Stated hypothesis for this run")
     args = ap.parse_args()
 
-    os.makedirs("outputs", exist_ok=True)
+    if args.squash:
+        args.geometry = "squash"
+
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     scenarios = ([s for s in args.scenarios.split(",") if s] or
                  sorted(d for d in os.listdir(AD2_ROOT)
                         if os.path.isdir(os.path.join(AD2_ROOT, d))))
@@ -204,12 +237,48 @@ def main():
         arm["img"] = args.img
         arm["tag"] = f"{ARM['name']}_{args.img}"
     ex = sb.PatchExtractor(arm)
-    if args.squash:
+
+    if args.geometry == "squash":
         squash_transform(ex)
-    summary = {"arm": arm["tag"], "img": arm["img"], "root": AD2_ROOT, "coreset_ratio": CORESET_RATIO,
-               "eval_side": EVAL_SIDE, "bank_cap": args.bank_cap, "squash": args.squash, "gauss_sigma": GAUSS_SIGMA, "nbins": NBINS,
-               "device": torch.cuda.get_device_name(0) if sb.DEVICE == "cuda" else "cpu",
-               "torch": torch.__version__, "scenarios": {}}
+    elif args.geometry == "letterbox":
+        letterbox_transform(ex)
+
+    # Warm up / initialize ex.grid and ex.dim
+    with torch.no_grad():
+        _dummy = torch.zeros(1, 3, ex.img, ex.img, device=sb.DEVICE)
+        _ = ex.forward_feats(_dummy)
+
+    t_start = time.time()
+    started_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    code_hashes = {}
+    for fn in ["ad2_pixel_eval.py", "sweep_backbones.py", "aupro.py"]:
+        if os.path.isfile(fn):
+            with open(fn, "rb") as f:
+                code_hashes[fn] = hashlib.sha256(f.read()).hexdigest()[:8]
+
+    summary = {
+        "run_id": args.run_id or f"run_{args.geometry}_{arm['img']}",
+        "hypothesis": args.hypothesis,
+        "command": " ".join(sys.argv),
+        "code_sha256": code_hashes,
+        "started_utc": started_utc,
+        "wall_seconds": 0,
+        "env": {
+            "gpu": torch.cuda.get_device_name(0) if sb.DEVICE == "cuda" else "cpu",
+            "torch": torch.__version__,
+        },
+        "config": {
+            "img": arm["img"],
+            "bank_cap": args.bank_cap,
+            "eval_side": EVAL_SIDE,
+            "gauss_sigma": GAUSS_SIGMA,
+            "coreset_ratio": CORESET_RATIO,
+            "geometry": args.geometry,
+        },
+        "scenarios": {},
+        "deviations": [],
+    }
 
     for sc in scenarios:
         t0 = time.time()
@@ -229,7 +298,37 @@ def main():
             print(f"{sc}: skipped (no masks matched)", flush=True)
             continue
 
-        # bank from train, threshold calibration data from validation
+        # Inspect scenario native image resolution for letterbox geometry
+        valid = None
+        valid_grid = None
+        if args.geometry == "letterbox":
+            sample_im = Image.open(train[0])
+            w, h = sample_im.size
+            s_eval = EVAL_SIDE / max(w, h)
+            nw_eval, nh_eval = int(round(w * s_eval)), int(round(h * s_eval))
+            pad_left_eval = (EVAL_SIDE - nw_eval) // 2
+            pad_top_eval = (EVAL_SIDE - nh_eval) // 2
+
+            valid = np.zeros((EVAL_SIDE, EVAL_SIDE), bool)
+            valid[pad_top_eval:pad_top_eval + nh_eval, pad_left_eval:pad_left_eval + nw_eval] = True
+
+            # Patch grid bounds
+            # For WideResNet50 stride 8 at layer 2
+            H_g, W_g = ex.grid[0], ex.grid[1]
+            stride_y = arm["img"] / H_g
+            stride_x = arm["img"] / W_g
+            s_in = arm["img"] / max(w, h)
+            nw_in, nh_in = int(round(w * s_in)), int(round(h * s_in))
+            pad_left_in = (arm["img"] - nw_in) // 2
+            pad_top_in = (arm["img"] - nh_in) // 2
+
+            g_top = int(round(pad_top_in / stride_y))
+            g_bottom = min(H_g, int(round((pad_top_in + nh_in) / stride_y)))
+            g_left = int(round(pad_left_in / stride_x))
+            g_right = min(W_g, int(round((pad_left_in + nw_in) / stride_x)))
+            valid_grid = (g_top, g_bottom, g_left, g_right)
+
+        # Bank from train
         f_tr = sb.extract_paths(ex, train, _POOL)
         n_patches = ex.grid[0] * ex.grid[1]
         keep = sb.coreset_indices(f_tr, ratio=CORESET_RATIO, seed=SEED,
@@ -237,20 +336,37 @@ def main():
         bank = f_tr[keep]
         del f_tr
 
-        s_good, m_good = anomaly_maps(ex, bank, good, n_patches, ex.grid)
-        s_bad, m_bad = anomaly_maps(ex, bank, bad, n_patches, ex.grid)
+        s_good, m_good = anomaly_maps(ex, bank, good, n_patches, ex.grid, valid_grid=valid_grid)
+        s_bad, m_bad = anomaly_maps(ex, bank, bad, n_patches, ex.grid, valid_grid=valid_grid)
 
         masks = []
-        for p in masks_paths:
-            a = np.array(Image.open(p).convert("L").resize((EVAL_SIDE, EVAL_SIDE),
-                                                           Image.NEAREST))
-            masks.append(a > 127)
+        if args.geometry == "letterbox":
+            for p in masks_paths:
+                im_m = Image.open(p).convert("L")
+                mw, mh = im_m.size
+                s_m = EVAL_SIDE / max(mw, mh)
+                nmw, nmh = int(round(mw * s_m)), int(round(mh * s_m))
+                m_res = im_m.resize((nmw, nmh), Image.NEAREST)
+                pad_l = (EVAL_SIDE - nmw) // 2
+                pad_t = (EVAL_SIDE - nmh) // 2
+                m_eval = np.zeros((EVAL_SIDE, EVAL_SIDE), bool)
+                m_eval[pad_t:pad_t + nmh, pad_l:pad_l + nmw] = np.array(m_res) > 127
+                masks.append(m_eval)
+        else:
+            for p in masks_paths:
+                a = np.array(Image.open(p).convert("L").resize((EVAL_SIDE, EVAL_SIDE),
+                                                               Image.NEAREST))
+                masks.append(a > 127)
 
         truth = np.r_[np.zeros(len(s_good), int), np.ones(len(s_bad), int)]
         img_auroc = float(roc_auc_score(truth, np.r_[s_good, s_bad]))
 
-        allv = np.concatenate([m.ravel() for m in (m_good + m_bad)])
-        res = evaluate(m_good, m_bad, masks, float(allv.min()), float(allv.max()))
+        if valid is not None:
+            allv = np.concatenate([m[valid].ravel() for m in (m_good + m_bad)])
+        else:
+            allv = np.concatenate([m.ravel() for m in (m_good + m_bad)])
+        lo, hi = float(allv.min()), float(allv.max())
+        res = evaluate(m_good, m_bad, masks, lo, hi, valid=valid)
         res.update({"image_auroc": img_auroc, "n_train": len(train), "n_val": len(val),
                     "n_good": len(good), "n_bad": len(bad),
                     "bank_size": int(len(keep)), "seconds": round(time.time() - t0, 1)})
@@ -260,7 +376,8 @@ def main():
               f"@30% {res.get('au_pro@0.3')!s:>7.7}  "
               f"regions {res['n_regions']:>4}  {res['seconds']:.0f}s", flush=True)
 
-        with open(OUT, "w") as f:
+        summary["wall_seconds"] = round(time.time() - t_start, 1)
+        with open(args.out, "w") as f:
             json.dump(summary, f, indent=2)
         del bank, m_good, m_bad
         if sb.DEVICE == "cuda":
@@ -277,9 +394,10 @@ def main():
               f"pixel AUROC {summary['mean_pixel_auroc']:.4f}   "
               f"AU-PRO@5% {summary['mean_au_pro@0.05']:.4f}   "
               f"AU-PRO@30% {summary['mean_au_pro@0.3']:.4f}")
-    with open(OUT, "w") as f:
+    summary["wall_seconds"] = round(time.time() - t_start, 1)
+    with open(args.out, "w") as f:
         json.dump(summary, f, indent=2)
-    print(f"wrote {OUT}")
+    print(f"wrote {args.out}")
 
 
 if __name__ == "__main__":

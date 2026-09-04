@@ -1,0 +1,11 @@
+can           img 0.4835  pix 0.6488  AU-PRO@5% 0.04753  @30% 0.32814  regions   72  116s
+fabric        img 0.6380  pix 0.6286  AU-PRO@5% 0.12412  @30% 0.38011  regions  120  126s
+fruit_jelly   img 0.9050  pix 0.9483  AU-PRO@5% 0.46164  @30% 0.68604  regions  244  72s
+rice          img 0.4651  pix 0.8602  AU-PRO@5% 0.21250  @30% 0.44838  regions  120  101s
+sheet_metal   img 0.7079  pix 0.9149  AU-PRO@5% 0.11613  @30% 0.36075  regions  426  45s
+vial          img 0.9565  pix 0.9031  AU-PRO@5% 0.64923  @30% 0.88809  regions  175  80s
+wallplugs     img 0.3763  pix 0.9249  AU-PRO@5% 0.25061  @30% 0.51163  regions   90  87s
+walnuts       img 0.8257  pix 0.9558  AU-PRO@5% 0.37217  @30% 0.73291  regions  432  133s
+
+mean image AUROC 0.6697   pixel AUROC 0.8481   AU-PRO@5% 0.2792   AU-PRO@30% 0.5420
+wrote outputs/runs/E2-letterbox-448.json

@@ -1,0 +1,135 @@
+{
+  "run_id": "E2-letterbox-448",
+  "hypothesis": "letterbox beats squash on mean image AUROC and matches within 0.02 on mean AU-PRO@5%",
+  "command": "ad2_pixel_eval.py --img 448 --bank-cap 4000 --geometry letterbox --run-id E2-letterbox-448 --hypothesis letterbox beats squash on mean image AUROC and matches within 0.02 on mean AU-PRO@5% --out outputs/runs/E2-letterbox-448.json",
+  "code_sha256": {
+    "ad2_pixel_eval.py": "bf3917d6",
+    "sweep_backbones.py": "0c2365c5",
+    "aupro.py": "dc3e7d2e"
+  },
+  "started_utc": "2026-09-04T19:56:29Z",
+  "wall_seconds": 760.6,
+  "env": {
+    "gpu": "NVIDIA RTX 4000 Ada Generation",
+    "torch": "2.14.0+cu130"
+  },
+  "config": {
+    "img": 448,
+    "bank_cap": 4000,
+    "eval_side": 512,
+    "gauss_sigma": 4.0,
+    "coreset_ratio": 0.01,
+    "geometry": "letterbox"
+  },
+  "scenarios": {
+    "can": {
+      "n_regions": 72,
+      "pixel_auroc": 0.6488478726203308,
+      "au_pro@0.05": 0.04753342056575643,
+      "au_pro@0.3": 0.3281496936990208,
+      "image_auroc": 0.48348765432098767,
+      "n_train": 412,
+      "n_val": 46,
+      "n_good": 72,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 115.6
+    },
+    "fabric": {
+      "n_regions": 120,
+      "pixel_auroc": 0.6285956798627217,
+      "au_pro@0.05": 0.12412059156857347,
+      "au_pro@0.3": 0.3801139408844876,
+      "image_auroc": 0.638047138047138,
+      "n_train": 387,
+      "n_val": 43,
+      "n_good": 66,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 125.5
+    },
+    "fruit_jelly": {
+      "n_regions": 244,
+      "pixel_auroc": 0.9482903562958455,
+      "au_pro@0.05": 0.4616464408741497,
+      "au_pro@0.3": 0.6860410146098105,
+      "image_auroc": 0.905,
+      "n_train": 263,
+      "n_val": 37,
+      "n_good": 20,
+      "n_bad": 60,
+      "bank_size": 4000,
+      "seconds": 72.5
+    },
+    "rice": {
+      "n_regions": 120,
+      "pixel_auroc": 0.8602467040432886,
+      "au_pro@0.05": 0.21250059900664897,
+      "au_pro@0.3": 0.44838488344405525,
+      "image_auroc": 0.4650793650793651,
+      "n_train": 313,
+      "n_val": 35,
+      "n_good": 42,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 101.3
+    },
+    "sheet_metal": {
+      "n_regions": 426,
+      "pixel_auroc": 0.9149247868663029,
+      "au_pro@0.05": 0.11613703315759796,
+      "au_pro@0.3": 0.3607530732738456,
+      "image_auroc": 0.7078703703703704,
+      "n_train": 137,
+      "n_val": 19,
+      "n_good": 24,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 45.1
+    },
+    "vial": {
+      "n_regions": 175,
+      "pixel_auroc": 0.9030728203495964,
+      "au_pro@0.05": 0.6492395109009976,
+      "au_pro@0.3": 0.8880920311678705,
+      "image_auroc": 0.9564625850340136,
+      "n_train": 291,
+      "n_val": 41,
+      "n_good": 35,
+      "n_bad": 105,
+      "bank_size": 4000,
+      "seconds": 80.2
+    },
+    "wallplugs": {
+      "n_regions": 90,
+      "pixel_auroc": 0.9249466422356292,
+      "au_pro@0.05": 0.25061044123232096,
+      "au_pro@0.3": 0.511635081850448,
+      "image_auroc": 0.37629629629629624,
+      "n_train": 293,
+      "n_val": 33,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 87.0
+    },
+    "walnuts": {
+      "n_regions": 432,
+      "pixel_auroc": 0.9558047649995325,
+      "au_pro@0.05": 0.37217491652302825,
+      "au_pro@0.3": 0.7329163380023334,
+      "image_auroc": 0.8257407407407408,
+      "n_train": 432,
+      "n_val": 48,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 133.2
+    }
+  },
+  "deviations": [],
+  "mean_image_auroc": 0.669748018736114,
+  "mean_pixel_auroc": 0.8480912034091559,
+  "mean_au_pro@0.05": 0.2792453692286342,
+  "mean_au_pro@0.3": 0.5420107571164839
+}

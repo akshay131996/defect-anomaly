@@ -87,5 +87,59 @@ results.append(run("blurred",
     [noisy(np.zeros((SIDE, SIDE))) for _ in range(N_IMG)],
     lambda p5, p30, pa: p5 > 0.5 and pa > 0.9))
 
+# bit-identical check: valid = all-True must produce bit-identical results to valid = None
+res_none = evaluate([noisy(np.zeros((SIDE, SIDE))) for _ in range(N_IMG)],
+                    [noisy(m.astype(float)) for m in masks], masks, 0.0, 1.05, valid=None)
+res_all_true = evaluate([noisy(np.zeros((SIDE, SIDE))) for _ in range(N_IMG)],
+                        [noisy(m.astype(float)) for m in masks], masks, 0.0, 1.05,
+                        valid=np.ones((SIDE, SIDE), bool))
+bit_id = (res_none["pixel_auroc"] == res_all_true["pixel_auroc"] and
+          res_none["au_pro@0.05"] == res_all_true["au_pro@0.05"] and
+          res_none["au_pro@0.3"] == res_all_true["au_pro@0.3"])
+results.append(bit_id)
+print(f"{'valid_all':<10} pixel_auroc {res_all_true['pixel_auroc']:.4f}   "
+      f"AU-PRO@5% {res_all_true['au_pro@0.05']:.4f}   @30% {res_all_true['au_pro@0.3']:.4f}   "
+      f"regions {res_all_true['n_regions']:>3}   {'PASS' if bit_id else '** FAIL **'}")
+
+# letterbox padding check: padding has high out-of-manifold anomaly scores
+valid_lb = np.zeros((SIDE, SIDE), bool)
+valid_lb[SIDE // 4: 3 * SIDE // 4, :] = True
+masks_lb = []
+for _ in range(N_IMG):
+    m = np.zeros((SIDE, SIDE), bool)
+    for _ in range(rng.integers(1, 4)):
+        cy = rng.integers(SIDE // 4 + 16, 3 * SIDE // 4 - 16)
+        cx = rng.integers(30, SIDE - 30)
+        r = rng.integers(6, 16)
+        y, x = np.ogrid[:SIDE, :SIDE]
+        m |= (y - cy) ** 2 + (x - cx) ** 2 < r * r
+    masks_lb.append(m)
+
+maps_good_lb = [noisy(np.zeros((SIDE, SIDE))) for _ in range(N_IMG)]
+maps_bad_lb = [noisy(m.astype(float)) for m in masks_lb]
+for mg, mb in zip(maps_good_lb, maps_bad_lb):
+    mg[~valid_lb] += 2.0
+    mb[~valid_lb] += 2.0
+
+# with valid passed: range is computed on valid pixels, padding excluded -> near-perfect (> 0.95)
+allv_valid = np.concatenate([m[valid_lb].ravel() for m in (maps_good_lb + maps_bad_lb)])
+lo_v, hi_v = float(allv_valid.min()), float(allv_valid.max())
+res_lb_v = evaluate(maps_good_lb, maps_bad_lb, masks_lb, lo_v, hi_v, valid=valid_lb)
+ok_v = res_lb_v.get("au_pro@0.05", 0.0) > 0.95
+results.append(ok_v)
+print(f"{'lb_valid':<10} pixel_auroc {res_lb_v['pixel_auroc']:.4f}   "
+      f"AU-PRO@5% {res_lb_v['au_pro@0.05']:.4f}   @30% {res_lb_v['au_pro@0.3']:.4f}   "
+      f"regions {res_lb_v['n_regions']:>3}   {'PASS' if ok_v else '** FAIL **'}")
+
+# without valid passed: range includes padding, padding noise pollutes h_norm -> collapses (< 0.20)
+allv_all = np.concatenate([m.ravel() for m in (maps_good_lb + maps_bad_lb)])
+lo_all, hi_all = float(allv_all.min()), float(allv_all.max())
+res_lb_nv = evaluate(maps_good_lb, maps_bad_lb, masks_lb, lo_all, hi_all, valid=None)
+ok_nv = res_lb_nv.get("au_pro@0.05", 0.0) < 0.20
+results.append(ok_nv)
+print(f"{'lb_novalid':<10} pixel_auroc {res_lb_nv['pixel_auroc']:.4f}   "
+      f"AU-PRO@5% {res_lb_nv['au_pro@0.05']:.4f}   @30% {res_lb_nv['au_pro@0.3']:.4f}   "
+      f"regions {res_lb_nv['n_regions']:>3}   {'PASS' if ok_nv else '** FAIL **'}")
+
 print()
 print("ALL PASS" if all(results) else "** SOME CHECKS FAILED - the metric is suspect **")

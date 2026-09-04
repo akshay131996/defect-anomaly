@@ -35,13 +35,15 @@ def _survival(hist):
     return np.cumsum(hist[::-1])[::-1] / total
 
 
-def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIMITS):
+def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIMITS, valid=None):
     """Pixel AUROC and AU-PRO from anomaly maps and boolean ground-truth masks.
 
     maps_good : anomaly maps for images with no defect
     maps_bad  : anomaly maps for defective images
     masks     : boolean arrays, same shapes as maps_bad, True where defective
     lo, hi    : score range spanned by the shared histogram bins
+    valid     : optional boolean array or list of boolean arrays, True on genuine
+                image pixels, False on letterbox/padding regions.
     """
     edges = np.linspace(lo, hi, nbins + 1)
 
@@ -52,16 +54,30 @@ def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIM
     h_anom = np.zeros(nbins)     # every defective pixel
     region_hists = []            # one normalised histogram per connected component
 
-    for m in maps_good:
-        h_norm += hist(m.ravel())
-
-    for m, mask in zip(maps_bad, masks):
-        if mask.any():
-            h_norm += hist(m[~mask].ravel())
-            h_anom += hist(m[mask].ravel())
+    for i, m in enumerate(maps_good):
+        v = valid[i] if isinstance(valid, (list, tuple)) else valid
+        if v is not None:
+            h_norm += hist(m[v].ravel())
         else:
             h_norm += hist(m.ravel())
-            continue
+
+    for i, (m, mask) in enumerate(zip(maps_bad, masks)):
+        v = valid[i] if isinstance(valid, (list, tuple)) else valid
+        if v is not None:
+            assert not (mask & ~v).any(), "Mask contains defects outside valid region"
+            if mask.any():
+                h_norm += hist(m[v & ~mask].ravel())
+                h_anom += hist(m[v & mask].ravel())
+            else:
+                h_norm += hist(m[v].ravel())
+                continue
+        else:
+            if mask.any():
+                h_norm += hist(m[~mask].ravel())
+                h_anom += hist(m[mask].ravel())
+            else:
+                h_norm += hist(m.ravel())
+                continue
         labelled, n = ndimage.label(mask)
         for r in range(1, n + 1):
             sel = labelled == r

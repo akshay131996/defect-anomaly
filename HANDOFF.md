@@ -176,21 +176,17 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Run E0, then E2** (§7 has the full nine-item queue with dependencies and costs). E0 is
-the guard that makes E2's number trustworthy, costs no GPU, and takes minutes.
+**Run E4a** (§7). E0-E3 are done, but the geometry comparison they were meant to settle is
+**not** settled: E1, E2 and E3 were each scored against a different set of ground-truth
+regions, because the region set is derived after the masks are resized into each geometry's
+own evaluation frame. `sheet_metal` alone went 1539 / 426 / 1101 regions across the three.
 
-- **E0** — registration unit test. Nothing in this repo asserts that a map and a mask
-  describe the same place, which is why the coordinate-frame bug survived four sessions.
-- **E2** — letterbox geometry, all 8 scenarios. E1 proved registration is worth 2.3x but
-  bought it with aspect distortion; E2 is the first geometry that gets registration
-  *without* paying for it.
+81% of E3's apparent margin over E1 comes from that one scenario; over the other seven it
+wins by 0.0047 and loses on three. **No geometry winner has been established**, and E4-E7
+all depend on one, so E4a blocks the rest of the queue.
 
-**E8** (replace the synthetic Triton bank) is independent of everything else and can be
-picked up in parallel, or first if the pod is busy.
-
-E1 is done (§6). E3-E7 are chained behind E2 and should not be started early — each fixes
-the configuration the next one varies against, so running them out of order does not
-merely weaken the comparisons, it makes them meaningless.
+**E8** (replace the synthetic Triton bank) is independent of all of this and can be picked
+up in parallel.
 
 ---
 
@@ -548,17 +544,18 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 
 | id | what | blocked on | GPU | rough cost |
 |---|---|---|---|---|
-| **E0** | registration unit test | — | no | minutes |
+| ~~E0~~ | registration unit test | — | — | **done, supports** |
 | ~~E1~~ | squash geometry | — | — | **done, 0.131 -> 0.301** |
-| **E2** | letterbox geometry | — | yes | ~20 min |
-| E3 | aspect-preserving rectangles | E2 | yes | ~20 min |
-| E4 | eval protocol: `EVAL_SIDE`, sigma, min region | best of E1-E3 | yes | ~1 h |
+| ~~E2~~ | letterbox geometry | — | — | **done, refutes** |
+| ~~E3~~ | aspect-preserving rectangles | E2 | — | **done, inconclusive** |
+| **E4a** | fix region set, re-score E1/E2/E3 | — | yes | ~1 h |
+| E4 | eval protocol: `EVAL_SIDE`, sigma, min region | E4a | yes | ~1 h |
 | E5 | input resolution, re-opened | E4 | yes | hours (16x at 768) |
 | E6 | coreset density, re-checked | E4 | yes | ~1 h |
 | E7 | fusion routing re-selected on `validation` | E4 | yes | ~1 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
 
-**E0 and E2 are the two to start with.** E8 is independent of everything and can run in
+**E4a is the one to start with.** E8 is independent of everything and can run in
 parallel or first if the pod is otherwise occupied.
 
 The chain E2 -> E3 -> E4 exists because each fixes the configuration the next one varies
@@ -572,7 +569,7 @@ anchored to something written down rather than to a recollection.
 
 ---
 
-### E0 — registration unit test  **<- NEXT** *(no GPU)*
+### E0 — registration unit test  **DONE** — supports (crop 0.019 / squash 1.000)
 
 **Why first:** the coordinate-frame bug survived four sessions because no test asserted
 that a map and a mask describe the same place. Until this exists, every item below can
@@ -619,7 +616,7 @@ an unexplained failure, not a known one.
 
 ---
 
-### E2 — letterbox geometry, all 8  **<- THEN THIS**
+### E2 — letterbox geometry, all 8  **DONE** — **refutes** (0.2792 vs squash 0.3006; I-AUROC 0.670 vs 0.718)
 
 **The idea.** Resize the **longest** side to `img` preserving aspect, pad the short side
 to square, and apply *identical* letterboxing to the masks. Registration is preserved (as
@@ -674,7 +671,7 @@ Default `valid=None` must behave exactly as today, so E1 and the existing tests 
 unaffected. **Extend `test_aupro.py` to cover it**: a letterboxed perfect detector with
 padding excluded should still score ~1.0, and should *not* if `valid` is ignored.
 
-### E3 — aspect-preserving rectangular input, all 8
+### E3 — aspect-preserving rectangular input, all 8  **DONE** — verdict **downgraded to inconclusive**, see E4a
 
 **The idea.** The cleanest geometry available: feed a **non-square** input preserving the
 native aspect, rounded to a multiple of the backbone stride (32 for WideResNet50-2).
@@ -704,6 +701,75 @@ Implementation notes:
 CNN arm and note the limitation rather than working around it.
 
 **Blocked on:** E2 (it is a direct comparison).
+
+---
+
+### E4a — fix the region set before comparing geometries  **<- NEXT, and it blocks the geometry decision**
+
+**Audit finding, 2026-09-04. E3's "supports" verdict does not hold up and the geometry
+winner cannot be declared until this is fixed.**
+
+E1, E2 and E3 were each scored against a **different set of ground-truth regions**, so they
+are not comparable. `evaluate` derives regions with `ndimage.label(mask)` on the mask
+*after* it has been resized into that geometry's evaluation frame, and then drops anything
+below `MIN_REGION_PX = 4`. Each geometry therefore resizes the masks differently, crushes a
+different subset below the threshold, and scores a different population:
+
+| scenario | E1 regions | E2 | E3 | E3-E1 AU-PRO |
+|---|---|---|---|---|
+| sheet_metal | 1539 | 426 | 1101 | **+0.1421** |
+| fruit_jelly | 320 | 244 | 252 | -0.0380 |
+| walnuts | 450 | 432 | 432 | +0.0294 |
+| fabric | 150 | 120 | 114 | +0.0240 |
+| vial | 174 | 175 | 174 | -0.0386 |
+
+`sheet_metal` is the extreme case: E2 scored **28% of the regions E1 did**, and E3 dropped
+438 of E1's 1,539. Dropping small regions makes the test *easier*, because AU-PRO weights
+every region equally and the small ones are the hard ones.
+
+Decomposing E3's +0.0219 margin over E1:
+
+- **sheet_metal alone contributes +0.0178 — 81% of the entire margin**, and it is also the
+  scenario whose region count moved most.
+- Over the other seven scenarios E3 beats E1 by **+0.0047** and **loses on three of seven**.
+
+That is not a geometry result. It is consistent with E3 winning because it scored an easier
+region population, and the current evidence cannot separate the two.
+
+**The fix: define the region set once, at native mask resolution, independent of geometry.**
+
+- Run `ndimage.label` on the **native** mask, before any resize.
+- Apply `MIN_REGION_PX` there, in native pixels, so the same regions survive for every
+  geometry. Pick the native threshold that reproduces today's intent (~77 native px, i.e.
+  4 px at 512 on a 2448x2048 frame) and state the number chosen in the record.
+- Carry each surviving component's label map into the evaluation frame with NEAREST
+  resize, so a region keeps its identity even if it shrinks.
+- **Assert `n_regions` is now identical across geometries for a given scenario.** That
+  assertion is the deliverable — it is what makes E1/E2/E3 comparable, and it is cheap to
+  check.
+
+Then **re-score E1, E2 and E3** under the fixed region set (`--geometry` is the only
+variable) and record them as `E1R`, `E2R`, `E3R`. The re-scored numbers decide the winner.
+
+**Hypothesis:** under a fixed region set, E3's margin over E1 falls below 0.01 mean
+AU-PRO@5% and the two are within noise.
+
+If that is what happens, **say so** — it means aspect-preserving geometry is not clearly
+better than squash, and the honest conclusion is that E1 and E3 are equivalent and the
+cheaper one wins. Do not go looking for a configuration that restores E3's lead.
+
+**Also fold in two smaller audit items while you are here:**
+
+1. **E0 does not cover `aspect`.** E3's spec required it to, precisely because a
+   transposed reshape on a non-square grid would silently rotate the map. I checked the
+   implementation by hand and it is correct — `ex.grid` is `(h, w)` from `fmap.shape`,
+   `aspect_transform` is applied before `extract_paths` so the grid is re-derived, and
+   `aspect_dimensions` does hold patch area constant at 448^2. But hand-checking is not a
+   test. Add `aspect` to `test_registration.py`.
+2. **Record `grid` and `n_patches` per scenario** in every run record from now on. The
+   constant-patch-count requirement in E3 could not be verified from its record; it had to
+   be re-derived from source, which defeats the point of the record.
+3. `logs/E0.log` is UTF-16 (a PowerShell redirect artifact). Write logs as UTF-8.
 
 ---
 
@@ -754,7 +820,7 @@ which **copies every map again** purely to get `min` and `max`. Replace it with 
 streaming pass before running E4 — wasteful even at 512, a hard blocker at 2048. Record
 peak RSS in the run record.
 
-**Blocked on:** whichever of E1/E2/E3 wins, so geometry is fixed first.
+**Blocked on:** E4a — the geometry winner is not yet decided.
 
 ---
 

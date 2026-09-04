@@ -12,7 +12,9 @@ See HANDOFF.md §0 for the output contract and the audit checklist.
 | E1-squash-448 | squash | 448 | **0.3006** | 0.718 | `5168721b` | supports |
 | E0-registration | crop vs squash | — | 0.019 vs 1.000 | — | `9d7536e3` | supports |
 | E2-letterbox-448 | letterbox | 448 | 0.2792 | 0.670 | `bf3917d6` | refutes |
-| E3-aspect-448 | aspect | 448 | **0.3225** | **0.724** | `07dcb26e` | supports |
+| E3-aspect-448 | aspect | 448 | 0.3225 | 0.724 | `07dcb26e` | ~~supports~~ **inconclusive** — region-set confound, see §7 E4a |
+| E4a-regionset | | | | | | _pending_ |
+| E1R / E2R / E3R (re-score) | | | | | | _pending_ |
 | E4-evalside | | | | | | _pending_ |
 | E5-inputres | | | | | | _pending_ |
 | E6-density | | | | | | _pending_ |

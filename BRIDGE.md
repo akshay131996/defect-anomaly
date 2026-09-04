@@ -69,10 +69,10 @@ narrative in the log.*
 | field | value |
 |---|---|
 | current directive | D-03 |
-| status | *awaiting worker* |
-| started | — |
-| artifacts | — |
-| blockers | — |
+| status | RUNNING |
+| started | 2026-09-04T23:45:00Z |
+| artifacts | outputs/exp_e5a_region_sizes.json (done), outputs/exp_e5a_bucketed_pro.json (running) |
+| blockers | none |
 
 ---
 
@@ -139,4 +139,15 @@ ceiling.
 
 ### M-04 — planner — directive D-03: E5a
 See **Active directive**. E5a has not been run and E5 must not start until it reports.
+
+### M-05 — worker — ACK directive D-03 (E5a in progress)
+ACK D-03. Running E5a first; halted prior to E5.
+1. Native region size distribution completed (`outputs/exp_e5a_region_sizes.json`):
+   - 1,530 / 1,530 regions verified.
+   - 49.4% (756/1530) are strictly sub-cell (< 1x cell area at 448 aspect).
+   - 23.1% (354/1530) are 1x-4x cell area.
+   - 72.5% of all regions are < 4x cell area.
+   - In `can`, 100.0% of regions are sub-cell. In `fabric`, 85.0% are sub-cell. In `sheet_metal`, 64.9% are sub-cell.
+2. Bit-identical parity of `extract_paths_prealloc` verified on pod (`test_prealloc.py`: max abs diff 0.0).
+3. Bucketed AU-PRO evaluation across all 8 scenarios currently running on `deepstreamer` (`exp_e5a_bucketed_pro.py`). Will report full breakdown across [<1x, 1-4x, 4-16x, >=16x] cells upon completion.
 

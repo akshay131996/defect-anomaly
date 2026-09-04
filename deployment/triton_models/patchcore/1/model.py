@@ -175,6 +175,10 @@ class TritonPythonModel:
 
     def _init_backbone(self, model_dir: str):
         """Loads or instantiates the frozen backbone feature extractor."""
+        if torch.cuda.is_available():
+            # In CUDA 13 / CUDNN 9 containers where dynamic engine sublibraries may not be present,
+            # disabling cuDNN allows PyTorch to use native high-performance CUDA convolution kernels.
+            torch.backends.cudnn.enabled = False
         weights_file = os.path.join(model_dir, "backbone.pt")
 
         if timm is not None:

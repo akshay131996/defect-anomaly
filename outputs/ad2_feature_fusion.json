@@ -1,0 +1,183 @@
+{
+  "arm": "adaptive",
+  "img": 448,
+  "bank_cap": 4000,
+  "whiten": false,
+  "lcn": false,
+  "closing_k": 5,
+  "device": "NVIDIA RTX 4000 Ada Generation",
+  "scenarios": {
+    "can": {
+      "n_regions": 96,
+      "pixel_auroc": 0.6593040465234443,
+      "au_pro@0.05": 0.016939413802938078,
+      "au_pro@0.3": 0.24778614558297507,
+      "image_auroc": 0.46604938271604934,
+      "scenario_arm": "dinov2_448",
+      "whiten": true,
+      "lcn": false,
+      "n_train": 412,
+      "n_val": 46,
+      "n_good": 72,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "feature_dim": 768,
+      "grid": [
+        32,
+        32
+      ],
+      "seconds": 62.3
+    },
+    "fabric": {
+      "n_regions": 150,
+      "pixel_auroc": 0.9734309180594195,
+      "au_pro@0.05": 0.059079781977409096,
+      "au_pro@0.3": 0.2553074351018555,
+      "image_auroc": 0.5503367003367003,
+      "scenario_arm": "dinov2_448",
+      "whiten": false,
+      "lcn": false,
+      "n_train": 387,
+      "n_val": 43,
+      "n_good": 66,
+      "n_bad": 90,
+      "bank_size": 3962,
+      "feature_dim": 768,
+      "grid": [
+        32,
+        32
+      ],
+      "seconds": 73.3
+    },
+    "fruit_jelly": {
+      "n_regions": 320,
+      "pixel_auroc": 0.9044130072999783,
+      "au_pro@0.05": 0.18615186534694012,
+      "au_pro@0.3": 0.5112511699541754,
+      "image_auroc": 0.8766666666666667,
+      "scenario_arm": "fusion",
+      "whiten": false,
+      "lcn": false,
+      "n_train": 263,
+      "n_val": 37,
+      "n_good": 20,
+      "n_bad": 60,
+      "bank_size": 4000,
+      "feature_dim": 2560,
+      "grid": [
+        112,
+        112
+      ],
+      "seconds": 101.6
+    },
+    "rice": {
+      "n_regions": 126,
+      "pixel_auroc": 0.6488839851227554,
+      "au_pro@0.05": 0.11653750150165042,
+      "au_pro@0.3": 0.3344268635103706,
+      "image_auroc": 0.6,
+      "scenario_arm": "fusion",
+      "whiten": false,
+      "lcn": false,
+      "n_train": 313,
+      "n_val": 35,
+      "n_good": 42,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "feature_dim": 2560,
+      "grid": [
+        112,
+        112
+      ],
+      "seconds": 139.0
+    },
+    "sheet_metal": {
+      "n_regions": 1539,
+      "pixel_auroc": 0.5305882657611828,
+      "au_pro@0.05": 0.018297364854327175,
+      "au_pro@0.3": 0.15294155066990636,
+      "image_auroc": 0.7379629629629628,
+      "scenario_arm": "wrn50_l123",
+      "whiten": false,
+      "lcn": false,
+      "n_train": 137,
+      "n_val": 19,
+      "n_good": 24,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "feature_dim": 1792,
+      "grid": [
+        112,
+        112
+      ],
+      "seconds": 59.9
+    },
+    "vial": {
+      "n_regions": 174,
+      "pixel_auroc": 0.8725884689277421,
+      "au_pro@0.05": 0.33237133569815724,
+      "au_pro@0.3": 0.705460137376424,
+      "image_auroc": 0.8887074829931972,
+      "scenario_arm": "wrn50_l23",
+      "whiten": false,
+      "lcn": false,
+      "n_train": 291,
+      "n_val": 41,
+      "n_good": 35,
+      "n_bad": 105,
+      "bank_size": 4000,
+      "feature_dim": 1536,
+      "grid": [
+        56,
+        56
+      ],
+      "seconds": 81.6
+    },
+    "wallplugs": {
+      "n_regions": 84,
+      "pixel_auroc": 0.7408692487215325,
+      "au_pro@0.05": 0.06961506843184906,
+      "au_pro@0.3": 0.22896293290782477,
+      "image_auroc": 0.5974074074074074,
+      "scenario_arm": "wrn50_l123",
+      "whiten": false,
+      "lcn": false,
+      "n_train": 293,
+      "n_val": 33,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "feature_dim": 1792,
+      "grid": [
+        112,
+        112
+      ],
+      "seconds": 104.7
+    },
+    "walnuts": {
+      "n_regions": 450,
+      "pixel_auroc": 0.8296353074610013,
+      "au_pro@0.05": 0.10467977347332402,
+      "au_pro@0.3": 0.31233122989126993,
+      "image_auroc": 0.8144444444444444,
+      "scenario_arm": "fusion",
+      "whiten": false,
+      "lcn": false,
+      "n_train": 432,
+      "n_val": 48,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "feature_dim": 2560,
+      "grid": [
+        112,
+        112
+      ],
+      "seconds": 181.6
+    }
+  },
+  "mean_image_auroc": 0.6914468809409284,
+  "mean_pixel_auroc": 0.7699641559846321,
+  "mean_au_pro@0.05": 0.1129590131358244,
+  "mean_au_pro@0.3": 0.3435584331243502
+}

@@ -314,8 +314,15 @@ def run_verification(mode: str, url: str, test_image_path: Optional[str] = None)
     print("=================================================================")
 
     # Select client backend
-    if mode == "direct" or mode == "deepstream-mock":
+    if mode == "direct":
         client = DirectPatchCoreClient()
+    elif mode == "deepstream-mock":
+        if url and "8000" in url:
+            client = TritonHTTPClient(url=url)
+        elif url:
+            client = TritonGRPCClient(url=url)
+        else:
+            client = DirectPatchCoreClient()
     elif mode == "grpc":
         client = TritonGRPCClient(url=url)
     elif mode == "http":

@@ -70,6 +70,8 @@ class PatchExtractor:
     """Same extractor as sweep_backbones.py, restricted to the one chosen arm."""
 
     def __init__(self):
+        if torch.cuda.is_available():
+            torch.backends.cudnn.enabled = False
         if KIND == "cnn":
             self.model = timm.create_model(
                 BACKBONE, pretrained=True, features_only=True,
@@ -191,13 +193,19 @@ def main():
     pairs = collections.Counter(zip(sub[defect_col], sub[label_col]))
     good_label = next(l for (d, l) in pairs if str(d).lower() == "good")
 
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--categories", default="", help="Comma-separated list of categories, or empty for all")
+    args = ap.parse_args()
+
     OBJ, LABEL = sub[object_col], sub[label_col]
     SPLIT = [str(s).lower() for s in sub[split_col]]
-    categories = sorted(set(OBJ))
+    categories = [c.strip() for c in args.categories.split(",") if c.strip()] or sorted(set(OBJ))
 
     by_cat = {c: {"train": [], "test": []} for c in categories}
     for i in range(len(sub)):
-        by_cat[OBJ[i]]["train" if "train" in SPLIT[i] else "test"].append(i)
+        if OBJ[i] in by_cat:
+            by_cat[OBJ[i]]["train" if "train" in SPLIT[i] else "test"].append(i)
 
     ex = PatchExtractor()
     summary = {

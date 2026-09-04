@@ -105,14 +105,30 @@ def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8):
         d = sb.patch_distances(bank, feats, n_patches)          # (b, n_patches)
         scores.extend(d.max(dim=1).values.tolist())
         g = d.view(-1, 1, grid[0], grid[1])
-        # Smooth on the grid before upsampling. PatchCore smooths the map; doing it at
-        # grid resolution is far cheaper than at full size and equivalent up to the
-        # interpolation.
-        k = int(2 * round(GAUSS_SIGMA) + 1)
-        blur = torch.ones(1, 1, k, k, device=g.device) / (k * k)
-        g = F.conv2d(F.pad(g, (k // 2,) * 4, mode="replicate"), blur)
+        # UPSAMPLE FIRST, then smooth at pixel scale.
+        #
+        # The previous version smoothed on the grid and claimed that was "equivalent up
+        # to the interpolation". It is not: blurring before upsampling scales the kernel
+        # by the upsampling factor. A 9x9 grid kernel at 448px input became 82 px of blur
+        # on a 512 px map - about 20x what PatchCore intends (a Gaussian of sigma=4
+        # PIXELS on the upsampled map). Measured against a perfect detector, that alone
+        # caps AU-PRO@5% at 0.71-0.89 for small defects, and at ~0.3 for the 224px
+        # setting. It also masked the benefit of higher input resolution, because the
+        # damage shrinks as the grid gets finer.
+        #
+        # It was also a box filter, not the Gaussian its constant name claimed.
         up = F.interpolate(g, size=(EVAL_SIDE, EVAL_SIDE), mode="bilinear",
                            align_corners=False)
+        if GAUSS_SIGMA > 0:
+            r = int(3 * GAUSS_SIGMA)
+            xs = torch.arange(-r, r + 1, device=up.device, dtype=up.dtype)
+            kern = torch.exp(-(xs ** 2) / (2 * GAUSS_SIGMA ** 2))
+            kern = kern / kern.sum()
+            # separable: rows then columns, so cost is linear in kernel width
+            up = F.conv2d(F.pad(up, (r, r, 0, 0), mode="replicate"),
+                          kern.view(1, 1, 1, -1))
+            up = F.conv2d(F.pad(up, (0, 0, r, r), mode="replicate"),
+                          kern.view(1, 1, -1, 1))
         maps.extend(up[:, 0].cpu().numpy())
     return np.array(scores), maps
 

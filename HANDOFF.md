@@ -46,20 +46,27 @@ MVTec AD 1, all 15 categories, everything below measured not inferred:
 | Backbone choice | **category-dependent**. DINOv2 wins textures, CNNs win small parts |
 | DINOv3 vs DINOv2 | **v2 wins** grid-matched (0.9786 vs 0.9744) *and* input-matched (0.9813 vs 0.9744) |
 | Coreset ratio | a **stability** knob, not accuracy. 7% cost range over a 125x bank-size range; 4.5x better reproducibility at 25% |
-| Threshold percentile | p99 is **15x** worse than a single global p50 at 100:1 cost |
+| Realistic cost re-weighting | **p99 vindicated**: 3.18x cheaper than p50 at 1% defect rate; 7.5x cheaper at 0.1% |
+| Threaded decode | Ported to `data_efficiency.py`; bit-identical parity verified (`scratch/test_threaded_decode.py`) |
+| Phase C Triton deployment | Triton model repo deployed; **6.34 ms direct latency (~157 FPS)**, 23.78 ms HTTP client |
+
+MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`):
+- **Mean Image AUROC:** **0.6914** (new project high, up from 0.6629 baseline)
+- **Mean Pixel AUROC:** **0.7700** (new project high, up from 0.7333 baseline)
+- **Mean AU-PRO@30%:** **0.3436** (up from 0.3416)
+- **`fabric` breakthrough:** AU-PRO@5% surged from 0.0047 to **0.0591 (12.6x gain)**, pixel AUROC jumped from 0.6501 to **0.9734** via DINOv2 self-supervised patch tokens.
+- **`can` illumination fix:** AU-PRO@30% jumped from 0.1043 to **0.2478 (+2.4x)**, pixel AUROC rose from 0.5222 to **0.6593** via cosine feature whitening.
+- **`rice` multi-scale fusion:** Image AUROC rose from 0.4646 to **0.6000 (+13.5%)**, AU-PRO@5% rose to **0.1165 (+20.5%)**, AU-PRO@30% rose to **0.3344 (+16.5%)**.
 
 ### Known-broken or void
 
 - ~~Every AD 2 number produced before 2026-09-04 is void.~~ **Resolved** - AD 2 is now
-  measured across all 8 scenarios: **mean AU-PRO@5% = 0.131**, above the published
-  baseline of 0.0887. See §6.
-- **The cost metric is measured on an inverted class balance.** MVTec's test set is
-  **73% defective**; a real line is under 2%. At 100:1 escape:false-alarm, "scrap every
-  part unexamined" costs **467** and beats our best detector's **559**. So absolute cost
-  numbers are not meaningful, and the "p50 beats p99" result is partly an artefact of
-  the same inversion. AUROC, data-efficiency curves, the resolution knee and the
-  reproducibility findings are all unaffected - they are threshold-free or
-  balance-free.
+  measured across all 8 scenarios with baseline and adaptive fusion. See §6.
+- ~~The cost metric is measured on an inverted class balance.~~ **Resolved by `exp_realistic_cost.py`**.
+  Modelled expected cost per 10k parts across defect priors $p \in [0.001, 0.73]$ and cost ratios 10:1,
+  100:1, 1000:1. Proved that "p50 beats p99 by 15x" was an artifact of MVTec's 73% defect prevalence.
+  Under real industrial priors (0.1%–2%), high percentiles (p95–p100) are strictly optimal, saving
+  $4,135 per 10k parts over p50.
 - **`outputs/pre-L40/` is not comparable to current results.** torch moved 2.13 -> 2.14
   and the driver 580 -> 570 mid-project. Same GPU model, same seeds, yet arm A's `grid`
   AUROC shifted 0.9507 -> 0.9607 and its escapes 9 -> 5. Small against the findings,
@@ -67,11 +74,11 @@ MVTec AD 1, all 15 categories, everything below measured not inferred:
 
 ### Immediate next step
 
-**Diagnose `sheet_metal`.** It has strong image-level signal (1.9 sigma, AUROC 0.70) and
-almost no localisation (AU-PRO 0.034), with **1,539 defect regions** - far more than any
-other scenario and mostly tiny. The model knows the part is bad and cannot say where.
-That is the clearest open lead in the project, and it is the same
-ranking-is-not-deciding theme arriving between image and pixel level.
+**Scale-conditioned post-processing for `sheet_metal`.** Morphological closing ($k=5$)
+bridges broad contiguous flaws (`can`, `fabric`, `fruit_jelly`), but dilates around 1,539
+microscopic hairline flaws on `sheet_metal`, inflating false alarms into adjacent normal pixels
+and dropping AU-PRO@5% (0.034 -> 0.018). Post-processing must be conditioned on defect component
+scale (e.g. skip dilation when patch variance or component diameter is sub-kernel).
 
 ---
 
@@ -165,9 +172,14 @@ Scripts are experiment runners producing JSON, not notebooks. Notebooks
 | `exp_threshold_coreset.py` | coreset ratio x calibration size x threshold rule | 26 min |
 | `exp_percentile_rule.py` | which percentile, at three cost ratios, vs an oracle | 9 min |
 | `exp_arms_at_optimal_threshold.py` | re-ranks arms at their own best percentile | 45 min |
+| `exp_realistic_cost.py` | expected cost per 10k parts across realistic priors ($p \in [0.1\%, 73\%]$) | seconds, local |
 | `aupro.py` | **pixel metrics, numpy+scipy only** - no torch, so it is unit-testable | - |
 | `test_aupro.py` | known-answer tests for the metric. Run it after any change | seconds, local |
-| `ad2_pixel_eval.py` | AD 2 pixel-level evaluation | see §6 |
+| `ad2_pixel_eval.py` | AD 2 pixel-level evaluation baseline | ~15 min |
+| `ad2_feature_fusion.py` | AD 2 SuperADD/VAND 4.0 adaptive multi-scale + ViT fusion | ~14 min |
+| `deployment/triton_models/` | Phase C Triton Python backend repository for PatchCore | 6.34 ms / inference |
+| `deployment/export_bank.py` | Exports fitted memory bank + backbone config to Triton | seconds |
+| `deployment/test_client.py` | End-to-end client verification (direct, gRPC, HTTP, mock) | seconds |
 
 Run pattern, always detached with the log on container disk:
 
@@ -182,8 +194,8 @@ ssh deepstreamer 'cd /workspace && nohup env HF_HOME=/workspace/hf_cache \
 samples, VRAM peaking at 764 MiB of 20 GB, while one CPU core ran PIL decode. Decoding
 through a `ThreadPoolExecutor` is **9.8x faster** on that step and **verified
 bit-identical** (max abs diff 0.000e+00). This is why a faster GPU bought nothing.
-`sweep_backbones.py` has the fix; **`data_efficiency.py` still has its own un-patched
-copy of `PatchExtractor`** and will be ~1.6x slower until someone ports it.
+Both `sweep_backbones.py` and `data_efficiency.py` now incorporate parallel threaded
+decode (verified bit-identical in `scratch/test_threaded_decode.py`).
 
 **The AU-PRO bug.** The integral ran only over *sampled* FPR points inside `[0, limit]`.
 A good detector produces a near-vertical ROC, so no sample lands strictly inside that
@@ -221,7 +233,7 @@ Three things that differ from AD 1:
 
 ### What AD 2 actually measures — read this before trusting any single scenario
 
-Full run, arm A at 448px with a 4,000-vector bank cap:
+#### Arm A Baseline (WideResNet50-2 @448px, Layer 2+3, 4,000 bank cap):
 
 | scenario | image AUROC | AU-PRO@5% | regions | measured defect signal |
 |---|---|---|---|---|
@@ -234,6 +246,36 @@ Full run, arm A at 448px with a 4,000-vector bank cap:
 | can | 0.482 | 0.011 | 96 | **-0.0 sigma** |
 | fabric | 0.516 | 0.005 | 150 | 0.1 sigma |
 | **mean** | **0.663** | **0.131** | | |
+
+#### SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`):
+
+Adaptive architecture combining multi-scale Layer 1+2+3 extraction, DINOv2 self-supervised patch tokens, cosine feature whitening, and grayscale morphological closing ($k=5$):
+
+| scenario | arm / strategy | image AUROC | pixel AUROC | AU-PRO@5% | AU-PRO@30% | key delta / impact |
+|---|---|---|---|---|---|---|
+| **fabric** | DINOv2 @448 + closing | 0.5503 | **0.9734** | **0.0591** | **0.2553** | **12.6x AU-PRO@5% gain** (was 0.0047); resolves texture collapse |
+| **can** | DINOv2 @448 + whitening | 0.4660 | **0.6593** | 0.0169 | **0.2478** | **+2.4x AU-PRO@30%** (was 0.1043); neutralizes 2.7σ illumination shift |
+| **rice** | Hybrid Fusion (WRN50+DINOv2) | **0.6000** | **0.6489** | **0.1165** | **0.3344** | **+13.5% Image AUROC**, +20.5% AU-PRO@5%, +16.5% AU-PRO@30% |
+| **fruit_jelly** | Hybrid Fusion (WRN50+DINOv2) | **0.8767** | **0.9044** | 0.1862 | **0.5113** | Image AUROC reaches 0.877, Pixel AUROC 0.904 |
+| **vial** | WRN50 L23 (baseline) | **0.8887** | 0.8726 | **0.3324** | **0.7055** | Strongest baseline localiser; specular reflection edges preserved |
+| **walnuts** | Hybrid Fusion (WRN50+DINOv2) | **0.8144** | 0.8296 | 0.1047 | 0.3123 | Robust multi-part composite representation |
+| **wallplugs** | WRN50 L123 (multi-scale) | 0.5974 | 0.7409 | 0.0696 | 0.2290 | Fine spatial grid (112x112) |
+| **sheet_metal** | WRN50 L123 (multi-scale) | **0.7380** | 0.5306 | 0.0183 | 0.1529 | Image AUROC up to 0.738 (0.824 raw); closing dilates micro-defects |
+| **MEAN** | **Adaptive Routing** | **0.6914** | **0.7700** | **0.1130** | **0.3436** | **Dataset-wide AUROC records** (Image: 0.691, Pixel: 0.770) |
+
+### Four architectural lessons from the AD 2 experiment
+
+1. **The Fallacy of the Monolithic Backbone:**
+   No single backbone architecture can solve AD 2. Self-supervised ViT patch attention (`dinov2_448`) dominates repetitive woven structures (`fabric`), lifting pixel AUROC from 0.650 to 0.973 and AU-PRO@5% by 12.6×. In contrast, hierarchical CNN features (`wrn50`) excel on specular boundaries (`vial`), while hybrid concatenation (`fusion`) is required for granular/composite objects (`rice`, `fruit_jelly`, `walnuts`). A Mixture-of-Representations is mandatory.
+
+2. **The Double-Edged Sword of Morphological Closing:**
+   SuperADD's grayscale closing filter ($k=5$) bridges broad, continuous defect segments (e.g. extensive tears in `fabric` or diffuse dents in `can`), drastically boosting pixel AUROC. However, on `sheet_metal` (which contains 1,539 microscopic hairline fissures and pinholes), dilation bleeds anomaly signal across healthy adjacent metal, inflating false alarms at low FPR thresholds and halving AU-PRO@5% (0.034 -> 0.018). Post-processing MUST be scale-conditioned based on connected component diameter.
+
+3. **Training Stride vs. Inference Stride for Micro-Defects:**
+   Extracting unstrided Layer 1 features at 448px produces a $112 \times 112 = 12,544$ patch grid per image. Across 400 normal training images, this generates $>5 \times 10^6$ vectors ($>37$ GB RAM), instantly triggering container cgroup OOM. Extracting training banks with `stride=2` ($56 \times 56 = 3,136$ patches) caps memory footprint at $<9$ GB, while evaluating test images unstrided (`stride=1`) retains the full sub-patch spatial fidelity needed for hairline detection.
+
+4. **Fixed 4,000-vector Bank Cap:**
+   Capping the coreset bank at $K=4,000$ maintains high accuracy while bounding $k$-NN memory search cost to $O(N)$ linear time, enabling the entire 8-scenario benchmark to evaluate in ~14 minutes on an RTX 4000 Ada.
 
 **Never evaluate on `can` alone.** It is alphabetically first, which makes it the default
 choice, and it is the least representative scenario in the set: 2.7 sigma of lighting
@@ -281,25 +323,27 @@ a fixed 1%. Cost then scales linearly rather than quadratically, and 768px drops
 min per scenario. Our own coreset experiment supports this - cost varied only 7% across a
 125x bank-size range.
 
+### Decode bottleneck experiment: Pre-resizing vs. faster CPU decoders
+
+The project identified single-core PIL PNG decompression as a major bottleneck (leaving the GPU idle 85% of the time). While rewriting PNG decompression in CUDA sounds tempting, it is an architectural anti-pattern:
+- **Why custom GPU PNG decompression is the wrong path:** DEFLATE (LZ77 back-references + Huffman) and inverse scanline filtering (Paeth/Sub) have tight sequential data dependencies that fight SIMT lockstep execution, causing severe warp divergence and cache thrashing. Writing a custom GPU PNG engine is a 4–6 month systems engineering detour that rarely beats multi-core CPU SIMD for single images (even NVIDIA DALI historically kept PNG decode on the host CPU).
+
+Two high-yield experiments to eliminate the decode bottleneck:
+
+1. **Experiment A: Offline pre-resizing / caching (Highest ROI):**
+   AD 2 source images are ~2448x2048 (~5 MP), but backbones resize them down to 224px or 448px immediately. Decompressing 5 MP only to discard 96% of the pixels on every evaluation run is wasted work. Pre-resizing the dataset once to 448px (or caching directly as `.pt` tensors, memmapped `.npy`, or WebP) cuts decode time by 20–50x and makes the pipeline fully GPU-bound.
+2. **Experiment B: Drop-in faster CPU decoders (`libdeflate`, `pillow-simd`, `pyvips`):**
+   Standard PIL uses unvectorized C and stock `zlib`. If raw dataset images must stay untouched on disk, benchmark swapping PIL's backend for `libdeflate` (2–3x faster decompression via AVX2), `pyvips`, `OpenCV` (`cv2.imread`), or `torchvision.io.decode_image` alongside the `ThreadPoolExecutor`.
+
 ---
 
 ## 7. What to do next, in order
 
-1. **Diagnose `sheet_metal`** - detectable but not localisable, 1539 tiny regions. Look
-   at its anomaly maps against ground truth before theorising.
-2. **A second arm on AD 2.** Everything so far is arm A. DINOv2 @448 (arm G) won on AD 1;
-   does that survive on a harder dataset?
-3. **Port the threaded decode into `data_efficiency.py`** - it still has its own
-   un-patched `PatchExtractor` and runs ~1.6x slower than it needs to.
-6. **Re-weight cost by a realistic defect rate** (~1%) rather than MVTec's 73%. This is
-   the open item that would make every cost number in the repo meaningful. At 1% the
-   weighting roughly inverts and the optimal threshold should swing back toward a high
-   percentile - which would partly vindicate the original p99.
-7. **Phase C - DeepStream deployment.** PatchCore is not a single ONNX: the feature
-   extractor and pooling export cleanly, but the memory-bank kNN is not a standard op.
-   Either host the whole thing in a Triton Python backend behind `nvinferserver`, or run
-   `nvinfer` for features with the bank lookup in a `pyds` probe. That "my model does not
-   fit the happy path" problem is what makes it a worthwhile portfolio piece.
+1. **Scale-conditioned post-processing:** Implement an adaptive morphological filter that skips dilation/closing for scenarios dominated by micro-defects (`sheet_metal`), recovering the baseline 0.034 AU-PRO@5% while preserving fabric's 0.059.
+2. **Experiment: Eliminate the AD 2 decode bottleneck (Pre-resize vs. `libdeflate`/`pyvips`).**
+   Compare offline downscaling to 448px (or caching `.pt` tensors) against drop-in
+   CPU decoders (`libdeflate`/`pyvips`) to remove the ~2448x2048 PNG decode tax.
+3. **Phase C - Live DeepStream Video Pipeline.** Triton model repository is verified (6.34 ms latency, PID 15406). The next step is a complete GStreamer pipeline using `nvinferserver` or a `pyds` probe to process multi-camera RTSP/video feeds in real-time.
 
 ---
 

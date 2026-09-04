@@ -48,6 +48,7 @@ import timm
 import torch
 import torch.nn.functional as F
 from PIL import Image
+from scipy import ndimage
 from sklearn.metrics import roc_auc_score
 
 # Pod target RTX 4000 Ada in container: disable cuDNN
@@ -246,6 +247,10 @@ def main():
     ap.add_argument("--out", default=OUT, help="Path for output JSON record")
     ap.add_argument("--run-id", default="", help="Optional run identifier for LEDGER tracking")
     ap.add_argument("--hypothesis", default="", help="Stated hypothesis for this run")
+    ap.add_argument("--native-min-region-px", type=int, default=77,
+                    help="Minimum native pixel area to keep a defect component (E4a fixed regions)")
+    ap.add_argument("--no-fixed-regions", action="store_true",
+                    help="Disable native fixed region sets and use legacy post-resize connected components")
     args = ap.parse_args()
 
     if args.squash:
@@ -299,6 +304,8 @@ def main():
             "gauss_sigma": GAUSS_SIGMA,
             "coreset_ratio": CORESET_RATIO,
             "geometry": args.geometry,
+            "fixed_regions": not args.no_fixed_regions,
+            "native_min_region_px": args.native_min_region_px if not args.no_fixed_regions else None,
         },
         "scenarios": {},
         "deviations": [],
@@ -371,47 +378,102 @@ def main():
         s_bad, m_bad = anomaly_maps(ex, bank, bad, n_patches, ex.grid, valid_grid=valid_grid, eval_shape=eval_shape)
 
         masks = []
-        if args.geometry == "letterbox":
-            for p in masks_paths:
-                im_m = Image.open(p).convert("L")
-                mw, mh = im_m.size
-                s_m = EVAL_SIDE / max(mw, mh)
-                nmw, nmh = int(round(mw * s_m)), int(round(mh * s_m))
-                m_res = im_m.resize((nmw, nmh), Image.NEAREST)
-                pad_l = (EVAL_SIDE - nmw) // 2
-                pad_t = (EVAL_SIDE - nmh) // 2
-                m_eval = np.zeros((EVAL_SIDE, EVAL_SIDE), bool)
-                m_eval[pad_t:pad_t + nmh, pad_l:pad_l + nmw] = np.array(m_res) > 127
-                masks.append(m_eval)
-        elif args.geometry == "aspect":
-            eval_h, eval_w = eval_shape
-            for p in masks_paths:
-                a = np.array(Image.open(p).convert("L").resize((eval_w, eval_h),
-                                                               Image.NEAREST))
-                masks.append(a > 127)
-        else:
-            for p in masks_paths:
-                a = np.array(Image.open(p).convert("L").resize((EVAL_SIDE, EVAL_SIDE),
-                                                               Image.NEAREST))
-                masks.append(a > 127)
+        region_labels = []
+        total_native_regions = 0
+        use_fixed_regions = not args.no_fixed_regions
+
+        for p in masks_paths:
+            im_native = Image.open(p).convert("L")
+            w_nat, h_nat = im_native.size
+            mask_native = np.array(im_native) > 127
+
+            if use_fixed_regions:
+                labelled, n_comp_all = ndimage.label(mask_native)
+                clean_labels = np.zeros_like(labelled, dtype=np.int32)
+                n_comp = 0
+                for r in range(1, n_comp_all + 1):
+                    sel = (labelled == r)
+                    if sel.sum() >= args.native_min_region_px:
+                        n_comp += 1
+                        clean_labels[sel] = n_comp
+                total_native_regions += n_comp
+
+                # Resize clean_labels into evaluation space with NEAREST
+                if args.geometry == "letterbox":
+                    s_m = EVAL_SIDE / max(w_nat, h_nat)
+                    nmw, nmh = int(round(w_nat * s_m)), int(round(h_nat * s_m))
+                    res_labels = np.array(Image.fromarray(clean_labels, mode="I").resize((nmw, nmh), Image.NEAREST))
+                    pad_l = (EVAL_SIDE - nmw) // 2
+                    pad_t = (EVAL_SIDE - nmh) // 2
+                    eval_labels = np.zeros((EVAL_SIDE, EVAL_SIDE), dtype=np.int32)
+                    eval_labels[pad_t:pad_t + nmh, pad_l:pad_l + nmw] = res_labels
+                elif args.geometry == "aspect":
+                    eval_h, eval_w = eval_shape
+                    eval_labels = np.array(Image.fromarray(clean_labels, mode="I").resize((eval_w, eval_h), Image.NEAREST))
+                else:  # squash or crop
+                    eval_labels = np.array(Image.fromarray(clean_labels, mode="I").resize((EVAL_SIDE, EVAL_SIDE), Image.NEAREST))
+
+                eval_mask = eval_labels > 0
+                masks.append(eval_mask)
+                region_labels.append((eval_labels, n_comp))
+            else:
+                # Legacy behavior
+                if args.geometry == "letterbox":
+                    s_m = EVAL_SIDE / max(w_nat, h_nat)
+                    nmw, nmh = int(round(w_nat * s_m)), int(round(h_nat * s_m))
+                    m_res = im_native.resize((nmw, nmh), Image.NEAREST)
+                    pad_l = (EVAL_SIDE - nmw) // 2
+                    pad_t = (EVAL_SIDE - nmh) // 2
+                    m_eval = np.zeros((EVAL_SIDE, EVAL_SIDE), bool)
+                    m_eval[pad_t:pad_t + nmh, pad_l:pad_l + nmw] = np.array(m_res) > 127
+                    masks.append(m_eval)
+                elif args.geometry == "aspect":
+                    eval_h, eval_w = eval_shape
+                    a = np.array(im_native.resize((eval_w, eval_h), Image.NEAREST))
+                    masks.append(a > 127)
+                else:
+                    a = np.array(im_native.resize((EVAL_SIDE, EVAL_SIDE), Image.NEAREST))
+                    masks.append(a > 127)
 
         truth = np.r_[np.zeros(len(s_good), int), np.ones(len(s_bad), int)]
         img_auroc = float(roc_auc_score(truth, np.r_[s_good, s_bad]))
 
+        # Streaming min/max without allocating full array copies (memory guard for 2048)
         if valid is not None:
-            allv = np.concatenate([m[valid].ravel() for m in (m_good + m_bad)])
+            lo = min(float(m[valid].min()) for m in (m_good + m_bad))
+            hi = max(float(m[valid].max()) for m in (m_good + m_bad))
         else:
-            allv = np.concatenate([m.ravel() for m in (m_good + m_bad)])
-        lo, hi = float(allv.min()), float(allv.max())
-        res = evaluate(m_good, m_bad, masks, lo, hi, valid=valid)
-        res.update({"image_auroc": img_auroc, "n_train": len(train), "n_val": len(val),
-                    "n_good": len(good), "n_bad": len(bad),
-                    "bank_size": int(len(keep)), "seconds": round(time.time() - t0, 1)})
+            lo = min(float(m.min()) for m in (m_good + m_bad))
+            hi = max(float(m.max()) for m in (m_good + m_bad))
+
+        rl = region_labels if use_fixed_regions else None
+        res = evaluate(m_good, m_bad, masks, lo, hi, valid=valid, region_labels=rl)
+        if use_fixed_regions:
+            assert res["n_regions"] == total_native_regions, \
+                f"Region count mismatch: {res['n_regions']} vs {total_native_regions}"
+
+        res.update({
+            "image_auroc": img_auroc, "n_train": len(train), "n_val": len(val),
+            "n_good": len(good), "n_bad": len(bad),
+            "bank_size": int(len(keep)), "seconds": round(time.time() - t0, 1),
+            "grid": list(ex.grid), "n_patches": int(n_patches),
+            "native_regions": int(total_native_regions) if use_fixed_regions else res["n_regions"],
+        })
         summary["scenarios"][sc] = res
-        print(f"{sc:<13} img {img_auroc:.4f}  pix {res['pixel_auroc']:.4f}  "
+        pix_str = f"{res['pixel_auroc']:.4f}" if res['pixel_auroc'] is not None else "  None"
+        print(f"{sc:<13} img {img_auroc:.4f}  pix {pix_str}  "
               f"AU-PRO@5% {res.get('au_pro@0.05')!s:>7.7}  "
               f"@30% {res.get('au_pro@0.3')!s:>7.7}  "
               f"regions {res['n_regions']:>4}  {res['seconds']:.0f}s", flush=True)
+
+        try:
+            import resource
+            peak_rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            if sys.platform.startswith("linux"):
+                peak_rss_mb = peak_rss_mb / 1024.0
+            summary["peak_rss_mb"] = round(peak_rss_mb, 1)
+        except Exception:
+            pass
 
         summary["wall_seconds"] = round(time.time() - t_start, 1)
         with open(args.out, "w") as f:

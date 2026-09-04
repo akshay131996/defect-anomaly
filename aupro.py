@@ -35,15 +35,17 @@ def _survival(hist):
     return np.cumsum(hist[::-1])[::-1] / total
 
 
-def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIMITS, valid=None):
+def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIMITS, valid=None, region_labels=None):
     """Pixel AUROC and AU-PRO from anomaly maps and boolean ground-truth masks.
 
-    maps_good : anomaly maps for images with no defect
-    maps_bad  : anomaly maps for defective images
-    masks     : boolean arrays, same shapes as maps_bad, True where defective
-    lo, hi    : score range spanned by the shared histogram bins
-    valid     : optional boolean array or list of boolean arrays, True on genuine
-                image pixels, False on letterbox/padding regions.
+    maps_good     : anomaly maps for images with no defect
+    maps_bad      : anomaly maps for defective images
+    masks         : boolean arrays, same shapes as maps_bad, True where defective
+    lo, hi        : score range spanned by the shared histogram bins
+    valid         : optional boolean array or list of boolean arrays, True on genuine
+                    image pixels, False on letterbox/padding regions.
+    region_labels : optional list of (label_map, n_components) per bad image, derived
+                    at native resolution to fix the region set across geometries (E4a).
     """
     edges = np.linspace(lo, hi, nbins + 1)
 
@@ -78,12 +80,24 @@ def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIM
             else:
                 h_norm += hist(m.ravel())
                 continue
-        labelled, n = ndimage.label(mask)
-        for r in range(1, n + 1):
-            sel = labelled == r
-            npx = int(sel.sum())
-            if npx >= MIN_REGION_PX:
-                region_hists.append(hist(m[sel].ravel()) / npx)
+
+        if region_labels is not None:
+            lab_map, n_comp = region_labels[i]
+            for r in range(1, n_comp + 1):
+                sel = (lab_map == r)
+                npx = int(sel.sum())
+                if npx > 0:
+                    region_hists.append(hist(m[sel].ravel()) / npx)
+                else:
+                    # Region was erased by downsampling -> 0 detected pixels -> 0 TPR
+                    region_hists.append(np.zeros(nbins))
+        else:
+            labelled, n = ndimage.label(mask)
+            for r in range(1, n + 1):
+                sel = labelled == r
+                npx = int(sel.sum())
+                if npx >= MIN_REGION_PX:
+                    region_hists.append(hist(m[sel].ravel()) / npx)
 
     fpr = _survival(h_norm)
     tpr = _survival(h_anom)

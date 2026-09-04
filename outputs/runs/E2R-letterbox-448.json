@@ -1,0 +1,186 @@
+{
+  "run_id": "E2R-letterbox-448",
+  "hypothesis": "re-score letterbox under fixed native region set (E4a)",
+  "command": "ad2_pixel_eval.py --img 448 --bank-cap 4000 --geometry letterbox --run-id E2R-letterbox-448 --hypothesis re-score letterbox under fixed native region set (E4a) --out outputs/runs/E2R-letterbox-448.json",
+  "code_sha256": {
+    "ad2_pixel_eval.py": "59257b20",
+    "sweep_backbones.py": "0c2365c5",
+    "aupro.py": "dda2df44"
+  },
+  "started_utc": "2026-09-04T21:05:42Z",
+  "wall_seconds": 786.4,
+  "env": {
+    "gpu": "NVIDIA RTX 4000 Ada Generation",
+    "torch": "2.14.0+cu130"
+  },
+  "config": {
+    "img": 448,
+    "bank_cap": 4000,
+    "eval_side": 512,
+    "gauss_sigma": 4.0,
+    "coreset_ratio": 0.01,
+    "geometry": "letterbox",
+    "fixed_regions": true,
+    "native_min_region_px": 77
+  },
+  "scenarios": {
+    "can": {
+      "n_regions": 66,
+      "pixel_auroc": 0.6585327645530737,
+      "au_pro@0.05": 0.046734312354495204,
+      "au_pro@0.3": 0.2294885589833023,
+      "image_auroc": 0.48348765432098767,
+      "n_train": 412,
+      "n_val": 46,
+      "n_good": 72,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 116.9,
+      "grid": [
+        56,
+        56
+      ],
+      "n_patches": 3136,
+      "native_regions": 66
+    },
+    "fabric": {
+      "n_regions": 120,
+      "pixel_auroc": 0.628508064281235,
+      "au_pro@0.05": 0.12437016645004699,
+      "au_pro@0.3": 0.39990636907783783,
+      "image_auroc": 0.638047138047138,
+      "n_train": 387,
+      "n_val": 43,
+      "n_good": 66,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 131.6,
+      "grid": [
+        56,
+        56
+      ],
+      "n_patches": 3136,
+      "native_regions": 120
+    },
+    "fruit_jelly": {
+      "n_regions": 216,
+      "pixel_auroc": 0.9483467615170438,
+      "au_pro@0.05": 0.46078826249531596,
+      "au_pro@0.3": 0.7042830409394532,
+      "image_auroc": 0.905,
+      "n_train": 263,
+      "n_val": 37,
+      "n_good": 20,
+      "n_bad": 60,
+      "bank_size": 4000,
+      "seconds": 75.3,
+      "grid": [
+        56,
+        56
+      ],
+      "n_patches": 3136,
+      "native_regions": 216
+    },
+    "rice": {
+      "n_regions": 114,
+      "pixel_auroc": 0.8602467040432886,
+      "au_pro@0.05": 0.22414961719542043,
+      "au_pro@0.3": 0.46538222759863035,
+      "image_auroc": 0.4650793650793651,
+      "n_train": 313,
+      "n_val": 35,
+      "n_good": 42,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 102.8,
+      "grid": [
+        56,
+        56
+      ],
+      "n_patches": 3136,
+      "native_regions": 114
+    },
+    "sheet_metal": {
+      "n_regions": 444,
+      "pixel_auroc": 0.9149247868663029,
+      "au_pro@0.05": 0.11317673516678652,
+      "au_pro@0.3": 0.2933626751323803,
+      "image_auroc": 0.7078703703703704,
+      "n_train": 137,
+      "n_val": 19,
+      "n_good": 24,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 48.9,
+      "grid": [
+        56,
+        56
+      ],
+      "n_patches": 3136,
+      "native_regions": 444
+    },
+    "vial": {
+      "n_regions": 168,
+      "pixel_auroc": 0.9030705497075209,
+      "au_pro@0.05": 0.6754302877836876,
+      "au_pro@0.3": 0.8916588697566656,
+      "image_auroc": 0.9564625850340136,
+      "n_train": 291,
+      "n_val": 41,
+      "n_good": 35,
+      "n_bad": 105,
+      "bank_size": 4000,
+      "seconds": 83.0,
+      "grid": [
+        56,
+        56
+      ],
+      "n_patches": 3136,
+      "native_regions": 168
+    },
+    "wallplugs": {
+      "n_regions": 90,
+      "pixel_auroc": 0.9249466422356292,
+      "au_pro@0.05": 0.25058505359860256,
+      "au_pro@0.3": 0.5115525947233683,
+      "image_auroc": 0.37629629629629624,
+      "n_train": 293,
+      "n_val": 33,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 90.0,
+      "grid": [
+        56,
+        56
+      ],
+      "n_patches": 3136,
+      "native_regions": 90
+    },
+    "walnuts": {
+      "n_regions": 312,
+      "pixel_auroc": 0.9558049263187821,
+      "au_pro@0.05": 0.44998270776738913,
+      "au_pro@0.3": 0.7464428101303471,
+      "image_auroc": 0.8257407407407408,
+      "n_train": 432,
+      "n_val": 48,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 137.7,
+      "grid": [
+        56,
+        56
+      ],
+      "n_patches": 3136,
+      "native_regions": 312
+    }
+  },
+  "deviations": [],
+  "peak_rss_mb": 18154.2,
+  "mean_image_auroc": 0.669748018736114,
+  "mean_pixel_auroc": 0.8492976499403595,
+  "mean_au_pro@0.05": 0.29315214285146807,
+  "mean_au_pro@0.3": 0.5302596432927481
+}

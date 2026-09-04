@@ -141,5 +141,21 @@ print(f"{'lb_novalid':<10} pixel_auroc {res_lb_nv['pixel_auroc']:.4f}   "
       f"AU-PRO@5% {res_lb_nv['au_pro@0.05']:.4f}   @30% {res_lb_nv['au_pro@0.3']:.4f}   "
       f"regions {res_lb_nv['n_regions']:>3}   {'PASS' if ok_nv else '** FAIL **'}")
 
+# fixed native region_labels check (E4a)
+reg_labels = []
+for m in masks:
+    lab, n = ndimage.label(m)
+    reg_labels.append((lab, n))
+tot_expected_regs = sum(n for _, n in reg_labels)
+res_rl = evaluate([noisy(np.zeros((SIDE, SIDE))) for _ in range(N_IMG)],
+                  [noisy(m.astype(float)) for m in masks], masks, 0.0, 1.05,
+                  region_labels=reg_labels)
+ok_rl = (res_rl["n_regions"] == tot_expected_regs and res_rl["au_pro@0.05"] > 0.95)
+results.append(ok_rl)
+print(f"{'reg_labels':<10} pixel_auroc {res_rl['pixel_auroc']:.4f}   "
+      f"AU-PRO@5% {res_rl['au_pro@0.05']:.4f}   @30% {res_rl['au_pro@0.3']:.4f}   "
+      f"regions {res_rl['n_regions']:>3}   {'PASS' if ok_rl else '** FAIL **'}")
+
 print()
 print("ALL PASS" if all(results) else "** SOME CHECKS FAILED - the metric is suspect **")
+

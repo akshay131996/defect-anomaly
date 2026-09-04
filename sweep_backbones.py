@@ -118,15 +118,13 @@ class PatchExtractor:
         return self.tfm(im.convert("RGB"))
 
     @torch.no_grad()
-    def __call__(self, pil_batch):
-        # Decode and transform in parallel. Measured on the RTX 4000 Ada: with this done
-        # serially the GPU was idle in 12 of 14 samples and peaked at 764 MiB of 20 GB -
-        # the bottleneck was one CPU core doing PIL decode, not the card. PIL and the
-        # torchvision transforms release the GIL in their C paths, so threads are enough
-        # and avoid the pickling problems that fork-based workers hit with an
-        # arrow-backed HF dataset. `executor.map` preserves input order, so the batch is
-        # assembled identically to the serial version - this is a speed change only.
-        x = torch.stack(list(_POOL.map(self._one, pil_batch))).to(DEVICE)
+    def forward_feats(self, x):
+        """Patch features for an already-transformed batch tensor.
+
+        Split out of __call__ so callers that load from disk rather than from the HF
+        dataset (see extract_paths) share exactly this code path - the alternative was a
+        second copy of the backbone logic, and a second copy is how two runners drift.
+        """
         if self.kind == "cnn":
             fs = self.model(x)
             ref = fs[0].shape[-2:]
@@ -147,12 +145,36 @@ class PatchExtractor:
         self.grid, self.dim = (h, w), c
         return fmap.permute(0, 2, 3, 1).reshape(b * h * w, c).cpu()
 
+    @torch.no_grad()
+    def __call__(self, pil_batch):
+        # Decode and transform in parallel. Measured on the RTX 4000 Ada: with this done
+        # serially the GPU was idle in 12 of 14 samples and peaked at 764 MiB of 20 GB -
+        # the bottleneck was one CPU core doing PIL decode, not the card. PIL and the
+        # torchvision transforms release the GIL in their C paths, so threads are enough
+        # and avoid the pickling problems that fork-based workers hit with an
+        # arrow-backed HF dataset. `executor.map` preserves input order, so the batch is
+        # assembled identically to the serial version - this is a speed change only.
+        x = torch.stack(list(_POOL.map(self._one, pil_batch))).to(DEVICE)
+        return self.forward_feats(x)
+
 
 @torch.no_grad()
 def extract(ex, sub, image_col, indices, batch=16):
     out = []
     for i in range(0, len(indices), batch):
         out.append(ex([sub[j][image_col] for j in indices[i:i + batch]]))
+    return torch.cat(out)
+
+
+@torch.no_grad()
+def extract_paths(ex, paths, pool, batch=8):
+    """Patch features for images on disk. MVTec AD 2 ships as files, not an HF dataset."""
+    from PIL import Image
+    out = []
+    for i in range(0, len(paths), batch):
+        imgs = list(pool.map(lambda p: Image.open(p).convert("RGB"), paths[i:i + batch]))
+        x = torch.stack(list(pool.map(ex._one, imgs))).to(DEVICE)
+        out.append(ex.forward_feats(x))
     return torch.cat(out)
 
 

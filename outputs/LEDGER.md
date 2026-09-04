@@ -10,7 +10,7 @@ See HANDOFF.md §0 for the output contract and the audit checklist.
 |---|---|---|---|---|---|---|
 | (pre-E1 baseline) | crop | 448 | 0.1306 | 0.663 | — | void — coordinate-frame bug, see §6 |
 | E1-squash-448 | squash | 448 | **0.3006** | 0.718 | `5168721b` | supports |
-| E0-registration | | | | | | _pending_ |
+| E0-registration | crop vs squash | — | 0.019 vs 1.000 | — | `9d7536e3` | supports |
 | E2-letterbox-448 | | | | | | _pending_ |
 | E3-aspect-448 | | | | | | _pending_ |
 | E4-evalside | | | | | | _pending_ |

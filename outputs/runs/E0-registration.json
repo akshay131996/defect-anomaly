@@ -1,0 +1,49 @@
+{
+  "run_id": "E0-registration",
+  "hypothesis": "The old default geometry (resize+centre-crop image, full-frame mask) fails registration on non-square frames, while registered geometries (squash, letterbox) pass (>0.95 AU-PRO@5%).",
+  "command": "python test_registration.py",
+  "code_sha256": {
+    "test_registration.py": "9d7536e3",
+    "aupro.py": "254356f3"
+  },
+  "started_utc": "2026-09-04T19:49:27Z",
+  "wall_seconds": 1.2,
+  "env": {
+    "device": "CPU (local)",
+    "python": "3.11"
+  },
+  "results": {
+    "crop": {
+      "pixel_auroc": 0.4968,
+      "au_pro@0.05": 0.0193,
+      "passed": true,
+      "verdict": "correctly fails registration"
+    },
+    "squash": {
+      "pixel_auroc": 1.0000,
+      "au_pro@0.05": 1.0000,
+      "passed": true,
+      "verdict": "correctly registers full frame"
+    },
+    "squash_shifted": {
+      "pixel_auroc": 0.4945,
+      "au_pro@0.05": 0.0113,
+      "passed": true,
+      "verdict": "correctly collapses under shift"
+    },
+    "letterbox": {
+      "pixel_auroc": 1.0000,
+      "au_pro@0.05": 1.0000,
+      "passed": true,
+      "verdict": "correctly registers padded frame"
+    },
+    "letterbox_shifted": {
+      "pixel_auroc": 0.5012,
+      "au_pro@0.05": 0.0192,
+      "passed": true,
+      "verdict": "correctly collapses under shift"
+    }
+  },
+  "verdict": "supports",
+  "deviations": []
+}

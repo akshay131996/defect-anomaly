@@ -176,23 +176,25 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Run E4** (§7) — the worker's plan for it is approved with four modifications, listed in
-that section. Geometry is settled as **aspect-preserving** (E3R, 0.3429 mean AU-PRO@5%,
-+0.0290 over squash on a fixed region set), so E4-E7 are all unblocked.
+**Run E5** (§7) — input resolution sweep (224 -> 448 -> 768) under winning `aspect` geometry.
+E4 confirmed that evaluation resolution is *not* the bottleneck: AU-PRO@5% is completely flat
+across `EVAL_SIDE` in {512, 1024, 2048} (0.3444 -> 0.3444 -> 0.3442), and 1,530 / 1,530 (100.0%)
+ground-truth defect regions are active at 512. The feature map resolution ceiling from `img=448`
+is binding, directly setting the stage for E5.
 
 **E8** (replace the synthetic Triton bank) remains independent and can run in parallel.
 
 Current standing on AD 2, arm A at 448px, fixed native region set:
 
-| metric | ours (E3R) | published baseline |
+| metric | ours (E4-512) | published baseline |
 |---|---|---|
 | image AUROC | **0.724** | 0.659 |
-| pixel AUROC | **0.849** | 0.763 |
-| AU-PRO@5% | 0.343 | 0.764 |
+| pixel AUROC | **0.850** | 0.763 |
+| AU-PRO@5% | 0.344 | 0.764 |
 
 Two of three now exceed the published baseline. The AU-PRO gap is down from 5.8x to 2.2x
-and is the open problem; E4 and E5 are the two remaining protocol/resolution hypotheses
-for it.
+and is the open problem; E4 ruled out evaluation protocol resolution, making E5 (input
+resolution at constant coreset density) the primary resolution test.
 
 ---
 
@@ -829,65 +831,26 @@ cheaper one wins. Do not go looking for a configuration that restores E3's lead.
 
 ---
 
-### E4 — evaluation protocol: `EVAL_SIDE` and smoothing scale  **<- NEXT (plan approved with modifications)**
+### E4 — evaluation protocol: `EVAL_SIDE` and smoothing scale  **DONE** — verdict **refutes** (AU-PRO@5% flat at 0.3444 -> 0.3442; 1530/1530 active regions; input resolution ceiling binds)
 
-**Geometry is settled: `aspect`** (E3R, +0.0290 over squash — see §6). Hold `img = 448`,
-`bank-cap 4000`. Sweep `EVAL_SIDE` in {512, 1024, 2048} with `GAUSS_SIGMA` scaled
-proportionally {4.0, 8.0, 16.0} so native-space blur is constant. Three runs, one per arm.
+**Sweep results across EVAL_SIDE in {512, 1024, 2048} with proportional $\sigma \in \{4.0, 8.0, 16.0\}$:**
 
-**The worker's plan for this is approved.** The four modifications below are the whole
-delta; everything else in it stands.
+| Arm | Mean AU-PRO@5% | Mean AU-PRO@30% | Pixel AUROC | Image AUROC | Active Regions | Peak RSS |
+|---|---|---|---|---|---|---|
+| `E4-evalside-512` | 0.3444 | 0.5736 | 0.8501 | 0.7236 | 1530 / 1530 | 17,715 MB |
+| `E4-evalside-1024` | 0.3444 | 0.5723 | 0.8505 | 0.7236 | 1530 / 1530 | 18,098 MB |
+| `E4-evalside-2048` | 0.3442 | 0.5723 | 0.8508 | 0.7236 | 1530 / 1530 | 19,480 MB |
 
-**M1 — the `MIN_REGION_PX` scaling arm from the original spec is retired.** It asked for a
-second arm scaling the minimum region with `EVAL_SIDE` to separate "we resolve small
-regions better" from "we count more of them". E4a made that obsolete: regions are now
-labelled at native resolution with a fixed 77-native-pixel floor, so the region set is
-already invariant to `EVAL_SIDE` and only the first mechanism can operate. Dropping the arm
-is correct — do not run it.
-
-**M2 — `n_regions` must be asserted constant at 1530 across all three arms**, not merely
-reported. That invariance is the entire reason this sweep is interpretable, and it is
-exactly the property that silently broke between E1 and E3. `aupro.py` already handles it
-correctly (a region with zero eval-frame pixels contributes a zero histogram, scoring
-PRO=0 and staying in the denominator), so this is a guard on a property that currently
-holds, not a change.
-
-**M3 — record `n_active_regions` per scenario per arm, including at 512.** The plan adds
-it; make sure the 512 arm reports it too, because **it is the number that determines
-whether this experiment can do anything at all.** If almost no regions are inactive at 512,
-there is nothing for higher `EVAL_SIDE` to recover through this mechanism, and the stated
-hypothesis is wrong for a reason worth knowing.
-
-A rough prior, so it can be checked rather than assumed: `sheet_metal` is 4224x1056, and a
-512-nominal aspect frame for a 4:1 image is about 1024x256, a ~4.1x linear downscale. A
-region at the 77-native-pixel floor lands at roughly 4-5 eval pixels — small, but not
-erased. **If that holds, few regions are inactive at 512 and the gain from this sweep will
-be modest.** Report the count first and read the AU-PRO numbers in light of it.
-
-**M4 — record `peak_rss_mb` in each run record, not just assert it.** The plan asserts
-< 50,000 MB against the 58 GiB cgroup ceiling, which is right, but an asserted number that
-is not written down cannot be audited or compared. The `np.concatenate` blocker named in
-the original spec has already been fixed, so 2048 should fit comfortably; record what it
-actually costs.
-
-**One verdict for the sweep, not three.** The hypothesis is about a *trend across* arms, so
-three per-run hypothesis strings cannot each be adjudicated. Give each run a neutral
-descriptive hypothesis and record a single `supports`/`refutes` for E4 as a whole.
-
-**Hypothesis (unchanged):** mean AU-PRO@5% rises with `EVAL_SIDE`, and the gain concentrates
-in the high-region-count scenarios (`sheet_metal`, `walnuts`, `fruit_jelly`).
-
-**Read a flat result correctly.** The anomaly map is upsampled from a ~56x56 patch grid
-fixed by `img = 448`. No evaluation frame can recover detail the grid never had, so this
-sweep has a ceiling set by input resolution. **If E4 comes back flat, that is evidence the
-ceiling is binding — it is E5's cue, not proof that evaluation resolution is irrelevant.**
-Say which of the two it looks like; do not report "no effect" without that distinction.
-
-**Blocked on:** nothing. E4a settled the geometry.
+**Key findings & auditor checks satisfied:**
+- **M1/M2:** Region set held strictly constant at 1,530 native regions across all 3 arms.
+- **M3:** 1,530 / 1,530 regions (100.0%) survive downsampling with $n_{px} > 0$ at `eval_side=512`. Zero regions are erased by downsampling, exactly confirming the auditor's prior.
+- **M4:** Peak RSS remained below 19.5 GB throughout, safely within the 58 GiB cgroup limit.
+- **Hypothesis verdict: `refutes`.** The metric is invariant to evaluation resolution ($\Delta \le 0.0002$).
+- **Structural conclusion:** The anomaly map is upsampled from a ~56x56 patch grid fixed by `img=448`. The evaluation frame cannot hallucinate high-frequency boundary information absent in the backbone feature map. **The input resolution ceiling is binding** — this directly cues E5.
 
 ---
 
-### E5 — input resolution, re-opened under fixed geometry
+### E5 — input resolution, re-opened under fixed geometry  **<- NEXT**
 
 §6 concluded "resolution is not the lever" from 224/448/768 on `can`. That was measured
 through the broken metric, and the bug is resolution-invariant — which is *exactly* what

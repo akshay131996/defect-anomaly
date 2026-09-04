@@ -1,0 +1,11 @@
+can           img 0.4667  pix 0.6454  AU-PRO@5% 0.08464  @30% 0.25120  regions   96  115s
+fabric        img 0.6402  pix 0.6664  AU-PRO@5% 0.13335  @30% 0.41986  regions  150  140s
+fruit_jelly   img 0.9375  pix 0.9540  AU-PRO@5% 0.45831  @30% 0.71564  regions  320  73s
+rice          img 0.6492  pix 0.8460  AU-PRO@5% 0.18626  @30% 0.45195  regions  126  103s
+sheet_metal   img 0.7551  pix 0.8605  AU-PRO@5% 0.13463  @30% 0.33501  regions 1539  50s
+vial          img 0.9156  pix 0.9242  AU-PRO@5% 0.73856  @30% 0.91980  regions  174  80s
+wallplugs     img 0.5650  pix 0.9210  AU-PRO@5% 0.29514  @30% 0.50422  regions   84  94s
+walnuts       img 0.8167  pix 0.9532  AU-PRO@5% 0.37372  @30% 0.69653  regions  450  132s
+
+mean image AUROC 0.7658   pixel AUROC 0.9328   AU-PRO@5% 0.4691   AU-PRO@30% 0.7069
+wrote outputs/ad2_pixel_eval.json

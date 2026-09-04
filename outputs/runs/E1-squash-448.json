@@ -1,0 +1,136 @@
+{
+  "run_id": "E1-squash-448",
+  "hypothesis": "Registering the anomaly map and the ground-truth mask in one coordinate frame more than doubles mean AU-PRO@5% over the 0.1306 baseline.",
+  "command": "python ad2_pixel_eval.py --img 448 --bank-cap 4000 --squash",
+  "env": {
+    "gpu": "NVIDIA RTX 4000 Ada Generation",
+    "torch": "2.14.0+cu130"
+  },
+  "config": {
+    "img": 448,
+    "bank_cap": 4000,
+    "eval_side": 512,
+    "gauss_sigma": 4.0,
+    "coreset_ratio": 0.01,
+    "geometry": "squash"
+  },
+  "scenarios": {
+    "can": {
+      "n_regions": 96,
+      "pixel_auroc": 0.6454254906279961,
+      "au_pro@0.05": 0.08464996997655949,
+      "au_pro@0.3": 0.2512050200381091,
+      "image_auroc": 0.4666666666666667,
+      "n_train": 412,
+      "n_val": 46,
+      "n_good": 72,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 114.7
+    },
+    "fabric": {
+      "n_regions": 150,
+      "pixel_auroc": 0.6664388275895872,
+      "au_pro@0.05": 0.1333512827640831,
+      "au_pro@0.3": 0.4198642919417773,
+      "image_auroc": 0.6402356902356902,
+      "n_train": 387,
+      "n_val": 43,
+      "n_good": 66,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 139.8
+    },
+    "fruit_jelly": {
+      "n_regions": 320,
+      "pixel_auroc": 0.9540156549600991,
+      "au_pro@0.05": 0.45831465095906954,
+      "au_pro@0.3": 0.7156453837133442,
+      "image_auroc": 0.9375,
+      "n_train": 263,
+      "n_val": 37,
+      "n_good": 20,
+      "n_bad": 60,
+      "bank_size": 4000,
+      "seconds": 73.3
+    },
+    "rice": {
+      "n_regions": 126,
+      "pixel_auroc": 0.8460332985730061,
+      "au_pro@0.05": 0.18626121539327434,
+      "au_pro@0.3": 0.4519583707988373,
+      "image_auroc": 0.6492063492063492,
+      "n_train": 313,
+      "n_val": 35,
+      "n_good": 42,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 103.0
+    },
+    "sheet_metal": {
+      "n_regions": 1539,
+      "pixel_auroc": 0.8604714266104656,
+      "au_pro@0.05": 0.1346317044858814,
+      "au_pro@0.3": 0.33501416092847064,
+      "image_auroc": 0.7550925925925926,
+      "n_train": 137,
+      "n_val": 19,
+      "n_good": 24,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 50.5
+    },
+    "vial": {
+      "n_regions": 174,
+      "pixel_auroc": 0.9241923955441953,
+      "au_pro@0.05": 0.7385656973527251,
+      "au_pro@0.3": 0.919808870736648,
+      "image_auroc": 0.9156462585034013,
+      "n_train": 291,
+      "n_val": 41,
+      "n_good": 35,
+      "n_bad": 105,
+      "bank_size": 4000,
+      "seconds": 79.9
+    },
+    "wallplugs": {
+      "n_regions": 84,
+      "pixel_auroc": 0.9209906121508933,
+      "au_pro@0.05": 0.2951410143416417,
+      "au_pro@0.3": 0.5042209277322784,
+      "image_auroc": 0.5650000000000001,
+      "n_train": 293,
+      "n_val": 33,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 94.5
+    },
+    "walnuts": {
+      "n_regions": 450,
+      "pixel_auroc": 0.9531914214394555,
+      "au_pro@0.05": 0.37372926848940213,
+      "au_pro@0.3": 0.6965359615083593,
+      "image_auroc": 0.8166666666666668,
+      "n_train": 432,
+      "n_val": 48,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 131.8
+    }
+  },
+  "deviations": [
+    "run executed in two parts; first process was killed after 5 scenarios with no traceback and no cgroup OOM, cause not established. Second part covered vial,wallplugs,walnuts. Identical flags and commit in both.",
+    "commit sha unavailable: /workspace on the pod is not a git checkout. Provenance recorded as sha256 prefixes of the executed scripts instead."
+  ],
+  "mean_image_auroc": 0.7182517779839208,
+  "mean_pixel_auroc": 0.8463448909369622,
+  "mean_au_pro@0.05": 0.30058060047032964,
+  "mean_au_pro@0.3": 0.536781623424728,
+  "code_sha256": {
+    "ad2_pixel_eval.py": "5168721b21dbbbb8",
+    "sweep_backbones.py": "0c2365c51d078929",
+    "aupro.py": "254356f3d839850e"
+  }
+}

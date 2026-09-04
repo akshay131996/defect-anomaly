@@ -14,6 +14,108 @@ https://claude.ai/code/artifact/9fd97b0d-e64f-4f71-9ec9-e8586be6e6d4
 
 ---
 
+## 0. Working agreement — planner/auditor and worker
+
+Two agents share this project. **The planner/auditor writes §7's experiment queue and
+validates what comes back. The worker executes the queue on the pod and reports.** The
+split exists because the expensive failures in this project have not been coding errors —
+they have been *wrong conclusions drawn from real numbers*. Section 4 lists eight of them.
+Separating who runs the experiment from who interprets it is the cheapest guard available.
+
+### What the worker does
+
+Take the next unblocked item from §7. Run exactly what it specifies. Report. Stop.
+
+**Do not interpret, and do not repair a disappointing result.** If a run contradicts its
+own stated hypothesis, that is the deliverable — write it down and move to the next item.
+Three hypotheses about the AU-PRO gap were killed that way and the fourth was correct;
+none of that would have surfaced if a disappointing number had been quietly tuned away.
+
+### Rules that are not negotiable
+
+Each of these is here because breaking it has already cost this project time.
+
+1. **One variable per run.** Session 2 concluded DINOv2 was far worse; it had changed
+   backbone *and* resolution at once. At matched resolution the result reversed.
+2. **Never filter a run's stderr.** A 1024px run produced no output at all because its
+   launch piped through `grep`, discarding the traceback. Pipe to a file, then read it.
+3. **Never write to a fixed output path.** `ad2_pixel_eval.py` hardcodes
+   `outputs/ad2_pixel_eval.json` and silently destroyed a baseline mid-investigation on
+   2026-09-04. Use `--out outputs/runs/<run_id>.json`; add the flag if it is missing.
+4. **Report all eight scenarios, never the mean alone.** The mean has hidden the real
+   result three times. A mean without its per-scenario table will be rejected unread.
+5. **Never select or tune on `test_public`.** AD 2 ships a `validation` split for this.
+   Anything fitted on `test_public` is not a benchmark number and cannot be published.
+6. **Never `pkill -f` / `pgrep -f`.** The pattern matches the ssh command carrying it and
+   kills your own shell — this happened twice. Use `pgrep -x`, or match `/proc/PID/cmdline`.
+7. **Write live logs to `/tmp`, not `/workspace`.** MooseFS blocks on a live-appended file
+   and hangs the session with no error.
+8. **Report deviations explicitly.** If you changed anything the item did not ask for —
+   a flag, a default, a file — say so in the report. An unreported deviation makes every
+   number in the run unusable, because the audit cannot tell what produced them.
+
+### The output contract
+
+Per run, three artifacts, committed together:
+
+- `outputs/runs/<run_id>.json` — the record below.
+- `logs/<run_id>.log` — complete unfiltered stdout+stderr.
+- one row appended to `outputs/LEDGER.md`.
+
+```json
+{
+  "run_id": "E3-aspect-448",
+  "hypothesis": "one sentence, copied from the queue item",
+  "command": "verbatim command line, all flags",
+  "code_sha256": {"ad2_pixel_eval.py": "5168721b...", "sweep_backbones.py": "..."},
+  "started_utc": "2026-09-04T19:10:00Z",
+  "wall_seconds": 1180,
+  "env": {"gpu": "NVIDIA RTX 4000 Ada", "torch": "2.14.0", "driver": "570.x"},
+  "config": {"img": 448, "bank_cap": 4000, "eval_side": 512,
+             "gauss_sigma": 4.0, "coreset_ratio": 0.01, "geometry": "aspect"},
+  "scenarios": {
+    "can": {"image_auroc": 0.0, "pixel_auroc": 0.0, "au_pro@0.05": 0.0,
+            "au_pro@0.3": 0.0, "n_regions": 0, "n_good": 0, "n_bad": 0,
+            "bank_size": 0, "seconds": 0}
+  },
+  "mean_image_auroc": 0.0, "mean_pixel_auroc": 0.0,
+  "mean_au_pro@0.05": 0.0, "mean_au_pro@0.3": 0.0,
+  "deviations": []
+}
+```
+
+**Provenance is a hash, not a commit sha.** `/workspace` on the pod is *not* a git
+checkout — files get there by `scp`, so `git rev-parse` fails and a `commit` field would
+be silently empty (it was, on E1, until the audit caught it). Record
+`sha256sum` prefixes of every script the run actually executed. That is stronger than a
+sha anyway: it pins the bytes that ran, not the bytes that were committed, and those have
+already diverged on this project.
+
+Ledger row: `| run_id | geometry | img | mean AU-PRO@5% | mean I-AUROC | code hash | verdict |`
+where verdict is `supports` / `refutes` / `inconclusive` **against the item's own stated
+hypothesis** — that is a factual call about the number, not an interpretation of what it
+means for the project.
+
+Commit message: `run <run_id>: <one line of what happened>`. Never `git add -A` — it
+swept 8,700 lines of another agent's work into an unrelated commit once already.
+
+### What the auditor checks
+
+Stated here so the worker knows what will be verified, and can pre-empt a rejection:
+
+- `n_good` / `n_bad` per scenario match previous runs on the same split. A silent change
+  means the data selection moved and nothing is comparable.
+- `config` echoes the flags actually present in `command`.
+- `env` matches the run being compared against. torch 2.13 -> 2.14 alone moved an AD 1
+  arm by 0.010 AUROC, which is larger than margins two experiments were spent narrowing.
+- `au_pro@0.05` <= `au_pro@0.3` for every scenario. The metric is monotonic in its limit;
+  a violation means the integration is broken, as it once was.
+- Means recompute from the per-scenario values.
+- `bank_size` <= the cap.
+- `code_sha256` is present and non-empty for every script named in `command`.
+
+---
+
 ## 1. What the project is
 
 Detect defective parts when you have **no examples of defects**. Train on defect-free
@@ -74,11 +176,14 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Scale-conditioned post-processing for `sheet_metal`.** Morphological closing ($k=5$)
-bridges broad contiguous flaws (`can`, `fabric`, `fruit_jelly`), but dilates around 1,539
-microscopic hairline flaws on `sheet_metal`, inflating false alarms into adjacent normal pixels
-and dropping AU-PRO@5% (0.034 -> 0.018). Post-processing must be conditioned on defect component
-scale (e.g. skip dilation when patch variance or component diameter is sub-kernel).
+**Work §7's queue in order, starting at E0.** The AD 2 pixel results are being
+re-measured after the coordinate-frame bug (see §6); until E1-E3 land, no AU-PRO number
+in this document should be quoted externally.
+
+The previous entry here — scale-conditioned post-processing for `sheet_metal` — is
+**suspended, not done**. It was tuning a filter against a metric that was misregistered by
+81% of the frame on that exact scenario. Revisit it only after the geometry is fixed; the
+problem it describes may not survive.
 
 ---
 
@@ -231,6 +336,94 @@ Three things that differ from AD 1:
   resizes to 224/448 before the network) but **PNG decode cost scales with source
   pixels**, so AD 2 is heavily decode-bound.
 
+### The coordinate-frame bug — read before trusting any AU-PRO number above
+
+**Found 2026-09-04. Every AD 2 pixel-level number in this section predates it and is
+measured through a broken metric.** Image-level AD 1 results are unaffected.
+
+The symptom was a 5.8x gap against the published AD 2 baseline that survived three
+hypotheses. Our detector matched the paper on two of three metrics and collapsed on the
+third:
+
+| metric | ours | published | |
+|---|---|---|---|
+| image AUROC | 0.663 | 0.659 | matches |
+| pixel AUROC | 0.733 | 0.763 | close |
+| **AU-PRO@5%** | **0.131** | **0.764** | **5.8x gap** |
+
+The cause is that the anomaly map and the ground-truth mask were in **different
+coordinate frames**. timm's eval transform resizes the short side to `img/crop_pct` and
+centre-crops — correct for ImageNet, where the subject is centred and the frame is roughly
+square. AD 2 images are neither, and their aspect ratio differs per scenario:
+
+| scenario | native | area the model actually saw |
+|---|---|---|
+| sheet_metal | 4224x1056 | **19.1%** |
+| can | 2232x1024 | 35.1% |
+| fruit_jelly | 2100x1520 | 55.4% |
+| vial | 1400x1900 | 56.4% |
+| fabric, rice, wallplugs, walnuts | 2448x2048 | 64.1% |
+
+Meanwhile the masks were squashed **full-frame** to `EVAL_SIDE`. So the map covered a
+centre sub-rectangle stretched to a square, the mask covered the whole image stretched to
+a square, and the offset differed per scenario.
+
+**Why it hid for so long** — it is nearly invisible to the two metrics that looked healthy
+and fatal to the one that did not:
+
+- *image AUROC* is a max over patches. A defect anywhere in the visible region still
+  scores high, so misregistration costs almost nothing.
+- *pixel AUROC* is dominated by the overwhelming mass of correctly-scored normal pixels.
+- *AU-PRO* scores per-region overlap. It is the **only one of the three that requires the
+  map and mask to be spatially registered**, and it absorbed the entire error.
+
+It is also resolution-invariant, because `crop_pct` is constant. That is why 768px and
+1024px never recovered anything, and it is what made the earlier "resolution is not the
+lever" conclusion look solid — **that conclusion is now void and must be re-measured.**
+
+**Fixed, and measured across all 8** (`outputs/runs/E1-squash-448.json`, geometry
+`--squash`: resize straight to `(img,img)` so map and mask share one frame; everything
+else identical to the baseline):
+
+| scenario | baseline AU-PRO@5% | squash | |
+|---|---|---|---|
+| vial | 0.4364 | **0.7386** | 1.7x |
+| fruit_jelly | 0.2258 | **0.4583** | 2.0x |
+| walnuts | 0.1120 | **0.3737** | 3.3x |
+| wallplugs | 0.1241 | **0.2951** | 2.4x |
+| rice | 0.0967 | **0.1863** | 1.9x |
+| sheet_metal | 0.0345 | **0.1346** | 3.9x |
+| fabric | 0.0047 | **0.1334** | 28x |
+| can | 0.0111 | **0.0846** | 7.6x |
+| **mean** | **0.1306** | **0.3006** | **2.3x** |
+
+Improved 8 of 8. Against the published AD 2 baseline:
+
+| metric | before | after | published | |
+|---|---|---|---|---|
+| image AUROC | 0.663 | **0.718** | 0.659 | now above |
+| pixel AUROC | 0.733 | **0.846** | 0.763 | now above |
+| AU-PRO@5% | 0.131 | **0.301** | 0.764 | 2.3x closer, still 2.5x short |
+
+Two things follow. **The 5.8x gap was mostly, but not entirely, this bug** — a real
+2.5x remains and needs its own explanation; do not treat AD 2 as solved. And **the
+"all-time records" in the fusion table below (image 0.691, pixel 0.770) are superseded by
+plain arm A with correct geometry** (0.718, 0.846), so that claim needs correcting
+wherever it appears, including the README.
+
+`vial` at 0.7386 is on its own within 3% of the published *mean*, which is the strongest
+single piece of evidence that the remaining gap is not a modelling deficiency.
+
+**Caveat, and the reason §7 does not stop here:** squashing distorts aspect ratio. It is
+visible in the two most extreme frames — `can` (2.18:1) fell to 0.467 image AUROC and
+`fabric` to 0.640, the only two scenarios where image AUROC got *worse*. Squash buys
+registration and pays in distortion, so it is very likely not the right final geometry.
+E2 (letterbox) and E3 (aspect-preserving rectangles) test that directly.
+
+**The guard that would have caught this** did not exist: nothing ever asserted that a
+synthetic map placed at a known location scores high against a mask at that same location.
+E0 in §7 adds it.
+
 ### What AD 2 actually measures — read this before trusting any single scenario
 
 #### Arm A Baseline (WideResNet50-2 @448px, Layer 2+3, 4,000 bank cap):
@@ -337,13 +530,142 @@ Two high-yield experiments to eliminate the decode bottleneck:
 
 ---
 
-## 7. What to do next, in order
+## 7. Experiment queue
 
-1. **Scale-conditioned post-processing:** Implement an adaptive morphological filter that skips dilation/closing for scenarios dominated by micro-defects (`sheet_metal`), recovering the baseline 0.034 AU-PRO@5% while preserving fabric's 0.059.
-2. **Experiment: Eliminate the AD 2 decode bottleneck (Pre-resize vs. `libdeflate`/`pyvips`).**
-   Compare offline downscaling to 448px (or caching `.pt` tensors) against drop-in
-   CPU decoders (`libdeflate`/`pyvips`) to remove the ~2448x2048 PNG decode tax.
-3. **Phase C - Live DeepStream Video Pipeline.** Triton model repository is verified (6.34 ms latency, PID 15406). The next step is a complete GStreamer pipeline using `nvinferserver` or a `pyds` probe to process multi-camera RTSP/video feeds in real-time.
+Worker: take the next unblocked item, follow §0's output contract, report, stop. Items
+are ordered by what unblocks the most downstream work, not by expected payoff.
+
+Every item below states a hypothesis in a form that can be **refuted by the number it
+produces**. If it comes back refuted, that is a completed item, not a failed one.
+
+---
+
+### E0 — registration unit test *(no GPU, do this first)*
+
+**Why first:** the coordinate-frame bug survived four sessions because no test asserted
+that a map and a mask describe the same place. Until this exists, every item below can
+regress silently in the same way.
+
+Add `test_registration.py` alongside `test_aupro.py`, numpy-only, no GPU:
+
+- Build a synthetic mask with one filled rectangle at a known normalised location, in a
+  deliberately non-square frame (use 4224x1056, `sheet_metal`'s shape).
+- Build a "perfect" anomaly map that is high exactly on that rectangle, pushed through
+  the **same geometry the evaluator uses**.
+- Assert `au_pro@0.05 > 0.95`.
+- Repeat with the map offset by 20% of the width; assert it collapses (`< 0.2`).
+
+**Hypothesis:** the current default geometry (`resize+centre-crop` image, full-frame mask)
+fails the first assertion. **Verdict `supports` = the test fails on the old path and
+passes with `--squash`.** Commit the failing-then-passing pair.
+
+**Deliverable:** the test file, plus `logs/E0.log` showing both outcomes.
+
+---
+
+### E1 — squash geometry, all 8 scenarios ~~*(pending)*~~ **DONE 2026-09-04**
+
+Result in §6: mean AU-PRO@5% 0.1306 -> **0.3006**, improved 8/8. Record at
+`outputs/runs/E1-squash-448.json`, log at `logs/E1-squash-448.log`.
+**Hypothesis (>2x) supported.** Mean image AUROC also rose, 0.663 -> 0.718, though `can`
+and `fabric` individually fell — the aspect-distortion cost E2/E3 exist to remove.
+
+*Deviation on record:* the first process was killed after 5 scenarios with no traceback
+and no cgroup OOM; cause not established. The remaining 3 ran separately with identical
+flags and commit. If a long AD 2 run dies silently again, capture it — this is currently
+an unexplained failure, not a known one.
+
+---
+
+### E2 — letterbox geometry, all 8
+
+Resize the **longest** side to `img` preserving aspect, pad the short side to square with
+a constant, and apply *identical* letterboxing to the masks. Exclude padded pixels from
+the FPR denominator — they are not image, and counting them inflates the normal-pixel
+mass that AU-PRO's false-positive axis is normalised by.
+
+**Hypothesis:** letterbox beats squash on mean image AUROC (no aspect distortion) and
+matches it within 0.02 on mean AU-PRO@5% (registration is preserved either way).
+
+**If it fails**, the interesting question is *which* — a drop in AU-PRO points at the
+padding borders generating false anomalies, which is testable by reporting AU-PRO with and
+without the border pixels excluded.
+
+---
+
+### E3 — aspect-preserving rectangular input, all 8
+
+The cleanest geometry available and the one most likely to be right: feed a **non-square**
+input that preserves the native aspect, rounded to a multiple of the backbone stride
+(32 for WideResNet50-2). `sheet_metal` 4224x1056 -> 896x224; `vial` 1400x1900 -> 352x480.
+CNNs are fully convolutional, so this needs no architectural change. Resize masks to the
+same rectangle.
+
+No distortion, no padding, full frame visible, map and mask registered.
+
+**Hypothesis:** E3 >= max(E1, E2) on mean AU-PRO@5% **and** on mean image AUROC.
+
+**Note this changes patch count per scenario**, so hold total patches roughly constant
+against E1 when picking the rectangle, or the comparison confounds geometry with
+resolution — §6's scaling law applies.
+
+**Blocked on:** E1 and E2, for the comparison to mean anything.
+
+---
+
+### E4 — resolution, re-opened under fixed geometry
+
+§6 concluded "resolution is not the lever" from 224/448/768 on `can`. That was measured
+through the broken metric, and the bug is resolution-invariant — which is *exactly* what
+would flatten a real resolution trend into a plateau. **The conclusion is void.**
+
+Re-run the winning geometry from E1-E3 at 224 / 448 / 768, all 8 scenarios, bank cap
+scaled with patch count so coreset *density* is held constant (at a fixed cap the
+effective ratio collapses from 0.55% at 448 to 0.10% at 1024, which confounds the two).
+
+**Hypothesis:** with registration fixed, mean AU-PRO@5% now increases monotonically with
+resolution — the opposite of the current documented finding.
+
+**Blocked on:** E3.
+
+---
+
+### E5 — re-select the fusion routing on `validation`
+
+`ad2_feature_fusion.py` routes each scenario to a backbone via a hardcoded if-chain. Two
+problems: the routing was chosen against `test_public` (§0 rule 5 — that makes it not a
+benchmark number), and it was chosen against pre-bug AU-PRO, so the evidence it was fitted
+to no longer exists.
+
+Re-select on the `validation` split under the E3 geometry, then report the held-out
+`test_public` score once, without further adjustment.
+
+**Hypothesis:** validation-selected routing beats single-best-backbone on mean AU-PRO@5%.
+
+**Report honestly regardless:** the current fusion numbers are a **13.5% regression** on
+mean AU-PRO@5% (0.1306 -> 0.1130, improved 3/8, regressed 5/8) even though the README
+calls them "all-time project records" — true for image and pixel AUROC only. Whatever E5
+returns, correct that claim.
+
+**Blocked on:** E3.
+
+---
+
+### E6 — replace the synthetic Triton bank
+
+`deployment/triton_models/patchcore/1/bank.npy` is **not a real memory bank**: 49.7% of
+its values are negative, which post-ReLU features cannot be, and its row norms sit at
+39.78 ~ sqrt(1536). The threshold is hardcoded at `export_bank.py:282` and
+`coreset_size` is 500 on CPU. The README's "6.34 ms / 157 FPS" was measured against this,
+so that figure describes nothing.
+
+Fit and export a real bank from a chosen scenario, re-measure latency on GPU, and correct
+the README.
+
+**Hypothesis:** real-bank latency is materially worse than 6.34 ms once the bank is a
+realistic size. Report the honest number and the bank size it corresponds to.
+
+**Not blocked** — independent of the geometry work, and safe to run in parallel.
 
 ---
 

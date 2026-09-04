@@ -93,6 +93,48 @@ def find_mask(gt_dir, bad_path):
     return hits[0] if hits else None
 
 
+def squash_transform(ex):
+    """Replace timm's resize-then-centre-crop with a direct squash to (img, img).
+
+    timm's eval transform resizes the short side to img/crop_pct and centre-crops. That
+    is right for ImageNet, where the subject is centred and the frame is roughly square.
+    On AD 2 it is wrong twice over.
+
+    First, the images are strongly non-square and the aspect differs per scenario, so the
+    crop discards a different slice of each: sheet_metal is 4224x1056 and keeps 21.9% of
+    its width, can is 2232x1024 and keeps 40.1%. Defects outside the crop are simply not
+    visible to the model.
+
+    Second - and this is the part that matters for the metric - the ground-truth masks are
+    squashed FULL-FRAME to EVAL_SIDE (see main). So the anomaly map covers a centre
+    sub-rectangle stretched to a square while the mask covers the whole image stretched to
+    a square. They are in different coordinate frames, and by a different amount in each
+    scenario.
+
+    That misregistration is nearly invisible to the two metrics we had been reading as
+    "fine" and fatal to the one we could not explain:
+
+      image AUROC  - a max over patches. A defect anywhere in the visible region still
+                     scores high, so this barely moves (we measured 0.663 vs 0.659 published).
+      pixel AUROC  - dominated by the overwhelming mass of correctly-scored normal pixels
+                     (0.733 vs 0.763).
+      AU-PRO       - per-region overlap. It is the only one of the three that requires the
+                     map and the mask to be spatially registered, and it collapsed (0.13
+                     vs 0.76).
+
+    It is also resolution-invariant, because crop_pct is constant - which is why pushing
+    the input to 768 and 1024 never recovered anything.
+    """
+    from torchvision import transforms as T
+    norm = [t for t in ex.tfm.transforms if isinstance(t, T.Normalize)][0]
+    ex.tfm = T.Compose([
+        T.Resize((ex.img, ex.img), interpolation=T.InterpolationMode.BICUBIC),
+        T.ToTensor(),
+        norm,
+    ])
+    return ex
+
+
 @torch.no_grad()
 def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8):
     """Returns (image_scores, list of HxW float maps at EVAL_SIDE resolution)."""
@@ -146,6 +188,10 @@ def main():
                     help="override input resolution. AD 2 images are ~2448x2048; the "
                          "default 224 is a 10x linear downsample that erases the small "
                          "defects the benchmark is built around.")
+    ap.add_argument("--squash", action="store_true",
+                    help="resize straight to (img,img) instead of resize+centre-crop, so "
+                         "the anomaly map and the ground-truth mask share one coordinate "
+                         "frame. See squash_transform.")
     args = ap.parse_args()
 
     os.makedirs("outputs", exist_ok=True)
@@ -158,8 +204,10 @@ def main():
         arm["img"] = args.img
         arm["tag"] = f"{ARM['name']}_{args.img}"
     ex = sb.PatchExtractor(arm)
+    if args.squash:
+        squash_transform(ex)
     summary = {"arm": arm["tag"], "img": arm["img"], "root": AD2_ROOT, "coreset_ratio": CORESET_RATIO,
-               "eval_side": EVAL_SIDE, "bank_cap": args.bank_cap, "gauss_sigma": GAUSS_SIGMA, "nbins": NBINS,
+               "eval_side": EVAL_SIDE, "bank_cap": args.bank_cap, "squash": args.squash, "gauss_sigma": GAUSS_SIGMA, "nbins": NBINS,
                "device": torch.cuda.get_device_name(0) if sb.DEVICE == "cuda" else "cpu",
                "torch": torch.__version__, "scenarios": {}}
 

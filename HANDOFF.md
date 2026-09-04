@@ -176,17 +176,23 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Run E4a** (§7). E0-E3 are done, but the geometry comparison they were meant to settle is
-**not** settled: E1, E2 and E3 were each scored against a different set of ground-truth
-regions, because the region set is derived after the masks are resized into each geometry's
-own evaluation frame. `sheet_metal` alone went 1539 / 426 / 1101 regions across the three.
+**Run E4** (§7) — the worker's plan for it is approved with four modifications, listed in
+that section. Geometry is settled as **aspect-preserving** (E3R, 0.3429 mean AU-PRO@5%,
++0.0290 over squash on a fixed region set), so E4-E7 are all unblocked.
 
-81% of E3's apparent margin over E1 comes from that one scenario; over the other seven it
-wins by 0.0047 and loses on three. **No geometry winner has been established**, and E4-E7
-all depend on one, so E4a blocks the rest of the queue.
+**E8** (replace the synthetic Triton bank) remains independent and can run in parallel.
 
-**E8** (replace the synthetic Triton bank) is independent of all of this and can be picked
-up in parallel.
+Current standing on AD 2, arm A at 448px, fixed native region set:
+
+| metric | ours (E3R) | published baseline |
+|---|---|---|
+| image AUROC | **0.724** | 0.659 |
+| pixel AUROC | **0.849** | 0.763 |
+| AU-PRO@5% | 0.343 | 0.764 |
+
+Two of three now exceed the published baseline. The AU-PRO gap is down from 5.8x to 2.2x
+and is the open problem; E4 and E5 are the two remaining protocol/resolution hypotheses
+for it.
 
 ---
 
@@ -422,54 +428,55 @@ single piece of evidence that the remaining gap is not a modelling deficiency.
 where image AUROC got *worse*. Squash buys registration and pays in distortion, so two
 alternatives were tested.
 
-### Geometry comparison — and why it is not yet settled
+### Geometry comparison — settled: aspect-preserving wins
 
-| run | geometry | mean AU-PRO@5% | mean I-AUROC | verdict |
-|---|---|---|---|---|
-| (baseline) | crop | 0.1306 | 0.663 | void — the bug above |
-| E1 | squash | 0.3006 | 0.718 | supports |
-| E2 | letterbox | 0.2792 | 0.670 | **refutes** |
-| E3 | aspect-preserving | 0.3225 | 0.724 | **inconclusive** |
+The first comparison was invalid. `evaluate` derived regions by labelling the mask *after*
+resizing it into each geometry's own evaluation frame, then dropped components under
+`MIN_REGION_PX = 4`. Each geometry crushed a different subset below the threshold and
+scored a **different population of ground-truth regions** — `sheet_metal` alone came out at
+1539 / 426 / 1101 across the three. Dropping small regions makes the test *easier*, because
+AU-PRO weights every region equally and the small ones are the hard ones.
 
-**Letterbox lost on both axes** (E2). It was the intuitive fix — registration without
-distortion — and it underperformed squash on AU-PRO *and* on image AUROC. The likely
-mechanism is named in §7 E2: padding is perfectly uniform, sits far off the normal
-manifold, and the `avg_pool2d(k=3)` neighbourhood aggregation bleeds it into genuine
-border patches. Excluding padded pixels from the metric does not undo that.
+**E4a fixed it** by labelling regions once at native mask resolution with a 77-native-pixel
+floor, carrying the label map into each evaluation frame, and scoring a region that is
+erased by downsampling as PRO = 0 rather than dropping it. Region counts are now
+**bit-identical across geometries** (1,530 total: 66 / 120 / 216 / 114 / 444 / 168 / 90 /
+312). Only then are the geometries comparable:
 
-**Aspect-preserving appears to win, but the comparison is invalid** and the margin is
-probably an artifact. `evaluate` derives regions by labelling the mask *after* resizing it
-into each geometry's own evaluation frame, then drops components under `MIN_REGION_PX = 4`.
-Each geometry therefore crushes a different subset below the threshold and **scores a
-different population of ground-truth regions**:
-
-| scenario | E1 regions | E2 | E3 |
+| run | geometry | mean AU-PRO@5% | mean I-AUROC |
 |---|---|---|---|
-| sheet_metal | 1539 | 426 | 1101 |
-| fruit_jelly | 320 | 244 | 252 |
-| fabric | 150 | 120 | 114 |
+| (baseline) | crop | 0.1306 | 0.663 |
+| E2R | letterbox | 0.2932 | 0.670 |
+| E1R | squash | 0.3139 | 0.697 |
+| **E3R** | **aspect-preserving** | **0.3429** | **0.724** |
 
-Dropping small regions makes the test *easier*, because AU-PRO weights every region equally
-and the small ones are the hard ones. Decomposing E3's +0.0219 margin over E1:
-**`sheet_metal` alone contributes +0.0178 — 81% of it** — and that is also the scenario
-whose region count moved most. Over the other seven, E3 wins by +0.0047 and **loses on
-three**.
+**Aspect wins on both axes and the margin is real.** +0.0290 over squash, above the 0.01
+equivalence threshold. `sheet_metal` accounts for 55% of it and aspect wins 5 of the other
+7 scenarios, so it is not a single-scenario effect.
 
-So: **no geometry winner has been established.** E1's 2.3x over the broken baseline is
-solid — it is far larger than any region-set effect and the region counts there define the
-reference. The choice *between* squash, letterbox and aspect is not. §7 E4a fixes the
-region set at native resolution and re-scores all three; until it lands, quote E1 and treat
-the geometry question as open.
+**Letterbox lost on both axes.** It was the intuitive fix — registration without distortion
+— and it came last. The likely mechanism is in §7 E2: padding is perfectly uniform, sits
+far off the normal manifold, and `avg_pool2d(k=3)` bleeds it into genuine border patches.
+Excluding padded pixels from the metric does not undo that.
 
-**The guard that would have caught the original bug** did not exist: nothing asserted that
-a synthetic map at a known location scores high against a mask at that same location. E0
-now does, parameterised over geometry, with shifted cases so it cannot pass trivially —
-`crop` scores 0.019 and `squash` 1.000. It does not yet cover `aspect`.
+**Worth recording, because the prediction was wrong.** The planner predicted that fixing
+the region set would shrink aspect's margin below 0.01 and leave it tied with squash. The
+opposite happened: the margin *grew* from +0.0219 to +0.0290, `sheet_metal`'s share fell
+from 81% to 55%, and aspect went from losing 3 of 7 non-`sheet_metal` scenarios to losing
+2. **The confound was masking a real effect, not manufacturing one.** A confound is a reason
+to distrust a number in either direction, not a reason to assume the number is inflated.
 
-**The general lesson, which is the same one twice:** both this and the coordinate-frame bug
-were *evaluation-protocol* defects that left image AUROC nearly untouched and moved AU-PRO
-enormously. When a localisation number changes, check what the metric is being computed
-over before concluding anything about the model.
+**The guard that would have caught the original coordinate-frame bug** did not exist:
+nothing asserted that a synthetic map at a known location scores high against a mask at the
+same location. E0 now does, parameterised over geometry, with shifted cases so it cannot
+pass trivially — `crop` scores 0.019 and `squash` 1.000. It does not yet cover `aspect`.
+
+**The general lesson, now the same one three times.** The coordinate-frame bug, the region
+set confound, and (pending) the evaluation-frame question are all *evaluation-protocol*
+defects. Every one left image AUROC nearly untouched while moving AU-PRO substantially.
+When a localisation number moves on this project, check what the metric is computed over
+before concluding anything about the model.
+
 
 ### What AD 2 actually measures — read this before trusting any single scenario
 
@@ -592,14 +599,14 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E1~~ | squash geometry | — | — | **done, 0.131 -> 0.301** |
 | ~~E2~~ | letterbox geometry | — | — | **done, refutes** |
 | ~~E3~~ | aspect-preserving rectangles | E2 | — | **done, inconclusive** |
-| **E4a** | fix region set, re-score E1/E2/E3 | — | yes | ~1 h |
-| E4 | eval protocol: `EVAL_SIDE`, sigma, min region | E4a | yes | ~1 h |
+| ~~E4a~~ | fix region set, re-score E1/E2/E3 | — | — | **done, supports** |
+| **E4** | eval protocol: `EVAL_SIDE`, sigma | — | yes | ~1 h |
 | E5 | input resolution, re-opened | E4 | yes | hours (16x at 768) |
 | E6 | coreset density, re-checked | E4 | yes | ~1 h |
 | E7 | fusion routing re-selected on `validation` | E4 | yes | ~1 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
 
-**E4a is the one to start with.** E8 is independent of everything and can run in
+**E4 is the one to start with.** Geometry is settled: `aspect`. E8 is independent of everything and can run in
 parallel or first if the pod is otherwise occupied.
 
 The chain E2 -> E3 -> E4 exists because each fixes the configuration the next one varies
@@ -753,7 +760,7 @@ CNN arm and note the limitation rather than working around it.
 
 ---
 
-### E4a — fix the region set before comparing geometries  **<- NEXT, and it blocks the geometry decision**
+### E4a — fix the region set before comparing geometries  **DONE** — supports; region sets now bit-identical (1530), and it *raised* aspect's margin
 
 **Audit finding, 2026-09-04. E3's "supports" verdict does not hold up and the geometry
 winner cannot be declared until this is fixed.**
@@ -822,54 +829,61 @@ cheaper one wins. Do not go looking for a configuration that restores E3's lead.
 
 ---
 
-### E4 — evaluation protocol: `EVAL_SIDE`, smoothing scale, minimum region
+### E4 — evaluation protocol: `EVAL_SIDE` and smoothing scale  **<- NEXT (plan approved with modifications)**
 
-**Highest-value item after the geometry work, and cheap.**
+**Geometry is settled: `aspect`** (E3R, +0.0290 over squash — see §6). Hold `img = 448`,
+`bank-cap 4000`. Sweep `EVAL_SIDE` in {512, 1024, 2048} with `GAUSS_SIGMA` scaled
+proportionally {4.0, 8.0, 16.0} so native-space blur is constant. Three runs, one per arm.
 
-The last 2.3x came from an evaluation-protocol bug, not a modelling change. There is a
-second protocol difference against the paper that has never been tested, and it has the
-same shape.
+**The worker's plan for this is approved.** The four modifications below are the whole
+delta; everything else in it stands.
 
-We compare maps and masks at `EVAL_SIDE = 512`. The masks are native (up to 2448x2048),
-so **one eval pixel is ~4.8 x 4.0 native pixels**. Then `MIN_REGION_PX = 4` drops any
-component smaller than 4 eval pixels — roughly **77 native pixels**. AU-PRO weights every
-region *equally regardless of size*, so a small region crushed below that threshold is not
-merely measured badly, it is deleted from the denominator; and one surviving at 2-3 pixels
-cannot be localised well by any detector.
+**M1 — the `MIN_REGION_PX` scaling arm from the original spec is retired.** It asked for a
+second arm scaling the minimum region with `EVAL_SIDE` to separate "we resolve small
+regions better" from "we count more of them". E4a made that obsolete: regions are now
+labelled at native resolution with a fixed 77-native-pixel floor, so the region set is
+already invariant to `EVAL_SIDE` and only the first mechanism can operate. Dropping the arm
+is correct — do not run it.
 
-`sheet_metal` has 1,539 regions of hairline defects, `walnuts` 450. Those are exactly the
-scenarios where this would bite hardest, and two of our three worst.
+**M2 — `n_regions` must be asserted constant at 1530 across all three arms**, not merely
+reported. That invariance is the entire reason this sweep is interpretable, and it is
+exactly the property that silently broke between E1 and E3. `aupro.py` already handles it
+correctly (a region with zero eval-frame pixels contributes a zero histogram, scoring
+PRO=0 and staying in the denominator), so this is a guard on a property that currently
+holds, not a change.
 
-`GAUSS_SIGMA = 4.0` compounds it: that is 4 pixels *of the 512 map*, i.e. ~19 native
-pixels of blur. If `EVAL_SIDE` changes, effective smoothing changes with it, so **sigma
-must be scaled to hold constant native-pixel blur** or this becomes a two-variable
-experiment.
+**M3 — record `n_active_regions` per scenario per arm, including at 512.** The plan adds
+it; make sure the 512 arm reports it too, because **it is the number that determines
+whether this experiment can do anything at all.** If almost no regions are inactive at 512,
+there is nothing for higher `EVAL_SIDE` to recover through this mechanism, and the stated
+hypothesis is wrong for a reason worth knowing.
 
-**Sweep `EVAL_SIDE` in {512, 1024, 2048}** at the winning geometry, all 8 scenarios, sigma
-scaled proportionally (4.0 -> 8.0 -> 16.0).
+A rough prior, so it can be checked rather than assumed: `sheet_metal` is 4224x1056, and a
+512-nominal aspect frame for a 4:1 image is about 1024x256, a ~4.1x linear downscale. A
+region at the 77-native-pixel floor lands at roughly 4-5 eval pixels — small, but not
+erased. **If that holds, few regions are inactive at 512 and the gain from this sweep will
+be modest.** Report the count first and read the AU-PRO numbers in light of it.
 
-**Hypothesis:** mean AU-PRO@5% rises with `EVAL_SIDE`, and the gain concentrates in the
-high-region-count scenarios (`sheet_metal`, `walnuts`, `fruit_jelly`).
+**M4 — record `peak_rss_mb` in each run record, not just assert it.** The plan asserts
+< 50,000 MB against the 58 GiB cgroup ceiling, which is right, but an asserted number that
+is not written down cannot be audited or compared. The `np.concatenate` blocker named in
+the original spec has already been fixed, so 2048 should fit comfortably; record what it
+actually costs.
 
-**Report `n_regions` per scenario per setting — that is the primary evidence, not a
-secondary statistic.** If region counts climb sharply with `EVAL_SIDE`, small defects were
-being deleted by the downsample and the metric was never measuring them at all.
+**One verdict for the sweep, not three.** The hypothesis is about a *trend across* arms, so
+three per-run hypothesis strings cannot each be adjudicated. Give each run a neutral
+descriptive hypothesis and record a single `supports`/`refutes` for E4 as a whole.
 
-Also run one arm with `MIN_REGION_PX` scaled to hold constant *native* area (4 -> 16 ->
-64), to separate "we now resolve small regions" from "we now count more of them".
+**Hypothesis (unchanged):** mean AU-PRO@5% rises with `EVAL_SIDE`, and the gain concentrates
+in the high-region-count scenarios (`sheet_metal`, `walnuts`, `fruit_jelly`).
 
-**Memory — read before launching.** The container cgroup limit is **58 GiB**, not the
-host's 503 GB. That is what OOM'd a previous run at 37 GB and may be what killed E1
-silently. At `EVAL_SIDE=2048`, 500 maps of 2048^2 float32 is ~8 GB, and
-`ad2_pixel_eval.main` currently does:
+**Read a flat result correctly.** The anomaly map is upsampled from a ~56x56 patch grid
+fixed by `img = 448`. No evaluation frame can recover detail the grid never had, so this
+sweep has a ceiling set by input resolution. **If E4 comes back flat, that is evidence the
+ceiling is binding — it is E5's cue, not proof that evaluation resolution is irrelevant.**
+Say which of the two it looks like; do not report "no effect" without that distinction.
 
-    allv = np.concatenate([m.ravel() for m in (m_good + m_bad)])
-
-which **copies every map again** purely to get `min` and `max`. Replace it with a
-streaming pass before running E4 — wasteful even at 512, a hard blocker at 2048. Record
-peak RSS in the run record.
-
-**Blocked on:** E4a — the geometry winner is not yet decided.
+**Blocked on:** nothing. E4a settled the geometry.
 
 ---
 

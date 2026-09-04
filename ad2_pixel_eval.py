@@ -194,7 +194,7 @@ def aspect_transform(ex, w_in, h_in):
 
 
 @torch.no_grad()
-def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None, eval_shape=(EVAL_SIDE, EVAL_SIDE)):
+def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None, eval_shape=(EVAL_SIDE, EVAL_SIDE), gauss_sigma=GAUSS_SIGMA):
     """Returns (image_scores, list of HxW float maps at eval_shape resolution)."""
     scores, maps = [], []
     for i in range(0, len(paths), batch):
@@ -213,10 +213,10 @@ def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None, eva
         # UPSAMPLE FIRST, then smooth at pixel scale.
         up = F.interpolate(g, size=eval_shape, mode="bilinear",
                            align_corners=False)
-        if GAUSS_SIGMA > 0:
-            r = int(3 * GAUSS_SIGMA)
+        if gauss_sigma > 0:
+            r = int(3 * gauss_sigma)
             xs = torch.arange(-r, r + 1, device=up.device, dtype=up.dtype)
-            kern = torch.exp(-(xs ** 2) / (2 * GAUSS_SIGMA ** 2))
+            kern = torch.exp(-(xs ** 2) / (2 * gauss_sigma ** 2))
             kern = kern / kern.sum()
             # separable: rows then columns, so cost is linear in kernel width
             up = F.conv2d(F.pad(up, (r, r, 0, 0), mode="replicate"),
@@ -241,6 +241,10 @@ def main():
                     help="cap the memory bank in absolute vectors.")
     ap.add_argument("--img", type=int, default=0,
                     help="override input resolution.")
+    ap.add_argument("--eval-side", type=int, default=EVAL_SIDE,
+                    help=f"Nominal side length for evaluation frame (default: {EVAL_SIDE})")
+    ap.add_argument("--gauss-sigma", type=float, default=GAUSS_SIGMA,
+                    help=f"Gaussian smoothing sigma for anomaly maps (default: {GAUSS_SIGMA})")
     ap.add_argument("--geometry", choices=["crop", "squash", "letterbox", "aspect"], default="crop",
                     help="Coordinate frame geometry (crop, squash, letterbox, or aspect)")
     ap.add_argument("--squash", action="store_true", help=argparse.SUPPRESS)
@@ -251,6 +255,8 @@ def main():
                     help="Minimum native pixel area to keep a defect component (E4a fixed regions)")
     ap.add_argument("--no-fixed-regions", action="store_true",
                     help="Disable native fixed region sets and use legacy post-resize connected components")
+    ap.add_argument("--resume", action="store_true",
+                    help="Resume evaluation by reusing scenarios already computed in output JSON")
     args = ap.parse_args()
 
     if args.squash:
@@ -300,8 +306,8 @@ def main():
         "config": {
             "img": arm["img"],
             "bank_cap": args.bank_cap,
-            "eval_side": EVAL_SIDE,
-            "gauss_sigma": GAUSS_SIGMA,
+            "eval_side": args.eval_side,
+            "gauss_sigma": args.gauss_sigma,
             "coreset_ratio": CORESET_RATIO,
             "geometry": args.geometry,
             "fixed_regions": not args.no_fixed_regions,
@@ -312,6 +318,17 @@ def main():
     }
 
     for sc in scenarios:
+        if args.resume and os.path.isfile(args.out):
+            try:
+                with open(args.out) as f:
+                    prev = json.load(f)
+                if sc in prev.get("scenarios", {}) and prev["scenarios"][sc].get("au_pro@0.05") is not None:
+                    print(f"{sc:<13} already computed in {args.out}, reusing", flush=True)
+                    summary["scenarios"][sc] = prev["scenarios"][sc]
+                    continue
+            except Exception:
+                pass
+
         t0 = time.time()
         train, val, good, bad, gt_dir = load_paths(sc)
         if args.limit:
@@ -332,16 +349,16 @@ def main():
         # Inspect scenario native image resolution for letterbox or aspect geometry
         valid = None
         valid_grid = None
-        eval_shape = (EVAL_SIDE, EVAL_SIDE)
+        eval_shape = (args.eval_side, args.eval_side)
         if args.geometry == "letterbox":
             sample_im = Image.open(train[0])
             w, h = sample_im.size
-            s_eval = EVAL_SIDE / max(w, h)
+            s_eval = args.eval_side / max(w, h)
             nw_eval, nh_eval = int(round(w * s_eval)), int(round(h * s_eval))
-            pad_left_eval = (EVAL_SIDE - nw_eval) // 2
-            pad_top_eval = (EVAL_SIDE - nh_eval) // 2
+            pad_left_eval = (args.eval_side - nw_eval) // 2
+            pad_top_eval = (args.eval_side - nh_eval) // 2
 
-            valid = np.zeros((EVAL_SIDE, EVAL_SIDE), bool)
+            valid = np.zeros((args.eval_side, args.eval_side), bool)
             valid[pad_top_eval:pad_top_eval + nh_eval, pad_left_eval:pad_left_eval + nw_eval] = True
 
             # Patch grid bounds
@@ -364,18 +381,26 @@ def main():
             w_nat, h_nat = sample_im.size
             w_in, h_in = aspect_dimensions(w_nat, h_nat, target_img=arm["img"], stride=32)
             aspect_transform(ex, w_in, h_in)
-            eval_shape = (h_in, w_in)
+            eval_w, eval_h = aspect_dimensions(w_nat, h_nat, target_img=args.eval_side, stride=32)
+            eval_shape = (eval_h, eval_w)
 
         # Bank from train
         f_tr = sb.extract_paths(ex, train, _POOL)
         n_patches = ex.grid[0] * ex.grid[1]
         keep = sb.coreset_indices(f_tr, ratio=CORESET_RATIO, seed=SEED,
                                   max_k=args.bank_cap or None)
-        bank = f_tr[keep]
+        bank = f_tr[keep].clone()
         del f_tr
+        import gc
+        gc.collect()
+        try:
+            import ctypes
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except Exception:
+            pass
 
-        s_good, m_good = anomaly_maps(ex, bank, good, n_patches, ex.grid, valid_grid=valid_grid, eval_shape=eval_shape)
-        s_bad, m_bad = anomaly_maps(ex, bank, bad, n_patches, ex.grid, valid_grid=valid_grid, eval_shape=eval_shape)
+        s_good, m_good = anomaly_maps(ex, bank, good, n_patches, ex.grid, valid_grid=valid_grid, eval_shape=eval_shape, gauss_sigma=args.gauss_sigma)
+        s_bad, m_bad = anomaly_maps(ex, bank, bad, n_patches, ex.grid, valid_grid=valid_grid, eval_shape=eval_shape, gauss_sigma=args.gauss_sigma)
 
         masks = []
         region_labels = []
@@ -400,18 +425,18 @@ def main():
 
                 # Resize clean_labels into evaluation space with NEAREST
                 if args.geometry == "letterbox":
-                    s_m = EVAL_SIDE / max(w_nat, h_nat)
+                    s_m = args.eval_side / max(w_nat, h_nat)
                     nmw, nmh = int(round(w_nat * s_m)), int(round(h_nat * s_m))
                     res_labels = np.array(Image.fromarray(clean_labels, mode="I").resize((nmw, nmh), Image.NEAREST))
-                    pad_l = (EVAL_SIDE - nmw) // 2
-                    pad_t = (EVAL_SIDE - nmh) // 2
-                    eval_labels = np.zeros((EVAL_SIDE, EVAL_SIDE), dtype=np.int32)
+                    pad_l = (args.eval_side - nmw) // 2
+                    pad_t = (args.eval_side - nmh) // 2
+                    eval_labels = np.zeros((args.eval_side, args.eval_side), dtype=np.int32)
                     eval_labels[pad_t:pad_t + nmh, pad_l:pad_l + nmw] = res_labels
                 elif args.geometry == "aspect":
                     eval_h, eval_w = eval_shape
                     eval_labels = np.array(Image.fromarray(clean_labels, mode="I").resize((eval_w, eval_h), Image.NEAREST))
                 else:  # squash or crop
-                    eval_labels = np.array(Image.fromarray(clean_labels, mode="I").resize((EVAL_SIDE, EVAL_SIDE), Image.NEAREST))
+                    eval_labels = np.array(Image.fromarray(clean_labels, mode="I").resize((args.eval_side, args.eval_side), Image.NEAREST))
 
                 eval_mask = eval_labels > 0
                 masks.append(eval_mask)
@@ -419,12 +444,12 @@ def main():
             else:
                 # Legacy behavior
                 if args.geometry == "letterbox":
-                    s_m = EVAL_SIDE / max(w_nat, h_nat)
+                    s_m = args.eval_side / max(w_nat, h_nat)
                     nmw, nmh = int(round(w_nat * s_m)), int(round(h_nat * s_m))
                     m_res = im_native.resize((nmw, nmh), Image.NEAREST)
-                    pad_l = (EVAL_SIDE - nmw) // 2
-                    pad_t = (EVAL_SIDE - nmh) // 2
-                    m_eval = np.zeros((EVAL_SIDE, EVAL_SIDE), bool)
+                    pad_l = (args.eval_side - nmw) // 2
+                    pad_t = (args.eval_side - nmh) // 2
+                    m_eval = np.zeros((args.eval_side, args.eval_side), bool)
                     m_eval[pad_t:pad_t + nmh, pad_l:pad_l + nmw] = np.array(m_res) > 127
                     masks.append(m_eval)
                 elif args.geometry == "aspect":
@@ -432,7 +457,7 @@ def main():
                     a = np.array(im_native.resize((eval_w, eval_h), Image.NEAREST))
                     masks.append(a > 127)
                 else:
-                    a = np.array(im_native.resize((EVAL_SIDE, EVAL_SIDE), Image.NEAREST))
+                    a = np.array(im_native.resize((args.eval_side, args.eval_side), Image.NEAREST))
                     masks.append(a > 127)
 
         truth = np.r_[np.zeros(len(s_good), int), np.ones(len(s_bad), int)]
@@ -458,13 +483,16 @@ def main():
             "bank_size": int(len(keep)), "seconds": round(time.time() - t0, 1),
             "grid": list(ex.grid), "n_patches": int(n_patches),
             "native_regions": int(total_native_regions) if use_fixed_regions else res["n_regions"],
+            "n_active_regions": res.get("n_active_regions", res["n_regions"]),
+            "eval_shape": list(eval_shape),
         })
         summary["scenarios"][sc] = res
         pix_str = f"{res['pixel_auroc']:.4f}" if res['pixel_auroc'] is not None else "  None"
+        act_str = f"({res['n_active_regions']}/{res['n_regions']} act)"
         print(f"{sc:<13} img {img_auroc:.4f}  pix {pix_str}  "
               f"AU-PRO@5% {res.get('au_pro@0.05')!s:>7.7}  "
               f"@30% {res.get('au_pro@0.3')!s:>7.7}  "
-              f"regions {res['n_regions']:>4}  {res['seconds']:.0f}s", flush=True)
+              f"regs {act_str:>14}  {res['seconds']:.0f}s", flush=True)
 
         try:
             import resource
@@ -481,6 +509,12 @@ def main():
         del bank, m_good, m_bad
         if sb.DEVICE == "cuda":
             torch.cuda.empty_cache()
+        gc.collect()
+        try:
+            import ctypes
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except Exception:
+            pass
 
     done = [v for v in summary["scenarios"].values() if v.get("au_pro@0.05") is not None]
     if done:
@@ -489,14 +523,34 @@ def main():
         for lim in PRO_LIMITS:
             summary[f"mean_au_pro@{lim}"] = float(
                 np.mean([v[f"au_pro@{lim}"] for v in done]))
+
+        total_suite_regions = sum(s["n_regions"] for s in done)
+        total_active = sum(s["n_active_regions"] for s in done)
+        summary["total_regions"] = total_suite_regions
+        summary["total_active_regions"] = total_active
+
+        if not args.no_fixed_regions and len(done) == 8:
+            assert total_suite_regions == 1530, (
+                f"Suite total region count must be exactly 1530 across all 8 scenarios, got {total_suite_regions}"
+            )
+
         print(f"\nmean image AUROC {summary['mean_image_auroc']:.4f}   "
               f"pixel AUROC {summary['mean_pixel_auroc']:.4f}   "
               f"AU-PRO@5% {summary['mean_au_pro@0.05']:.4f}   "
-              f"AU-PRO@30% {summary['mean_au_pro@0.3']:.4f}")
+              f"AU-PRO@30% {summary['mean_au_pro@0.3']:.4f}   "
+              f"active {total_active}/{total_suite_regions}")
+    try:
+        import resource
+        peak_rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        if sys.platform.startswith("linux"):
+            peak_rss_mb = peak_rss_mb / 1024.0
+        summary["peak_rss_mb"] = round(peak_rss_mb, 1)
+    except Exception:
+        pass
     summary["wall_seconds"] = round(time.time() - t_start, 1)
     with open(args.out, "w") as f:
         json.dump(summary, f, indent=2)
-    print(f"wrote {args.out}")
+    print(f"wrote {args.out} (peak RSS: {summary.get('peak_rss_mb', 'N/A')} MB)")
 
 
 if __name__ == "__main__":

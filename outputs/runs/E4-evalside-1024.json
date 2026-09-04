@@ -1,0 +1,228 @@
+{
+  "run_id": "E4-evalside-1024",
+  "hypothesis": "mean AU-PRO@5% rises with EVAL_SIDE=1024 on high-region scenarios",
+  "command": "ad2_pixel_eval.py --img 448 --bank-cap 4000 --geometry aspect --eval-side 1024 --gauss-sigma 8.0 --resume --run-id E4-evalside-1024 --hypothesis mean AU-PRO@5% rises with EVAL_SIDE=1024 on high-region scenarios --out outputs/runs/E4-evalside-1024.json",
+  "code_sha256": {
+    "ad2_pixel_eval.py": "5d43304b",
+    "sweep_backbones.py": "0c2365c5",
+    "aupro.py": "cca90140"
+  },
+  "started_utc": "2026-09-04T22:43:02Z",
+  "wall_seconds": 814.2,
+  "env": {
+    "gpu": "NVIDIA RTX 4000 Ada Generation",
+    "torch": "2.14.0+cu130"
+  },
+  "config": {
+    "img": 448,
+    "bank_cap": 4000,
+    "eval_side": 1024,
+    "gauss_sigma": 8.0,
+    "coreset_ratio": 0.01,
+    "geometry": "aspect",
+    "fixed_regions": true,
+    "native_min_region_px": 77
+  },
+  "scenarios": {
+    "can": {
+      "n_regions": 66,
+      "n_active_regions": 66,
+      "pixel_auroc": 0.7373281245772882,
+      "au_pro@0.05": 0.14056909757901895,
+      "au_pro@0.3": 0.3442607217008331,
+      "image_auroc": 0.5140432098765432,
+      "n_train": 412,
+      "n_val": 46,
+      "n_good": 72,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 121.4,
+      "grid": [
+        36,
+        84
+      ],
+      "n_patches": 3024,
+      "native_regions": 66,
+      "eval_shape": [
+        704,
+        1504
+      ]
+    },
+    "fabric": {
+      "n_regions": 120,
+      "n_active_regions": 120,
+      "pixel_auroc": 0.6177675084205512,
+      "au_pro@0.05": 0.18623897098126319,
+      "au_pro@0.3": 0.4581333264841157,
+      "image_auroc": 0.607912457912458,
+      "n_train": 387,
+      "n_val": 43,
+      "n_good": 66,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 135.0,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 120,
+      "eval_shape": [
+        928,
+        1120
+      ]
+    },
+    "fruit_jelly": {
+      "n_regions": 216,
+      "n_active_regions": 216,
+      "pixel_auroc": 0.9459026243943933,
+      "au_pro@0.05": 0.47606042558818285,
+      "au_pro@0.3": 0.7120877046995344,
+      "image_auroc": 0.9283333333333333,
+      "n_train": 263,
+      "n_val": 37,
+      "n_good": 20,
+      "n_bad": 60,
+      "bank_size": 4000,
+      "seconds": 75.8,
+      "grid": [
+        48,
+        64
+      ],
+      "n_patches": 3072,
+      "native_regions": 216,
+      "eval_shape": [
+        864,
+        1216
+      ]
+    },
+    "rice": {
+      "n_regions": 114,
+      "n_active_regions": 114,
+      "pixel_auroc": 0.8102977562695581,
+      "au_pro@0.05": 0.22604176343029872,
+      "au_pro@0.3": 0.4073778586960205,
+      "image_auroc": 0.6375661375661377,
+      "n_train": 313,
+      "n_val": 35,
+      "n_good": 42,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 105.3,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 114,
+      "eval_shape": [
+        928,
+        1120
+      ]
+    },
+    "sheet_metal": {
+      "n_regions": 444,
+      "n_active_regions": 444,
+      "pixel_auroc": 0.9169045466853363,
+      "au_pro@0.05": 0.2532880295479136,
+      "au_pro@0.3": 0.511374475781297,
+      "image_auroc": 0.7912037037037036,
+      "n_train": 137,
+      "n_val": 19,
+      "n_good": 24,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 52.5,
+      "grid": [
+        28,
+        112
+      ],
+      "n_patches": 3136,
+      "native_regions": 444,
+      "eval_shape": [
+        512,
+        2048
+      ]
+    },
+    "vial": {
+      "n_regions": 168,
+      "n_active_regions": 168,
+      "pixel_auroc": 0.9154589304205567,
+      "au_pro@0.05": 0.719691697185507,
+      "au_pro@0.3": 0.913137554321271,
+      "image_auroc": 0.9551020408163264,
+      "n_train": 291,
+      "n_val": 41,
+      "n_good": 35,
+      "n_bad": 105,
+      "bank_size": 4000,
+      "seconds": 85.4,
+      "grid": [
+        64,
+        48
+      ],
+      "n_patches": 3072,
+      "native_regions": 168,
+      "eval_shape": [
+        1184,
+        864
+      ]
+    },
+    "wallplugs": {
+      "n_regions": 90,
+      "n_active_regions": 90,
+      "pixel_auroc": 0.9087416525280176,
+      "au_pro@0.05": 0.27605274604697966,
+      "au_pro@0.3": 0.48669273614113656,
+      "image_auroc": 0.5409259259259258,
+      "n_train": 293,
+      "n_val": 33,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 93.9,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 90,
+      "eval_shape": [
+        928,
+        1120
+      ]
+    },
+    "walnuts": {
+      "n_regions": 312,
+      "n_active_regions": 312,
+      "pixel_auroc": 0.951783254123338,
+      "au_pro@0.05": 0.47729490304015365,
+      "au_pro@0.3": 0.7456425842637021,
+      "image_auroc": 0.8133333333333334,
+      "n_train": 432,
+      "n_val": 48,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 141.7,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 312,
+      "eval_shape": [
+        928,
+        1120
+      ]
+    }
+  },
+  "deviations": [],
+  "peak_rss_mb": 18098.5,
+  "mean_image_auroc": 0.7235525178084702,
+  "mean_pixel_auroc": 0.8505230496773799,
+  "mean_au_pro@0.05": 0.3444047041749147,
+  "mean_au_pro@0.3": 0.5723383702609888,
+  "total_regions": 1530,
+  "total_active_regions": 1530
+}

@@ -55,6 +55,7 @@ def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIM
     h_norm = np.zeros(nbins)     # every genuinely-normal pixel
     h_anom = np.zeros(nbins)     # every defective pixel
     region_hists = []            # one normalised histogram per connected component
+    n_active_regions = 0
 
     for i, m in enumerate(maps_good):
         v = valid[i] if isinstance(valid, (list, tuple)) else valid
@@ -88,6 +89,7 @@ def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIM
                 npx = int(sel.sum())
                 if npx > 0:
                     region_hists.append(hist(m[sel].ravel()) / npx)
+                    n_active_regions += 1
                 else:
                     # Region was erased by downsampling -> 0 detected pixels -> 0 TPR
                     region_hists.append(np.zeros(nbins))
@@ -98,11 +100,12 @@ def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIM
                 npx = int(sel.sum())
                 if npx >= MIN_REGION_PX:
                     region_hists.append(hist(m[sel].ravel()) / npx)
+                    n_active_regions += 1
 
     fpr = _survival(h_norm)
     tpr = _survival(h_anom)
 
-    out = {"n_regions": len(region_hists), "pixel_auroc": None}
+    out = {"n_regions": len(region_hists), "n_active_regions": n_active_regions, "pixel_auroc": None}
     if h_anom.sum() > 0:
         order = np.argsort(fpr)
         out["pixel_auroc"] = float(np.trapezoid(tpr[order], fpr[order]))

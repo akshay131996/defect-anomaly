@@ -17,7 +17,10 @@ See HANDOFF.md §0 for the output contract and the audit checklist.
 | E1R-squash-448 | squash | 448 | 0.3139 | 0.697 | `59257b20` | re-scored fixed regions |
 | E2R-letterbox-448 | letterbox | 448 | 0.2932 | 0.670 | `59257b20` | re-scored fixed regions |
 | E3R-aspect-448 | aspect | 448 | **0.3429** | **0.724** | `59257b20` | refutes — aspect margin is +0.029 (>0.01 threshold), aspect definitively wins |
-| E4-evalside | | | | | | _pending_ |
+| E4-evalside-512 | aspect | 448 (eval 512) | 0.3444 | 0.724 | `5d43304b` | 1530/1530 active regions |
+| E4-evalside-1024 | aspect | 448 (eval 1024) | 0.3444 | 0.724 | `5d43304b` | 1530/1530 active regions |
+| E4-evalside-2048 | aspect | 448 (eval 2048) | 0.3442 | 0.724 | `5d43304b` | 1530/1530 active regions |
+| E4-evalside-trend | aspect | 448 (sweep) | 0.3444 -> 0.3442 | 0.724 | `5d43304b` | **refutes** — flat across eval resolutions (range 0.0002); input resolution ceiling binds |
 | E5-inputres | | | | | | _pending_ |
 | E6-density | | | | | | _pending_ |
 | E7-fusion-val | | | | | | _pending_ |

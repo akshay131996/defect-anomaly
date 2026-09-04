@@ -1,0 +1,228 @@
+{
+  "run_id": "E4-evalside-512",
+  "hypothesis": "mean AU-PRO@5% benchmark at nominal EVAL_SIDE=512 under winning aspect geometry",
+  "command": "ad2_pixel_eval.py --img 448 --bank-cap 4000 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --resume --run-id E4-evalside-512 --hypothesis mean AU-PRO@5% benchmark at nominal EVAL_SIDE=512 under winning aspect geometry --out outputs/runs/E4-evalside-512.json",
+  "code_sha256": {
+    "ad2_pixel_eval.py": "5d43304b",
+    "sweep_backbones.py": "0c2365c5",
+    "aupro.py": "cca90140"
+  },
+  "started_utc": "2026-09-04T22:35:03Z",
+  "wall_seconds": 468.0,
+  "env": {
+    "gpu": "NVIDIA RTX 4000 Ada Generation",
+    "torch": "2.14.0+cu130"
+  },
+  "config": {
+    "img": 448,
+    "bank_cap": 4000,
+    "eval_side": 512,
+    "gauss_sigma": 4.0,
+    "coreset_ratio": 0.01,
+    "geometry": "aspect",
+    "fixed_regions": true,
+    "native_min_region_px": 77
+  },
+  "scenarios": {
+    "can": {
+      "n_regions": 66,
+      "n_active_regions": 66,
+      "pixel_auroc": 0.7348441757208171,
+      "au_pro@0.05": 0.13847937990183465,
+      "au_pro@0.3": 0.34336149120899717,
+      "image_auroc": 0.5140432098765432,
+      "n_train": 412,
+      "n_val": 46,
+      "n_good": 72,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 114.7,
+      "grid": [
+        36,
+        84
+      ],
+      "n_patches": 3024,
+      "native_regions": 66,
+      "eval_shape": [
+        352,
+        768
+      ]
+    },
+    "fabric": {
+      "n_regions": 120,
+      "n_active_regions": 120,
+      "pixel_auroc": 0.6176185026037004,
+      "au_pro@0.05": 0.18883650653527853,
+      "au_pro@0.3": 0.4619540001470053,
+      "image_auroc": 0.607912457912458,
+      "n_train": 387,
+      "n_val": 43,
+      "n_good": 66,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 143.1,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 120,
+      "eval_shape": [
+        480,
+        544
+      ]
+    },
+    "fruit_jelly": {
+      "n_regions": 216,
+      "n_active_regions": 216,
+      "pixel_auroc": 0.9459646848288572,
+      "au_pro@0.05": 0.4758403001355835,
+      "au_pro@0.3": 0.7128465426002184,
+      "image_auroc": 0.9283333333333333,
+      "n_train": 263,
+      "n_val": 37,
+      "n_good": 20,
+      "n_bad": 60,
+      "bank_size": 4000,
+      "seconds": 76.1,
+      "grid": [
+        48,
+        64
+      ],
+      "n_patches": 3072,
+      "native_regions": 216,
+      "eval_shape": [
+        448,
+        608
+      ]
+    },
+    "rice": {
+      "n_regions": 114,
+      "n_active_regions": 114,
+      "pixel_auroc": 0.8100918429078672,
+      "au_pro@0.05": 0.22634557399685817,
+      "au_pro@0.3": 0.4076593468205487,
+      "image_auroc": 0.6375661375661377,
+      "n_train": 313,
+      "n_val": 35,
+      "n_good": 42,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 102.3,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 114,
+      "eval_shape": [
+        480,
+        544
+      ]
+    },
+    "sheet_metal": {
+      "n_regions": 444,
+      "n_active_regions": 444,
+      "pixel_auroc": 0.9166338519937676,
+      "au_pro@0.05": 0.25292358522555564,
+      "au_pro@0.3": 0.5134679157168687,
+      "image_auroc": 0.7912037037037036,
+      "n_train": 137,
+      "n_val": 19,
+      "n_good": 24,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 50.3,
+      "grid": [
+        28,
+        112
+      ],
+      "n_patches": 3136,
+      "native_regions": 444,
+      "eval_shape": [
+        256,
+        1024
+      ]
+    },
+    "vial": {
+      "n_regions": 168,
+      "n_active_regions": 168,
+      "pixel_auroc": 0.9151568756244166,
+      "au_pro@0.05": 0.7190863253076224,
+      "au_pro@0.3": 0.912878811919952,
+      "image_auroc": 0.9551020408163264,
+      "n_train": 291,
+      "n_val": 41,
+      "n_good": 35,
+      "n_bad": 105,
+      "bank_size": 4000,
+      "seconds": 81.8,
+      "grid": [
+        64,
+        48
+      ],
+      "n_patches": 3072,
+      "native_regions": 168,
+      "eval_shape": [
+        608,
+        448
+      ]
+    },
+    "wallplugs": {
+      "n_regions": 90,
+      "n_active_regions": 90,
+      "pixel_auroc": 0.9089533900275882,
+      "au_pro@0.05": 0.27623603665185054,
+      "au_pro@0.3": 0.48670238047312614,
+      "image_auroc": 0.5409259259259258,
+      "n_train": 293,
+      "n_val": 33,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 90.6,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 90,
+      "eval_shape": [
+        480,
+        544
+      ]
+    },
+    "walnuts": {
+      "n_regions": 312,
+      "n_active_regions": 312,
+      "pixel_auroc": 0.9518206608081907,
+      "au_pro@0.05": 0.47770361811545897,
+      "au_pro@0.3": 0.749635890574046,
+      "image_auroc": 0.8133333333333334,
+      "n_train": 432,
+      "n_val": 48,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 141.5,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 312,
+      "eval_shape": [
+        480,
+        544
+      ]
+    }
+  },
+  "deviations": [],
+  "peak_rss_mb": 17715.5,
+  "mean_image_auroc": 0.7235525178084702,
+  "mean_pixel_auroc": 0.8501354980644007,
+  "mean_au_pro@0.05": 0.3444314157337553,
+  "mean_au_pro@0.3": 0.5735632974325953,
+  "total_regions": 1530,
+  "total_active_regions": 1530
+}

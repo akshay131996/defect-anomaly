@@ -1,0 +1,11 @@
+can           img 0.5140  pix 0.7397  AU-PRO@5% 0.13954  @30% 0.34494  regs    (66/66 act)  150s
+fabric        img 0.6079  pix 0.6177  AU-PRO@5% 0.18581  @30% 0.45756  regs  (120/120 act)  165s
+fruit_jelly   img 0.9283  pix 0.9460  AU-PRO@5% 0.47609  @30% 0.71152  regs  (216/216 act)  92s
+rice          img 0.6376  pix 0.8103  AU-PRO@5% 0.22551  @30% 0.40703  regs  (114/114 act)  132s
+sheet_metal   img 0.7912  pix 0.9174  AU-PRO@5% 0.25374  @30% 0.51128  regs  (444/444 act)  81s
+vial          img 0.9551  pix 0.9153  AU-PRO@5% 0.71938  @30% 0.91294  regs  (168/168 act)  111s
+wallplugs     img 0.5409  pix 0.9086  AU-PRO@5% 0.27576  @30% 0.48647  regs    (90/90 act)  121s
+walnuts       img 0.8133  pix 0.9517  AU-PRO@5% 0.47745  @30% 0.74652  regs  (312/312 act)  169s
+
+mean image AUROC 0.7236   pixel AUROC 0.8508   AU-PRO@5% 0.3442   AU-PRO@30% 0.5723   active 1530/1530
+wrote outputs/runs/E4-evalside-2048.json (peak RSS: 19480.6 MB)

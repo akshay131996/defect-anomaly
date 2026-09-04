@@ -176,8 +176,8 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Run E0, then E2.** In that order — E0 is the guard that makes E2's number trustworthy,
-costs no GPU, and takes minutes.
+**Run E0, then E2** (§7 has the full nine-item queue with dependencies and costs). E0 is
+the guard that makes E2's number trustworthy, costs no GPU, and takes minutes.
 
 - **E0** — registration unit test. Nothing in this repo asserts that a map and a mask
   describe the same place, which is why the coordinate-frame bug survived four sessions.
@@ -185,8 +185,12 @@ costs no GPU, and takes minutes.
   bought it with aspect distortion; E2 is the first geometry that gets registration
   *without* paying for it.
 
-E1 is done (§6). E3-E6 are queued behind E2 in §7 and should not be started early —
-E3 is a direct comparison against E2 and is meaningless without it.
+**E8** (replace the synthetic Triton bank) is independent of everything else and can be
+picked up in parallel, or first if the pod is busy.
+
+E1 is done (§6). E3-E7 are chained behind E2 and should not be started early — each fixes
+the configuration the next one varies against, so running them out of order does not
+merely weaken the comparisons, it makes them meaningless.
 
 ---
 
@@ -535,11 +539,36 @@ Two high-yield experiments to eliminate the decode bottleneck:
 
 ## 7. Experiment queue
 
-Worker: take the next unblocked item, follow §0's output contract, report, stop. Items
-are ordered by what unblocks the most downstream work, not by expected payoff.
+Worker: take the next unblocked item, follow §0's output contract, report, stop. Items are
+ordered by what unblocks the most downstream work, not by expected payoff.
 
-Every item below states a hypothesis in a form that can be **refuted by the number it
-produces**. If it comes back refuted, that is a completed item, not a failed one.
+Every item states a hypothesis in a form that can be **refuted by the number it produces**.
+A refuted hypothesis is a completed item, not a failed one — three of the four proposed
+about the AU-PRO gap were refuted, and that is how the fourth was found.
+
+| id | what | blocked on | GPU | rough cost |
+|---|---|---|---|---|
+| **E0** | registration unit test | — | no | minutes |
+| ~~E1~~ | squash geometry | — | — | **done, 0.131 -> 0.301** |
+| **E2** | letterbox geometry | — | yes | ~20 min |
+| E3 | aspect-preserving rectangles | E2 | yes | ~20 min |
+| E4 | eval protocol: `EVAL_SIDE`, sigma, min region | best of E1-E3 | yes | ~1 h |
+| E5 | input resolution, re-opened | E4 | yes | hours (16x at 768) |
+| E6 | coreset density, re-checked | E4 | yes | ~1 h |
+| E7 | fusion routing re-selected on `validation` | E4 | yes | ~1 h |
+| E8 | replace synthetic Triton bank | — | yes | ~30 min |
+
+**E0 and E2 are the two to start with.** E8 is independent of everything and can run in
+parallel or first if the pod is otherwise occupied.
+
+The chain E2 -> E3 -> E4 exists because each fixes the configuration the next one varies
+against. Running them out of order does not just weaken the result, it makes the
+comparisons meaningless — E4's sweep is only interpretable once one geometry has won.
+
+**What "the winning geometry" means:** the one with the highest **mean AU-PRO@5%** across
+all 8 scenarios, with mean image AUROC as the tiebreaker if two are within 0.01. Decide it
+once, from E1/E2/E3's records, and state the choice in E4's record so every later run is
+anchored to something written down rather than to a recollection.
 
 ---
 
@@ -647,77 +676,189 @@ padding excluded should still score ~1.0, and should *not* if `valid` is ignored
 
 ### E3 — aspect-preserving rectangular input, all 8
 
-The cleanest geometry available and the one most likely to be right: feed a **non-square**
-input that preserves the native aspect, rounded to a multiple of the backbone stride
-(32 for WideResNet50-2). `sheet_metal` 4224x1056 -> 896x224; `vial` 1400x1900 -> 352x480.
-CNNs are fully convolutional, so this needs no architectural change. Resize masks to the
-same rectangle.
+**The idea.** The cleanest geometry available: feed a **non-square** input preserving the
+native aspect, rounded to a multiple of the backbone stride (32 for WideResNet50-2).
+`sheet_metal` 4224x1056 -> 896x224; `vial` 1400x1900 -> 352x480. CNNs are fully
+convolutional, so this needs no architectural change. Resize masks to the same rectangle.
 
-No distortion, no padding, full frame visible, map and mask registered.
+No distortion, no padding, full frame visible, map and mask registered — it is the only
+option that has none of the three defects.
 
 **Hypothesis:** E3 >= max(E1, E2) on mean AU-PRO@5% **and** on mean image AUROC.
 
-**Note this changes patch count per scenario**, so hold total patches roughly constant
-against E1 when picking the rectangle, or the comparison confounds geometry with
-resolution — §6's scaling law applies.
+Implementation notes:
 
-**Blocked on:** E1 and E2, for the comparison to mean anything.
+- Adds `--geometry aspect` to E2's flag.
+- `PatchExtractor.grid` is inferred per forward pass and already handles non-square
+  feature maps — but `ad2_pixel_eval.anomaly_maps` takes `grid` as a tuple and reshapes
+  with `d.view(-1, 1, grid[0], grid[1])`. Verify that ordering is right for a non-square
+  grid; a transposed reshape here would silently produce a rotated map, which is exactly
+  the class of bug §6 is about. **E0 must pass on `aspect` before you trust any number
+  from this run.**
+- **Hold total patches roughly constant against E1** when picking each rectangle, or the
+  comparison confounds geometry with resolution — §6's scaling law applies. E1 at 448
+  square is 3,136 patches; target that, so `sheet_metal` at 896x224 (784 patches) is *not*
+  matched and should be scaled up to roughly 1792x448.
+
+**ViT arms cannot do this** without interpolating position embeddings. Restrict E3 to the
+CNN arm and note the limitation rather than working around it.
+
+**Blocked on:** E2 (it is a direct comparison).
 
 ---
 
-### E4 — resolution, re-opened under fixed geometry
+### E4 — evaluation protocol: `EVAL_SIDE`, smoothing scale, minimum region
+
+**Highest-value item after the geometry work, and cheap.**
+
+The last 2.3x came from an evaluation-protocol bug, not a modelling change. There is a
+second protocol difference against the paper that has never been tested, and it has the
+same shape.
+
+We compare maps and masks at `EVAL_SIDE = 512`. The masks are native (up to 2448x2048),
+so **one eval pixel is ~4.8 x 4.0 native pixels**. Then `MIN_REGION_PX = 4` drops any
+component smaller than 4 eval pixels — roughly **77 native pixels**. AU-PRO weights every
+region *equally regardless of size*, so a small region crushed below that threshold is not
+merely measured badly, it is deleted from the denominator; and one surviving at 2-3 pixels
+cannot be localised well by any detector.
+
+`sheet_metal` has 1,539 regions of hairline defects, `walnuts` 450. Those are exactly the
+scenarios where this would bite hardest, and two of our three worst.
+
+`GAUSS_SIGMA = 4.0` compounds it: that is 4 pixels *of the 512 map*, i.e. ~19 native
+pixels of blur. If `EVAL_SIDE` changes, effective smoothing changes with it, so **sigma
+must be scaled to hold constant native-pixel blur** or this becomes a two-variable
+experiment.
+
+**Sweep `EVAL_SIDE` in {512, 1024, 2048}** at the winning geometry, all 8 scenarios, sigma
+scaled proportionally (4.0 -> 8.0 -> 16.0).
+
+**Hypothesis:** mean AU-PRO@5% rises with `EVAL_SIDE`, and the gain concentrates in the
+high-region-count scenarios (`sheet_metal`, `walnuts`, `fruit_jelly`).
+
+**Report `n_regions` per scenario per setting — that is the primary evidence, not a
+secondary statistic.** If region counts climb sharply with `EVAL_SIDE`, small defects were
+being deleted by the downsample and the metric was never measuring them at all.
+
+Also run one arm with `MIN_REGION_PX` scaled to hold constant *native* area (4 -> 16 ->
+64), to separate "we now resolve small regions" from "we now count more of them".
+
+**Memory — read before launching.** The container cgroup limit is **58 GiB**, not the
+host's 503 GB. That is what OOM'd a previous run at 37 GB and may be what killed E1
+silently. At `EVAL_SIDE=2048`, 500 maps of 2048^2 float32 is ~8 GB, and
+`ad2_pixel_eval.main` currently does:
+
+    allv = np.concatenate([m.ravel() for m in (m_good + m_bad)])
+
+which **copies every map again** purely to get `min` and `max`. Replace it with a
+streaming pass before running E4 — wasteful even at 512, a hard blocker at 2048. Record
+peak RSS in the run record.
+
+**Blocked on:** whichever of E1/E2/E3 wins, so geometry is fixed first.
+
+---
+
+### E5 — input resolution, re-opened under fixed geometry
 
 §6 concluded "resolution is not the lever" from 224/448/768 on `can`. That was measured
 through the broken metric, and the bug is resolution-invariant — which is *exactly* what
-would flatten a real resolution trend into a plateau. **The conclusion is void.**
+would flatten a real resolution trend into an apparent plateau. **The conclusion is void
+and must be re-measured, not assumed.**
 
-Re-run the winning geometry from E1-E3 at 224 / 448 / 768, all 8 scenarios, bank cap
-scaled with patch count so coreset *density* is held constant (at a fixed cap the
-effective ratio collapses from 0.55% at 448 to 0.10% at 1024, which confounds the two).
+Re-run the winning geometry at 224 / 448 / 768, all 8 scenarios, **bank cap scaled with
+patch count so coreset density is held constant.** At a fixed cap the effective ratio
+collapses from 0.55% at 448 to 0.10% at 1024, confounding resolution with density — that
+confound is mine, from the original sweep, and it is why that sweep proved less than it
+appeared to.
 
-**Hypothesis:** with registration fixed, mean AU-PRO@5% now increases monotonically with
+**Hypothesis:** with registration fixed, mean AU-PRO@5% increases monotonically with input
 resolution — the opposite of the current documented finding.
 
-**Blocked on:** E3.
+Cost: §6's scaling law makes 768 roughly 16x the work of 448 at constant density. Budget
+for it, or cap the run at a subset of scenarios and **state that explicitly** in the record.
+
+**Blocked on:** E4 — evaluation resolution and input resolution are separate axes and must
+not move together.
 
 ---
 
-### E5 — re-select the fusion routing on `validation`
+### E6 — coreset density, re-checked under fixed geometry
+
+A bank-density sweep on `vial` at 448 gave 4000 -> 0.3596, 2000 -> 0.3351, 1000 -> 0.3437,
+500 -> 0.3180: a weak, non-monotonic effect. Measured through the broken metric, on one
+scenario, so it establishes less than it appears to.
+
+Re-run at the winning geometry across all 8 with caps {1000, 4000, 16000, uncapped 1%}.
+
+**Hypothesis:** density remains a weak lever (<0.03 mean AU-PRO@5% across the full range),
+confirming it is a cost/stability knob rather than an accuracy one.
+
+Expected to be *confirmatory*. Run it anyway — it is the cheapest way to close off a
+variable that would otherwise keep resurfacing as an explanation, and it has already
+resurfaced twice.
+
+**Blocked on:** E4.
+
+---
+
+### E7 — re-select the fusion routing on `validation`
 
 `ad2_feature_fusion.py` routes each scenario to a backbone via a hardcoded if-chain. Two
 problems: the routing was chosen against `test_public` (§0 rule 5 — that makes it not a
-benchmark number), and it was chosen against pre-bug AU-PRO, so the evidence it was fitted
-to no longer exists.
+benchmark number), and it was chosen against pre-bug AU-PRO, so **the evidence it was
+fitted to no longer exists.**
 
-Re-select on the `validation` split under the E3 geometry, then report the held-out
-`test_public` score once, without further adjustment.
+Re-select on the `validation` split under the winning geometry, then report the held-out
+`test_public` score **once**, with no further adjustment. If the routing is re-tuned after
+seeing that number, it is no longer held out and the result is void.
 
-**Hypothesis:** validation-selected routing beats single-best-backbone on mean AU-PRO@5%.
+**Hypothesis:** validation-selected routing beats the single best backbone on mean
+AU-PRO@5%.
 
 **Report honestly regardless:** the current fusion numbers are a **13.5% regression** on
-mean AU-PRO@5% (0.1306 -> 0.1130, improved 3/8, regressed 5/8) even though the README
-calls them "all-time project records" — true for image and pixel AUROC only. Whatever E5
-returns, correct that claim.
+mean AU-PRO@5% (0.1306 -> 0.1130; improved 3/8, regressed 5/8) even though the README
+calls them "all-time project records". That was true for image and pixel AUROC only, and
+is now false for those too — plain arm A with correct geometry reaches 0.718/0.846 against
+fusion's 0.691/0.770. **Correcting the README is part of this item.**
 
-**Blocked on:** E3.
+**Blocked on:** E4.
 
 ---
 
-### E6 — replace the synthetic Triton bank
+### E8 — replace the synthetic Triton bank
 
 `deployment/triton_models/patchcore/1/bank.npy` is **not a real memory bank**: 49.7% of
 its values are negative, which post-ReLU features cannot be, and its row norms sit at
-39.78 ~ sqrt(1536). The threshold is hardcoded at `export_bank.py:282` and
-`coreset_size` is 500 on CPU. The README's "6.34 ms / 157 FPS" was measured against this,
-so that figure describes nothing.
+39.78 ~ sqrt(1536) — the signature of Gaussian noise, not features. The threshold is
+hardcoded at `export_bank.py:282` and `coreset_size` is 500 on CPU. The README's
+"6.34 ms / 157 FPS" was measured against this, so **that figure describes nothing** and
+must not be quoted until re-measured.
 
-Fit and export a real bank from a chosen scenario, re-measure latency on GPU, and correct
-the README.
+Fit and export a real bank, re-measure latency on GPU, correct the README.
 
 **Hypothesis:** real-bank latency is materially worse than 6.34 ms once the bank is a
-realistic size. Report the honest number and the bank size it corresponds to.
+realistic size. Report the honest number *and* the bank size it corresponds to — latency
+without bank size is meaningless, since §6's scaling law makes it a free parameter.
 
-**Not blocked** — independent of the geometry work, and safe to run in parallel.
+**Not blocked.** Independent of all geometry work; safe to run in parallel, or first if
+the pod is otherwise busy.
+
+---
+
+### When the queue is done
+
+Report to the planner; do not write conclusions into §6 yourself. The audit exists because
+the expensive failures on this project have been wrong conclusions drawn from real numbers,
+and an agent auditing its own results reproduces exactly the failure mode §0 prevents.
+
+**Save every run, including refuted ones.** E4, E5 and E6 are all partly attempts to kill
+hypotheses, and a refuted hypothesis that is not recorded gets re-proposed — the bank
+density question has already come back twice.
+
+If a run dies without a traceback, **capture the evidence before re-running**: `dmesg`,
+the cgroup counters (`/sys/fs/cgroup/memory.events`), and peak RSS. E1's kill is still
+unexplained, and a second unexplained kill with nothing collected is a debt, not a data
+point.
 
 ---
 

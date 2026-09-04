@@ -417,15 +417,59 @@ wherever it appears, including the README.
 `vial` at 0.7386 is on its own within 3% of the published *mean*, which is the strongest
 single piece of evidence that the remaining gap is not a modelling deficiency.
 
-**Caveat, and the reason §7 does not stop here:** squashing distorts aspect ratio. It is
-visible in the two most extreme frames — `can` (2.18:1) fell to 0.467 image AUROC and
-`fabric` to 0.640, the only two scenarios where image AUROC got *worse*. Squash buys
-registration and pays in distortion, so it is very likely not the right final geometry.
-E2 (letterbox) and E3 (aspect-preserving rectangles) test that directly.
+**Caveat:** squashing distorts aspect ratio, visible in the two most extreme frames —
+`can` (2.18:1) fell to 0.467 image AUROC and `fabric` to 0.640, the only two scenarios
+where image AUROC got *worse*. Squash buys registration and pays in distortion, so two
+alternatives were tested.
 
-**The guard that would have caught this** did not exist: nothing ever asserted that a
-synthetic map placed at a known location scores high against a mask at that same location.
-E0 in §7 adds it.
+### Geometry comparison — and why it is not yet settled
+
+| run | geometry | mean AU-PRO@5% | mean I-AUROC | verdict |
+|---|---|---|---|---|
+| (baseline) | crop | 0.1306 | 0.663 | void — the bug above |
+| E1 | squash | 0.3006 | 0.718 | supports |
+| E2 | letterbox | 0.2792 | 0.670 | **refutes** |
+| E3 | aspect-preserving | 0.3225 | 0.724 | **inconclusive** |
+
+**Letterbox lost on both axes** (E2). It was the intuitive fix — registration without
+distortion — and it underperformed squash on AU-PRO *and* on image AUROC. The likely
+mechanism is named in §7 E2: padding is perfectly uniform, sits far off the normal
+manifold, and the `avg_pool2d(k=3)` neighbourhood aggregation bleeds it into genuine
+border patches. Excluding padded pixels from the metric does not undo that.
+
+**Aspect-preserving appears to win, but the comparison is invalid** and the margin is
+probably an artifact. `evaluate` derives regions by labelling the mask *after* resizing it
+into each geometry's own evaluation frame, then drops components under `MIN_REGION_PX = 4`.
+Each geometry therefore crushes a different subset below the threshold and **scores a
+different population of ground-truth regions**:
+
+| scenario | E1 regions | E2 | E3 |
+|---|---|---|---|
+| sheet_metal | 1539 | 426 | 1101 |
+| fruit_jelly | 320 | 244 | 252 |
+| fabric | 150 | 120 | 114 |
+
+Dropping small regions makes the test *easier*, because AU-PRO weights every region equally
+and the small ones are the hard ones. Decomposing E3's +0.0219 margin over E1:
+**`sheet_metal` alone contributes +0.0178 — 81% of it** — and that is also the scenario
+whose region count moved most. Over the other seven, E3 wins by +0.0047 and **loses on
+three**.
+
+So: **no geometry winner has been established.** E1's 2.3x over the broken baseline is
+solid — it is far larger than any region-set effect and the region counts there define the
+reference. The choice *between* squash, letterbox and aspect is not. §7 E4a fixes the
+region set at native resolution and re-scores all three; until it lands, quote E1 and treat
+the geometry question as open.
+
+**The guard that would have caught the original bug** did not exist: nothing asserted that
+a synthetic map at a known location scores high against a mask at that same location. E0
+now does, parameterised over geometry, with shifted cases so it cannot pass trivially —
+`crop` scores 0.019 and `squash` 1.000. It does not yet cover `aspect`.
+
+**The general lesson, which is the same one twice:** both this and the coordinate-frame bug
+were *evaluation-protocol* defects that left image AUROC nearly untouched and moved AU-PRO
+enormously. When a localisation number changes, check what the metric is being computed
+over before concluding anything about the model.
 
 ### What AD 2 actually measures — read this before trusting any single scenario
 
@@ -564,8 +608,13 @@ comparisons meaningless — E4's sweep is only interpretable once one geometry h
 
 **What "the winning geometry" means:** the one with the highest **mean AU-PRO@5%** across
 all 8 scenarios, with mean image AUROC as the tiebreaker if two are within 0.01. Decide it
-once, from E1/E2/E3's records, and state the choice in E4's record so every later run is
-anchored to something written down rather than to a recollection.
+**from E1R/E2R/E3R** — the E4a re-scores, not the original E1/E2/E3, which were each scored
+against a different region population and cannot be compared. State the choice in E4's
+record so every later run is anchored to something written down rather than a recollection.
+
+If the re-scored geometries land within 0.01 of each other, **say they are equivalent and
+take the cheapest**, rather than picking a nominal winner and building four experiments on
+a difference that is noise.
 
 ---
 

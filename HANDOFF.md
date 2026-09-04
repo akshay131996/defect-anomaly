@@ -176,25 +176,29 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Run E5** (§7) — input resolution sweep (224 -> 448 -> 768) under winning `aspect` geometry.
-E4 confirmed that evaluation resolution is *not* the bottleneck: AU-PRO@5% is completely flat
-across `EVAL_SIDE` in {512, 1024, 2048} (0.3444 -> 0.3444 -> 0.3442), and 1,530 / 1,530 (100.0%)
-ground-truth defect regions are active at 512. The feature map resolution ceiling from `img=448`
-is binding, directly setting the stage for E5.
+**Run E5a** (§7) — no GPU, minutes, and it decides whether E5 is worth hours. Then E5.
+
+E4 refuted the last evaluation-protocol hypothesis: sweeping the evaluation frame 16x moved
+mean AU-PRO@5% by 0.0002, and 1,530 of 1,530 regions were already active at 512, so there
+was nothing for a finer frame to recover. **The remaining gap is not a scoring artifact.**
+
+The live hypothesis is that the patch grid is coarser than the defects: at `img = 448` one
+grid cell covers 756-1,607 native pixels while the smallest scored region is 77, so most
+regions are **10-20x smaller than a single cell** and cannot be localised at any evaluation
+resolution. E5a measures the region-size distribution to test that before E5 spends hours
+on it.
 
 **E8** (replace the synthetic Triton bank) remains independent and can run in parallel.
 
-Current standing on AD 2, arm A at 448px, fixed native region set:
+Current standing on AD 2, arm A, `aspect` geometry at 448px, fixed native region set:
 
 | metric | ours (E4-512) | published baseline |
 |---|---|---|
 | image AUROC | **0.724** | 0.659 |
-| pixel AUROC | **0.850** | 0.763 |
+| pixel AUROC | **0.849** | 0.763 |
 | AU-PRO@5% | 0.344 | 0.764 |
 
-Two of three now exceed the published baseline. The AU-PRO gap is down from 5.8x to 2.2x
-and is the open problem; E4 ruled out evaluation protocol resolution, making E5 (input
-resolution at constant coreset density) the primary resolution test.
+Two of three exceed the published baseline. The AU-PRO gap is down from 5.8x to 2.2x.
 
 ---
 
@@ -480,6 +484,57 @@ When a localisation number moves on this project, check what the metric is compu
 before concluding anything about the model.
 
 
+### Evaluation resolution is not the lever — and why that matters
+
+E4 swept the evaluation frame at {512, 1024, 2048} nominal under `aspect` geometry, with
+Gaussian sigma scaled {4, 8, 16} to hold native-space blur constant. **Flat:**
+
+| eval frame | mean AU-PRO@5% | mean I-AUROC | active regions |
+|---|---|---|---|
+| 512 | 0.3444 | 0.724 | 1530 / 1530 |
+| 1024 | 0.3444 | 0.724 | 1530 / 1530 |
+| 2048 | 0.3442 | 0.724 | 1530 / 1530 |
+
+Total range 0.0002 across a 16x change in evaluation pixels. The 2048 arm puts
+`sheet_metal` at 1024x4096, essentially its native 1056x4224, so this reaches the ceiling
+of what the metric could ever see.
+
+**The mechanism is confirmed, not inferred: 1,530 of 1,530 regions were already active at
+512.** Nothing was being erased by downsampling, so there was nothing for a finer frame to
+recover. The prediction that this would be so was recorded before the run.
+
+**This closes the evaluation-protocol line.** Three protocol defects were proposed for the
+AU-PRO gap: the coordinate frame (real, worth 2.3x), the region set (real, worth +0.03 and
+it *raised* aspect's margin), and evaluation resolution (**refuted**). The remaining gap is
+not an artifact of how we score.
+
+### Where the remaining gap lives: the patch grid is coarser than the defects
+
+At `img = 448` the grid is about 52x60 per image, so **one grid cell covers 756-1,607
+native pixels**, while the smallest scored region is 77:
+
+| scenario | grid (h,w) | native | px per cell | cell area | vs 77px floor |
+|---|---|---|---|---|---|
+| can | 36x84 | 2232x1024 | 27x28 | 756 | 10x |
+| vial | 64x48 | 1400x1900 | 29x30 | 866 | 11x |
+| fruit_jelly | 48x64 | 2100x1520 | 33x32 | 1039 | 13x |
+| sheet_metal | 28x112 | 4224x1056 | 38x38 | 1422 | 18x |
+| fabric, rice, wallplugs, walnuts | 52x60 | 2448x2048 | 41x39 | 1607 | 21x |
+
+**The smallest scored regions are 10-20x smaller than a single patch cell.** A defect that
+fits inside one cell cannot be localised at all: the anomaly map has no spatial detail below
+cell size no matter how finely it is upsampled. That is exactly why E4 was flat, and it is
+the most plausible remaining explanation for the 2.2x gap — the published baseline runs at
+1024x1024 input, where cells fall to roughly 330 native pixels, about 5x closer to defect
+scale.
+
+**This is a hypothesis, not a conclusion.** It rests on the 77-pixel floor, which is the
+*minimum* region size; whether it explains the gap depends on the distribution of region
+sizes, which has never been measured. §7 E5a measures it in minutes with no GPU and decides
+whether E5's hours are worth spending. Do not skip it — if regions of every size score
+uniformly mediocre, resolution is not the answer and E5 would burn hours confirming that.
+
+
 ### What AD 2 actually measures — read this before trusting any single scenario
 
 #### Arm A Baseline (WideResNet50-2 @448px, Layer 2+3, 4,000 bank cap):
@@ -602,13 +657,14 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E2~~ | letterbox geometry | — | — | **done, refutes** |
 | ~~E3~~ | aspect-preserving rectangles | E2 | — | **done, inconclusive** |
 | ~~E4a~~ | fix region set, re-score E1/E2/E3 | — | — | **done, supports** |
-| **E4** | eval protocol: `EVAL_SIDE`, sigma | — | yes | ~1 h |
-| E5 | input resolution, re-opened | E4 | yes | hours (16x at 768) |
-| E6 | coreset density, re-checked | E4 | yes | ~1 h |
-| E7 | fusion routing re-selected on `validation` | E4 | yes | ~1 h |
+| ~~E4~~ | eval protocol: `EVAL_SIDE`, sigma | — | — | **done, refutes** |
+| **E5a** | region size vs patch cell size | — | no | minutes |
+| **E5** | input resolution — load-bearing | E5a | yes | hours (27x at 1024) |
+| E6 | coreset density, re-checked | E5 | yes | ~1 h |
+| E7 | fusion routing re-selected on `validation` | E5 | yes | ~1 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
 
-**E4 is the one to start with.** Geometry is settled: `aspect`. E8 is independent of everything and can run in
+**E5a is the one to start with** — no GPU, minutes, and it decides whether E5 is worth hours. E8 is independent of everything and can run in
 parallel or first if the pod is otherwise occupied.
 
 The chain E2 -> E3 -> E4 exists because each fixes the configuration the next one varies
@@ -850,27 +906,75 @@ cheaper one wins. Do not go looking for a configuration that restores E3's lead.
 
 ---
 
-### E5 — input resolution, re-opened under fixed geometry  **<- NEXT**
+### E5a — region size distribution vs patch cell size  **<- NEXT (no GPU, minutes)**
 
-§6 concluded "resolution is not the lever" from 224/448/768 on `can`. That was measured
-through the broken metric, and the bug is resolution-invariant — which is *exactly* what
-would flatten a real resolution trend into an apparent plateau. **The conclusion is void
-and must be re-measured, not assumed.**
+**Run this before E5.** It costs no GPU and it predicts whether E5 can work at all. This is
+the same move as `ad2_shift_check.py`, which correctly predicted the AU-PRO ordering before
+any evaluation was run.
 
-Re-run the winning geometry at 224 / 448 / 768, all 8 scenarios, **bank cap scaled with
-patch count so coreset density is held constant.** At a fixed cap the effective ratio
-collapses from 0.55% at 448 to 0.10% at 1024, confounding resolution with density — that
-confound is mine, from the original sweep, and it is why that sweep proved less than it
-appeared to.
+E4 established that the remaining gap is not an evaluation artifact. The next suspect is
+the patch grid, and there is a concrete reason to suspect it. At `img = 448` the grid is
+about 52x60 per image, so **one grid cell covers 756-1607 native pixels**:
 
-**Hypothesis:** with registration fixed, mean AU-PRO@5% increases monotonically with input
-resolution — the opposite of the current documented finding.
+| scenario | grid (h,w) | native | native px per cell | cell area | vs the 77px floor |
+|---|---|---|---|---|---|
+| can | 36x84 | 2232x1024 | 27x28 | 756 | 10x |
+| vial | 64x48 | 1400x1900 | 29x30 | 866 | 11x |
+| fruit_jelly | 48x64 | 2100x1520 | 33x32 | 1039 | 13x |
+| sheet_metal | 28x112 | 4224x1056 | 38x38 | 1422 | 18x |
+| fabric, rice, wallplugs, walnuts | 52x60 | 2448x2048 | 41x39 | 1607 | 21x |
 
-Cost: §6's scaling law makes 768 roughly 16x the work of 448 at constant density. Budget
-for it, or cap the run at a subset of scenarios and **state that explicitly** in the record.
+The smallest scored regions are **10-20x smaller than a single patch cell**. A defect that
+fits inside one cell cannot be localised — the anomaly map has no spatial detail below cell
+size, regardless of how finely it is upsampled, which is precisely why E4 was flat.
 
-**Blocked on:** E4 — evaluation resolution and input resolution are separate axes and must
-not move together.
+**But the 77px floor is the minimum, not the typical region.** Whether this actually
+explains the gap depends on the *distribution* of region sizes, which has never been
+measured. Measure it:
+
+- For each scenario, the native pixel area of all 1,530 ground-truth regions: median, IQR,
+  and the fraction below 1x, 2x and 4x the local cell area.
+- **Break E3R's AU-PRO@5% down by region-size bucket** (sub-cell, 1-4 cells, 4-16 cells,
+  larger). The per-region PRO values already exist inside `evaluate`; expose them rather
+  than recomputing.
+
+**Hypothesis:** a majority of regions are sub-cell at `img = 448`, and AU-PRO on the
+larger-than-4-cells bucket is already close to the published 0.764.
+
+**This is the decisive read.** If large regions already score well and small ones score
+near zero, the gap is a resolution ceiling and E5 will close much of it. **If regions of
+every size score uniformly mediocre, resolution is not the answer** and E5 would burn hours
+confirming that — in which case say so and stop, rather than running it because it is next
+in the list.
+
+---
+
+### E5 — input resolution, the load-bearing experiment
+
+§6 once concluded "resolution is not the lever" from 224/448/768 on `can`. That was measured
+through the coordinate-frame bug, which is resolution-invariant — exactly what flattens a
+real trend into an apparent plateau. **Void; this is a fresh measurement.**
+
+Run `aspect` geometry at `img` in {224, 448, 768, 1024}, all 8 scenarios, **bank cap scaled
+with patch count so coreset density is held constant** (at a fixed cap the effective ratio
+collapses with resolution, which confounds the two — that confound is mine, from the
+original sweep, and it is why that sweep proved less than it appeared to).
+
+For reference, the published baseline reaches 0.764 at 1024x1024 input. At 1024 the grid is
+roughly 2.2x finer linearly than at 448, so cells fall from ~1607 to ~330 native pixels —
+about 5x closer to defect scale. **That is the single largest untested difference remaining
+between our configuration and theirs.**
+
+**Hypothesis:** mean AU-PRO@5% rises monotonically with input resolution, and the gain
+concentrates in the scenarios and size buckets E5a identifies as sub-cell.
+
+**Cost is the real constraint.** §6's scaling law is cost ∝ (patches)², and at constant
+density 1024 is roughly 27x the work of 448. Run the ladder in order and record each arm as
+it completes rather than launching all four; if 1024 is infeasible, **report 768 and say so
+explicitly** rather than silently dropping the arm. Recording peak RSS matters here too —
+the container ceiling is 58 GiB.
+
+**Blocked on:** E5a.
 
 ---
 

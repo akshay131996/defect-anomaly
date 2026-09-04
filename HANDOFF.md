@@ -16,6 +16,15 @@ https://claude.ai/code/artifact/9fd97b0d-e64f-4f71-9ec9-e8586be6e6d4
 
 ## 0. Working agreement — planner/auditor and worker
 
+**Day-to-day coordination happens in `BRIDGE.md`, not here.** That file is the mailbox:
+the current directive, worker status, audit verdicts, open questions, and an append-only
+log. **This file is the specification** — what the experiments are and why. Read BRIDGE
+first for what to do now; read HANDOFF for what the thing you are doing actually means.
+
+Keep them separate. A decision that belongs to the project goes in HANDOFF; the bridge
+entry that produced it points at HANDOFF and stops. Anything recorded only in BRIDGE is
+assumed lost once the log is archived.
+
 Two agents share this project. **The planner/auditor writes §7's experiment queue and
 validates what comes back. The worker executes the queue on the pod and reports.** The
 split exists because the expensive failures in this project have not been coding errors —

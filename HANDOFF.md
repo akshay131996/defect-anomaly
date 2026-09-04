@@ -176,7 +176,13 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Run E5a** (§7) — no GPU, minutes, and it decides whether E5 is worth hours. Then E5.
+**Run E5a** (§7) — no GPU, minutes, and it decides whether E5 is worth hours. **It has not
+been run**, and the current E5 plan skips it; E5 is approved with modifications but must not
+start until E5a reports.
+
+**Also: this pod has a concurrent workload that is not ours** — `blender` at ~3.9 GB plus
+Triton at ~1.4 GB. E5's 768 arm needs ~24 GB, so check what that process is and coordinate
+before launching it. It is also a live candidate for E1's unexplained silent kill.
 
 E4 refuted the last evaluation-protocol hypothesis: sweeping the evaluation frame 16x moved
 mean AU-PRO@5% by 0.0002, and 1,530 of 1,530 regions were already active at 512, so there
@@ -659,7 +665,7 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E4a~~ | fix region set, re-score E1/E2/E3 | — | — | **done, supports** |
 | ~~E4~~ | eval protocol: `EVAL_SIDE`, sigma | — | — | **done, refutes** |
 | **E5a** | region size vs patch cell size | — | no | minutes |
-| **E5** | input resolution — load-bearing | E5a | yes | hours (27x at 1024) |
+| **E5** | input resolution — load-bearing | **E5a** | yes | hours; plan approved w/ mods |
 | E6 | coreset density, re-checked | E5 | yes | ~1 h |
 | E7 | fusion routing re-selected on `validation` | E5 | yes | ~1 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
@@ -949,30 +955,78 @@ in the list.
 
 ---
 
-### E5 — input resolution, the load-bearing experiment
+### E5 — input resolution, the load-bearing experiment  **(plan approved with modifications)**
 
 §6 once concluded "resolution is not the lever" from 224/448/768 on `can`. That was measured
 through the coordinate-frame bug, which is resolution-invariant — exactly what flattens a
 real trend into an apparent plateau. **Void; this is a fresh measurement.**
 
-Run `aspect` geometry at `img` in {224, 448, 768, 1024}, all 8 scenarios, **bank cap scaled
-with patch count so coreset density is held constant** (at a fixed cap the effective ratio
-collapses with resolution, which confounds the two — that confound is mine, from the
-original sweep, and it is why that sweep proved less than it appeared to).
+Sweep `img` in {224, 448, 768} under `aspect` geometry, all 8 scenarios, evaluation held at
+`eval_side 512` / `sigma 4.0` / fixed 1,530-region native set. **Bank cap scaled with patch
+count** so coreset density is constant: 1000 / 4000 / 11755 for 784 / 3136 / 9216 nominal
+patches (ratio 1.276 in all three — verified).
 
-For reference, the published baseline reaches 0.764 at 1024x1024 input. At 1024 the grid is
-roughly 2.2x finer linearly than at 448, so cells fall from ~1607 to ~330 native pixels —
-about 5x closer to defect scale. **That is the single largest untested difference remaining
-between our configuration and theirs.**
+**The worker's plan is approved.** The modifications below are the whole delta.
 
-**Hypothesis:** mean AU-PRO@5% rises monotonically with input resolution, and the gain
+**M1 — run E5a first. It is not optional.** The plan skips straight to E5. E5a costs
+minutes and no GPU, and it is what tells us *which* regions are failing — information E5
+does not produce at any resolution. It also lets a prediction be registered before the
+result exists, which on this project has repeatedly been worth more than the result:
+three hypotheses about this gap were killed that way and the fourth was correct.
+
+If E5a shows regions of every size scoring uniformly mediocre, **resolution is not the
+answer and E5 should not run as specified**. Spending hours to discover that, when minutes
+would have shown it, is the whole reason E5a exists.
+
+**M2 — the memory analysis names the wrong scenario.** The plan attributes the worst case
+to `sheet_metal` at ~3.99M vectors / 24.5 GB. `sheet_metal` has only **137 training
+images** and extracts 1.26M vectors (7.8 GB) — it is the *cheapest* scenario, not the worst.
+The real worst case is **`walnuts`: 432 train images, 3.96M vectors, 24.3 GB**, with `can`
+(22.5 GB) and `fabric` (21.8 GB) close behind. The magnitude is right and the fix is
+global, so the conclusion stands — but validate the guard against `walnuts`, or it will be
+tested on a scenario that was never going to fail.
+
+The prealloc fix is **necessary, not precautionary** — verified independently:
+
+| | peak |
+|---|---|
+| `walnuts` feature tensor at 768 | 24.3 GB |
+| with `torch.cat` transient doubling | 48.7 GB |
+| plus concurrent Blender + Triton | **54.0 GB vs a 57.7 GiB ceiling** |
+
+**M3 — there is a concurrent workload on this pod that is not ours.** `blender` is resident
+at 3.9 GB right now and the plan cites 11.4 GB for it; `tritonserver` and a Triton python
+backend add ~1.4 GB. Headroom for a 24 GB job therefore depends on a process we do not
+control and cannot predict.
+
+Two consequences. **Check what Blender is and coordinate before launching the 768 arm** —
+do not simply assume the headroom holds. And note this as a live candidate for **E1's
+unexplained silent kill**: a run died after 5 scenarios with no traceback and a zero cgroup
+OOM counter, which is consistent with a host-level OOM kill driven by another tenant rather
+than by our own cgroup accounting.
+
+**M4 — arm 2 reuse is legitimate, but the code hash will differ.** Reusing
+`E4-evalside-512` for the 448 arm is correct and saves an hour; its config matches exactly.
+But arms 1 and 3 will run *new* code (`extract_paths_prealloc`) under a different hash, so
+the sweep spans two code versions. The plan's parity test covers this — **require the parity
+to be bit-identical**, not merely close, and if it is not, re-run 448 under the new code
+rather than comparing across versions. §0 rule: torch 2.13 -> 2.14 alone moved an arm by
+0.010, which is larger than margins this project has spent experiments narrowing.
+
+**M5 — state the 1024 arm's disposition explicitly.** The published baseline is at 1024,
+so dropping it silently leaves the headline comparison unmade. Deferring it on cost is
+fine; make it conditional and say so: **if 768 shows a clear monotonic gain, 1024 becomes
+the next item; if 768 is flat, 1024 is pointless and the hypothesis is refuted.**
+
+Worth knowing before reading the result: cell area falls from 1,607 native px at 448 to
+~547 at 768 and ~308 at 1024, against a 77 px floor. **Even 1024 does not reach the
+smallest defects.** A partial gain at 768 is therefore the expected outcome, not a
+disappointment — and it would not by itself close a 2.2x gap.
+
+**Hypothesis:** mean AU-PRO@5% increases monotonically with input resolution, and the gain
 concentrates in the scenarios and size buckets E5a identifies as sub-cell.
 
-**Cost is the real constraint.** §6's scaling law is cost ∝ (patches)², and at constant
-density 1024 is roughly 27x the work of 448. Run the ladder in order and record each arm as
-it completes rather than launching all four; if 1024 is infeasible, **report 768 and say so
-explicitly** rather than silently dropping the arm. Recording peak RSS matters here too —
-the container ceiling is 58 GiB.
+One sweep-level verdict, not three.
 
 **Blocked on:** E5a.
 

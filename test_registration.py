@@ -115,6 +115,24 @@ def simulate_geometry(mask_native, geometry="squash", shift_pct=0.0):
 
         return map_bad, mask_eval, noise_good
 
+    elif geometry == "aspect":
+        # Non-square rectangular frame preserving native aspect ratio (e.g. 896x224)
+        aspect_w, aspect_h = 896, 224
+        noise_bad = RNG.random((aspect_h, aspect_w)) * 0.05
+        noise_good = RNG.random((aspect_h, aspect_w)) * 0.05
+
+        mask_eval = np.array(
+            Image.fromarray(mask_native).resize((aspect_w, aspect_h), Image.NEAREST)
+        ) > 0
+
+        map_bad = mask_eval.astype(float) + noise_bad
+
+        if shift_pct != 0.0:
+            shift_px = int(shift_pct * aspect_w)
+            map_bad = np.roll(map_bad, shift_px, axis=1)
+
+        return map_bad, mask_eval, noise_good
+
     else:
         raise ValueError(f"Unknown geometry: {geometry}")
 
@@ -134,6 +152,8 @@ def run_test():
         ("squash_shifted", "squash", 0.20, False, "Sensitivity check: 20% shift collapses PRO"),
         ("letterbox", "letterbox", 0.0, True, "Letterbox geometry: aspect-preserving registration"),
         ("letterbox_shifted", "letterbox", 0.20, False, "Letterbox sensitivity check: 20% shift collapses PRO"),
+        ("aspect", "aspect", 0.0, True, "Aspect geometry: non-square rectangular registration"),
+        ("aspect_shifted", "aspect", 0.20, False, "Aspect sensitivity check: 20% shift collapses PRO"),
     ]
 
     all_passed = True

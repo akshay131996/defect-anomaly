@@ -168,9 +168,33 @@ def letterbox_transform(ex):
     return ex
 
 
+def aspect_dimensions(w_nat, h_nat, target_img=448, stride=32):
+    """Calculates non-square (w_in, h_in) preserving aspect ratio, rounded to stride,
+    holding total patch area roughly constant against (target_img x target_img)."""
+    r = w_nat / h_nat
+    target_area = target_img * target_img
+    h_float = (target_area / r) ** 0.5
+    w_float = r * h_float
+    h_in = max(stride, int(round(h_float / stride) * stride))
+    w_in = max(stride, int(round(w_float / stride) * stride))
+    return w_in, h_in
+
+
+def aspect_transform(ex, w_in, h_in):
+    """Aspect-preserving non-square resize to (h_in, w_in), divisible by backbone stride."""
+    from torchvision import transforms as T
+    norm = [t for t in ex.tfm.transforms if isinstance(t, T.Normalize)][0]
+    ex.tfm = T.Compose([
+        T.Resize((h_in, w_in), interpolation=T.InterpolationMode.BICUBIC),
+        T.ToTensor(),
+        norm,
+    ])
+    return ex
+
+
 @torch.no_grad()
-def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None):
-    """Returns (image_scores, list of HxW float maps at EVAL_SIDE resolution)."""
+def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None, eval_shape=(EVAL_SIDE, EVAL_SIDE)):
+    """Returns (image_scores, list of HxW float maps at eval_shape resolution)."""
     scores, maps = [], []
     for i in range(0, len(paths), batch):
         chunk = paths[i:i + batch]
@@ -186,7 +210,7 @@ def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None):
         else:
             scores.extend(d.max(dim=1).values.tolist())
         # UPSAMPLE FIRST, then smooth at pixel scale.
-        up = F.interpolate(g, size=(EVAL_SIDE, EVAL_SIDE), mode="bilinear",
+        up = F.interpolate(g, size=eval_shape, mode="bilinear",
                            align_corners=False)
         if GAUSS_SIGMA > 0:
             r = int(3 * GAUSS_SIGMA)
@@ -216,8 +240,8 @@ def main():
                     help="cap the memory bank in absolute vectors.")
     ap.add_argument("--img", type=int, default=0,
                     help="override input resolution.")
-    ap.add_argument("--geometry", choices=["crop", "squash", "letterbox"], default="crop",
-                    help="Coordinate frame geometry (crop, squash, or letterbox)")
+    ap.add_argument("--geometry", choices=["crop", "squash", "letterbox", "aspect"], default="crop",
+                    help="Coordinate frame geometry (crop, squash, letterbox, or aspect)")
     ap.add_argument("--squash", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--out", default=OUT, help="Path for output JSON record")
     ap.add_argument("--run-id", default="", help="Optional run identifier for LEDGER tracking")
@@ -298,9 +322,10 @@ def main():
             print(f"{sc}: skipped (no masks matched)", flush=True)
             continue
 
-        # Inspect scenario native image resolution for letterbox geometry
+        # Inspect scenario native image resolution for letterbox or aspect geometry
         valid = None
         valid_grid = None
+        eval_shape = (EVAL_SIDE, EVAL_SIDE)
         if args.geometry == "letterbox":
             sample_im = Image.open(train[0])
             w, h = sample_im.size
@@ -327,6 +352,12 @@ def main():
             g_left = int(round(pad_left_in / stride_x))
             g_right = min(W_g, int(round((pad_left_in + nw_in) / stride_x)))
             valid_grid = (g_top, g_bottom, g_left, g_right)
+        elif args.geometry == "aspect":
+            sample_im = Image.open(train[0])
+            w_nat, h_nat = sample_im.size
+            w_in, h_in = aspect_dimensions(w_nat, h_nat, target_img=arm["img"], stride=32)
+            aspect_transform(ex, w_in, h_in)
+            eval_shape = (h_in, w_in)
 
         # Bank from train
         f_tr = sb.extract_paths(ex, train, _POOL)
@@ -336,8 +367,8 @@ def main():
         bank = f_tr[keep]
         del f_tr
 
-        s_good, m_good = anomaly_maps(ex, bank, good, n_patches, ex.grid, valid_grid=valid_grid)
-        s_bad, m_bad = anomaly_maps(ex, bank, bad, n_patches, ex.grid, valid_grid=valid_grid)
+        s_good, m_good = anomaly_maps(ex, bank, good, n_patches, ex.grid, valid_grid=valid_grid, eval_shape=eval_shape)
+        s_bad, m_bad = anomaly_maps(ex, bank, bad, n_patches, ex.grid, valid_grid=valid_grid, eval_shape=eval_shape)
 
         masks = []
         if args.geometry == "letterbox":
@@ -352,6 +383,12 @@ def main():
                 m_eval = np.zeros((EVAL_SIDE, EVAL_SIDE), bool)
                 m_eval[pad_t:pad_t + nmh, pad_l:pad_l + nmw] = np.array(m_res) > 127
                 masks.append(m_eval)
+        elif args.geometry == "aspect":
+            eval_h, eval_w = eval_shape
+            for p in masks_paths:
+                a = np.array(Image.open(p).convert("L").resize((eval_w, eval_h),
+                                                               Image.NEAREST))
+                masks.append(a > 127)
         else:
             for p in masks_paths:
                 a = np.array(Image.open(p).convert("L").resize((EVAL_SIDE, EVAL_SIDE),

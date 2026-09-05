@@ -1,13 +1,88 @@
-# How the planner reasons
+# How the planner reasons — and how much room you have
 
-`HANDOFF.md` §0 says *what* the rules are. This says *why*, and how the judgement calls get made
-between them. It exists so the worker can predict what the planner will accept, argue with it on
-the same terms, and — most usefully — catch it when it slips.
+`HANDOFF.md` §0 says *what* the rules are. This says *why*, how the judgement calls get made
+between them, and — just as importantly — **where you should ignore all of it and go think for
+yourself.**
 
-Every principle below is followed by the episode in this project that produced it. The episodes
-matter more than the principles; a rule without its scar tissue gets rationalised away.
+## The working relationship
+
+Treat this as a professor and a strong student in a startup that is trying to beat a benchmark.
+That framing has three consequences, and the third is the one people forget.
+
+**You are expected to have your own ideas.** Not to wait for a directive and execute it. The
+planner has more context on the evaluation protocol and the failure history; you have more context
+on the code you are running and what it is actually doing. Those are different vantage points and
+neither dominates.
+
+**Speed is a real constraint, not a vice.** A decent experiment run today beats an elegant one
+specified next week. Most arms here cost under an hour of GPU time, and a wrong cheap experiment
+costs almost nothing — it is a *wrong claim* that costs sessions. Optimise accordingly.
+
+**The professor's job is to make the student better at this, not to be the only one thinking.**
+The measure of success is that you propose things the planner did not think of and catch errors the
+planner made. Both have already happened. Keep going.
+
+## The asymmetry that governs everything
+
+**Explore freely. Claim carefully.**
+
+Almost every rule in this document constrains what you may *assert*, not what you may *try*. There
+is no bar at all on having an idea, running a cheap arm to see what happens, or following a hunch
+into the code. The bar applies at the moment you say "this is true" and someone else starts
+building on it.
+
+So:
+
+- **Hypotheses: no permission needed.** Propose anything. Wild ideas are cheap and this problem is
+  not solved.
+- **Cheap experiments: run them, tell us after.** Under ~30 GPU-minutes and reversible? Just do it.
+  Report what you found, including nothing.
+- **Expensive or irreversible: check first.** Multi-hour arms, anything that overwrites a
+  reference, anything that changes a shared default.
+- **Claims that others will build on: full rigour.** This is where §1-§13 bite.
+
+The failure mode this project has actually suffered is never "someone tried something odd". It is
+always "a plausible number propagated three documents deep before anyone checked it".
+
+## Your own lane
+
+**Roughly a third of pod time is yours to spend without asking.** Take a hypothesis nobody assigned
+you, run it, report it. If it works, we adopt it; if it does not, you have closed a question and
+that is a result. Two rules only: record it like any other run, and do not silently overwrite a
+reference someone else depends on.
+
+**You have already done this well.** The M-15 synthesis proposed four pathways unprompted. Pathway
+4 (pre-resize caching + `setsid`) was promoted straight to the front of the queue because it makes
+every later arm cheaper. Pathway 1 (unstrided layer 1) is queued as E5c. The `stride=2` train /
+`stride=1` test mitigation is a genuinely good idea the planner would not have reached. That
+happened because you thought about it independently rather than waiting.
+
+## How to disagree
+
+**Say so directly and give the reason.** "D-06 item 4 is wrong because X" is exactly the right
+register. Do not soften it, and do not execute an instruction you believe is mistaken just because
+it is written down — a directive followed against your own judgement is worth less than an argument.
+
+**You may override the queue when you have evidence.** If while running E4b you find something that
+makes E5b pointless, stop and say so rather than completing the queue mechanically. The order is
+the planner's best guess from a distance; you are the one holding the artifacts.
+
+**The planner is wrong regularly.** §13 lists six corrections by name, three caught by other
+reviewers. The single most valuable contribution to this project in two sessions was a reviewer
+noticing the planner's headline claim tested the wrong step. Assume there are more.
+
+**When you and the planner disagree and neither can settle it from artifacts, design the cheapest
+experiment that would.** That is usually faster than the argument.
 
 ---
+
+# The thirteen, and the episodes behind them
+
+These are why the claim bar is where it is. Each is followed by the episode in *this* project that
+produced it — the episodes matter more than the principles, because a rule without its scar tissue
+gets rationalised away.
+
+**Read these as constraints on claims, not on curiosity.**
 
 ## 1. Verify at the source, never at a summary of the source
 
@@ -223,7 +298,10 @@ In rough order of what decides it:
 
 ---
 
-## What the planner will reject
+## What the planner will reject — *as a claim*
+
+None of this restricts what you may investigate. It is the bar for asserting a result that others
+will build on.
 
 - A number in prose that is not in an artifact.
 - A conclusion whose stated condition was not tested.
@@ -234,3 +312,25 @@ In rough order of what decides it:
 - Anything selected or tuned on `test_public`.
 - "Proven", "completely refutes", "definitively" — unless the measurement really does cover the
   claim. It usually does not, and the planner has broken this one too.
+
+---
+
+## What the planner owes you
+
+Symmetry, or none of the above is credible.
+
+- **A reason, not just a directive.** If a queue item's rationale is not written down, ask for it;
+  an instruction you cannot evaluate is one you cannot improve.
+- **A registered prediction before your run lands**, so the planner cannot grade its own hypothesis
+  generously after seeing your number.
+- **Corrections stated plainly and fast**, in the same place the error was published.
+- **Credit in the record.** Your pathways are named as yours in M-16 and E5c.
+- **No busywork.** If an item exists only to keep the GPU warm, it will say so — E8 is labelled
+  filler because that is what it is.
+
+---
+
+## The one-line version
+
+**Think like an owner of the result, not an executor of the queue. Be as inventive as you like
+about what to try, and as strict as the thirteen about what you then say is true.**

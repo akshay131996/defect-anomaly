@@ -8,11 +8,12 @@ here is assumed lost after archival.
 **Roles.** The planner/auditor writes directives and audits results. The worker executes on
 the pod and reports. Neither writes in the other's lane.
 
-**`THINKING_PROCESS.md` is how the planner reasons**, with the episode behind each principle. It is
-not a style guide — it is what the planner will accept and reject, written down so you can predict
-it and push back on it. **It also carries a reciprocal obligation: hold the planner to every item
-on that list.** The single most valuable contribution here in two sessions was a reviewer noticing
-that the planner's headline claim tested the wrong step.
+**`THINKING_PROCESS.md` is how the planner reasons, and how much room you have.** Read it once. The
+short version: **explore freely, claim carefully.** Nothing in it restricts what you may *try* —
+it is the bar for asserting a result others will build on. You are expected to propose your own
+hypotheses and methodologies, to run cheap arms without asking, and to say directly when a
+directive is wrong. **Hold the planner to the same list**; the most valuable contribution here in
+two sessions was a reviewer catching that the planner's headline claim tested the wrong step.
 
 **Read this file and pull before every action**, at both ends. A directive you have not
 read is still binding on nothing — but a stale read is how two agents run the same
@@ -90,6 +91,25 @@ against a synthetic bank.
 **No-GPU task, do it whenever you are blocked:** pull Table VII from arXiv:2503.21622 and commit
 PatchCore's AU-PRO **per scenario, per split, at both limits**, into the repo. Our current
 comparison numbers came from secondary sources.
+
+**Item 6 — your own lane, and it is not optional filler.** Roughly a third of pod time is yours to
+spend on hypotheses nobody assigned you. Run them, record them like any other run, report what you
+found including nothing. You do not need to ask for anything under ~30 GPU-minutes that does not
+overwrite a shared reference.
+
+Three specific things the planner would genuinely like your independent read on, because you are
+closer to the code than the planner is:
+
+- **What is their PatchCore doing at 256 that ours is not?** We know the config (ensemble, 384-dim,
+  no centre crop) but not which part carries the 9.6 points. You may well spot something in the
+  gap between their description and our implementation that the planner has missed.
+- **`rice` and `walnuts`** are the only two scenarios where we trail. Nobody has looked at *why*.
+  `ad2_shift_check.py` on those two is minutes of work and might reframe the whole target list.
+- **Anything in the code you have been quietly suspicious of.** You have read `sweep_backbones.py`
+  and `ad2_pixel_eval.py` more recently than the planner has. If something looks wrong, chase it.
+
+**And if you think the queue order is wrong, say so and reorder it.** D-06 is the planner's best
+guess from a distance; you are the one holding the artifacts.
 
 **Coming next, do not start it yet — the planner is specifying it (see HANDOFF §7 E10):** at
 matched resolution the paper's PatchCore beats ours by **9.6 points**, larger than our **+5.8**
@@ -929,4 +949,29 @@ Artifacts: `outputs/runs/E10a-proj384-448.json` (SHA `6d421f0c`), `outputs/runs/
 - **Hypothesis check:** Bound of within 0.01 margin is **refuted** (delta is -0.0175 mean AU-PRO@5%).
 - **Localization of deficit:** On 5 of 8 scenarios, 384-dim projection matched or improved over 1536-dim (`fruit_jelly`, `rice`, `sheet_metal`, `vial`, `wallplugs`). The deficit is concentrated in fine sub-cell texture defects (`can` and `fabric`), indicating that random projection dilutes high-frequency texture representations.
 - **Strategic unlock:** Peak memory dropped from 9.9 GB to 3.5 GB. This confirms the 768px arm (`walnuts` estimated ~6 GB RSS instead of 24.3 GB) and multi-backbone ensembles are completely safe from host OOM.
+
+### M-22 — planner — THINKING_PROCESS reframed: explore freely, claim carefully
+The first version of `THINKING_PROCESS.md` read as a compliance manual, which would produce a
+worker that executes and never proposes. That is not the intent and it is not what this project
+needs. Reframed around the asymmetry that actually matters:
+
+**Nothing in that document restricts what you may try. All of it is the bar for asserting a result
+others will build on.** Hypotheses need no permission. Cheap reversible arms (<~30 GPU-min) need no
+permission — run them and report after. Only expensive or irreversible work needs a check first,
+and only claims get the full thirteen.
+
+The failure mode this project has actually suffered is never "someone tried something odd" — it is
+always "a plausible number propagated three documents deep before anyone checked it". The rules
+target the second and should not be allowed to suppress the first.
+
+Adds explicitly: **a third of pod time is the worker's own lane**, the right to override the queue
+with evidence, how to disagree (directly, with a reason, and do not execute an instruction you
+believe is wrong), and what the planner owes in return — a reason for every directive, predictions
+registered before results land, corrections stated fast and in the same place as the error, credit
+in the record, and no busywork.
+
+**Credit where it is due, recorded properly:** the M-15 pathways were unprompted, and Pathway 4
+(pre-resize caching + `setsid`) went straight to the front of the queue because it makes every
+later arm cheaper. Pathway 1 is queued as E5c. The `stride=2` train / `stride=1` test mitigation is
+a better idea than anything the planner had for that problem.
 

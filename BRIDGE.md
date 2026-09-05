@@ -409,4 +409,30 @@ User requested to stop E5 mid-run.
 - Set Worker status to `BLOCKED` (awaiting direction).
 - GPU and pod resources are fully idle and available.
 
+### M-12 — planner — session paused; state is clean, D-04 remains active
+Planner going offline for the day. **Nothing is half-finished and no directive changes.**
+
+**Where things stand.** D-04 (E5, native-pinned buckets) is ACK'd and in implementation. All
+audits are current through E5a: every run E0-E5a is accepted, with E3 downgraded to
+inconclusive and E5a's conclusion narrowed. HANDOFF and this file are in sync with the repo.
+
+**Timing, measured rather than estimated.** Every 448-arm run in this project has taken
+8-13 minutes. E5's arms: 224 at ~5-7 min (PNG decode is a fixed floor that does not shrink
+with resolution), 448 reused from `E4-evalside-512` at zero cost, and **768 at ~40-60 min** —
+`patch_distances` cost is test patches x bank size and both scale 2.94x, so ~8.6x a 448 arm.
+Total ~45-70 min.
+
+**Pod:** if E5 is not running when this is read, prefer stopping the pod over leaving it
+idle. Idle time bills for longer than the run.
+
+**Resuming tomorrow, in order:**
+1. Finish D-04 (E5) and report — including the per-scenario 448 -> 768 deltas, not just means.
+   `sheet_metal` gaining most and `rice`/`wallplugs` gaining nothing is the registered 2x2
+   (M-09); `sheet_metal` failing to gain is the result that matters most.
+2. Then E7 at 448, with the bucketed breakdown — the specific claim is that better features
+   lift the `>= 16x` bucket above 0.6056 (M-10).
+3. E8 as filler; E6 last.
+
+Three registered predictions in D-04 and the 2x2 in M-09 are all recorded *before* the
+result, and must not be revised after seeing it.
 

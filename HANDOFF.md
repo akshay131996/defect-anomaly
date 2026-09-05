@@ -788,24 +788,27 @@ Every item states a hypothesis in a form that can be **refuted by the number it 
 A refuted hypothesis is a completed item, not a failed one — three of the four proposed
 about the AU-PRO gap were refuted, and that is how the fourth was found.
 
-| id | what | blocked on | GPU | rough cost |
-|---|---|---|---|---|
-| ~~E0~~ | registration unit test | — | — | **done, supports** |
-| ~~E1~~ | squash geometry | — | — | **done, 0.131 -> 0.301** |
-| ~~E2~~ | letterbox geometry | — | — | **done, refutes** |
-| ~~E3~~ | aspect-preserving rectangles | E2 | — | **done, inconclusive** |
-| ~~E4a~~ | fix region set, re-score E1/E2/E3 | — | — | **done, supports** |
-| ~~E4~~ | eval protocol: `EVAL_SIDE`, sigma | — | — | **done, refutes** |
-| ~~E5a~~ | region size vs patch cell size | — | — | **done, supports (narrowed)** |
-| **E9** | pre-resize cache + `setsid` launches | — | no | ~0.3 h eng |
-| **E10a** | reduce embedding 1536 -> 384 (enabler) | — | yes | ~0.4 GPU-h |
-| **E10b** | backbone ensemble, one at a time | E10a | yes | ~1.5 GPU-h |
-| **E5b** | dilated layer3 `output_stride=8` @448 | — | yes | **~0.4 GPU-h** |
-| E5 | input resolution 768 arm | E5b | yes | ~1.9 GPU-h |
-| E5c | unstrided layer1 pyramid (stride 4) | E5, E5b | yes | ~2 GPU-h |
-| E6 | coreset density, re-checked | — | yes | ~1 h, deprioritised to last |
-| **E7** | backbone/fusion on `validation` — **2nd load-bearing** | — | yes | ~1-2 h |
-| E8 | replace synthetic Triton bank | — | yes | ~30 min |
+| id | what | blocked on | GPU | cost | order |
+|---|---|---|---|---|---|
+| ~~E0-E5a~~ | geometry, region set, eval protocol, region scale | — | — | **done** — see §6 | — |
+| **rebuild** | `deployment/POD_REBUILD.md` | — | no | ~20 min | **1** |
+| **E4b** | clean 448 `aspect` baseline on driver 580 | rebuild | yes | ~13 min | **2** |
+| **E9** | pre-resize cache + `setsid` launches | — | no | ~0.3 h eng | **3** |
+| **E5b** | dilated layer3 `output_stride=8` @448 | E4b | yes | ~0.4 GPU-h | **4** |
+| **E8** | rebuild the serving path (not a bank swap) | — | yes | ~0.5 h | **5 / filler** |
+| **table** | commit the paper's Table VII per scenario/split/limit | — | no | minutes | **any time** |
+| E10a | reduce embedding 1536 -> 384 — **enabler** | E4b | yes | ~0.4 GPU-h | 6 |
+| E10b | backbone ensemble, **one at a time** | E10a | yes | ~1.5 GPU-h | 7 |
+| E5 | input resolution 768 arm | E10a (for cost) | yes | ~0.5-1.9 GPU-h | 8 |
+| E7 | fusion/routing re-run under `aspect`, select on `validation` | E4b | yes | ~1-2 h | 9 |
+| E5c | unstrided layer1 pyramid (stride 4) | E5, E5b | yes | ~2 GPU-h | 10 |
+| E6 | coreset density, re-checked | — | yes | ~1 h | last |
+| E10c | coreset ratio — **probably a units artifact, read the table first** | table | — | — | skip |
+
+**Items 1-5 are D-06, the active directive**, chosen to be independent of E10 so nothing in them
+gets invalidated when E10 lands. **E10a is the enabler**: the 1536 -> 384 reduction is a 4x cut in
+bank memory and distance cost, which is what makes E5's 768 arm affordable, so it comes before E5
+rather than after.
 
 **E5a is the one to start with** — no GPU, minutes, and it decides whether E5 is worth hours. E8 is independent of everything and can run in
 parallel or first if the pod is otherwise occupied.

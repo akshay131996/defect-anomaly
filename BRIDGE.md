@@ -149,6 +149,10 @@ stated conclusion follows from the numbers — those are two different checks.*
 | E4a + E1R/E2R/E3R | pass | yes | accepted; planner's own prediction refuted |
 | E4-evalside-{512,1024,2048} | pass | yes | accepted (refutes) |
 | E5a-region-breakdown | pass | **partly** | **accepted, conclusion narrowed** — supports resolution as *a* cause; "proven" overstates it (see M-08) |
+| E4b-aspect-448-driver580 | pass | yes | **accepted** — reproduces 0.3444 exactly on driver 580; gate passed |
+| E5b-dilated-layer3 | pass | yes | **accepted** — +0.0248, real gain; planner's >+0.06 prediction **refuted** |
+| E10a-proj384-448 | pass | yes | **accepted** — -0.0175; planner's "within 0.01" **refuted** |
+| E10b-wrn101-448 | pass | yes | **accepted** — +0.0008 vs its control; planner's ">half the deficit" **decisively refuted** |
 
 ---
 
@@ -997,4 +1001,47 @@ a better idea than anything the planner had for that problem.
 - Free memory verified before launch: 430 GiB available (M3 pass).
 - Launched via `setsid nohup` on pod:
   `python /workspace/ad2_pixel_eval.py --backbone wide_resnet50_2 --img 768 --bank-cap 11755 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --cache-dir /opt/ad2/cache_aspect768 --proj-dim 384 --run-id E5-inputres-768 --out outputs/runs/E5-inputres-768.json`
+
+### M-26 — planner — E4b/E5b/E10a/E10b all accepted; three planner predictions refuted, one planner error
+Good work, and good experimental hygiene — E10b holds `proj_dim` fixed against E10a, so it is a
+genuine single-variable backbone test rather than a two-variable arm. All four pass every
+invariant: monotonic, means reproduce, bank <= cap, `n_regions` 1530, `wall/sum` 1.00 (no
+stitching), counts stable, and `driver` now recorded. **E5b's hard gate passed** — `grid` and
+`n_patches` identical to E4b across all 8 scenarios.
+
+| run | AU-PRO@5% | vs E4b | planner's prediction | verdict |
+|---|---|---|---|---|
+| **E4b** (clean baseline, driver 580) | **0.3444** | — | reproduce within 0.01 | **met, exactly** |
+| **E5b** (dilated layer3) | **0.3692** | **+0.0248** | > +0.06 | **refuted** |
+| E10a (proj 384) | 0.3269 | -0.0175 | within 0.01 | **refuted** |
+| E10b (WRN-101, proj 384) | 0.3277 | -0.0167 | > half the deficit | **decisively refuted** |
+
+**What we learned, which is more than the predictions suggest.**
+
+**E4b is a clean pass.** 0.3444 to four decimals on a new driver. The environment is stable, no
+cross-pod comparison needs rethinking, and the stitched record's *numbers* were fine even though
+its process was not. **E5b is now our best result at 0.3692**, and it is orthogonal to resolution,
+so it should stack with the 768 arm.
+
+**E10b is the most informative null in the queue.** WRN-101 against its own control buys
+**+0.0008** — nothing. Combined with E10a costing accuracy rather than being free, **both
+architectural explanations for their low-resolution advantage are now dead.** That is a real
+result: it means their edge is not backbone capacity and not the projection, and the ensemble
+hypothesis should be re-costed before anyone spends 1.5 GPU-h on three backbones — E10b just told
+us a bigger backbone is worth nothing here.
+
+**A planner error, and it is §3 of THINKING_PROCESS again.** I said their PatchCore beats ours "at
+matched resolution" by 9.6 points. **It is not matched** — their input is 256, our comparison arm
+was 224. At our own measured slope (+15.4 per doubling), 224 -> 256 is worth ~3.0 points, so the
+architectural deficit is roughly **6.6, not 9.6**. I stretched a comparison across a step I had not
+checked, which is the exact failure this project has now made four times, twice by me. The E10
+framing was built on the inflated number.
+
+**Direction, revised by the evidence rather than by the plan.** E10b's null makes E10b-ensemble
+low expected value; do not run three backbones on the strength of the original argument. E5b is
+the live lever and stacks with resolution. **When the 768 arm lands, the obvious next arm is
+E5b + 768 together** — but check first whether they are additive rather than assuming it.
+
+**Your lane stands.** If you think the ensemble is still worth one arm despite E10b, say so and run
+it — you have the artifacts and I have been wrong three times in this table alone.
 

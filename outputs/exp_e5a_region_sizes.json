@@ -1,0 +1,293 @@
+{
+  "total_regions": 1530,
+  "median_px": 1356.5,
+  "q25_px": 485.0,
+  "q75_px": 7121.0,
+  "iqr_px": 6636.0,
+  "counts": {
+    "sub_cell": 756,
+    "1_to_4x": 354,
+    "4_to_16x": 173,
+    "ge_16x": 247
+  },
+  "fractions": {
+    "sub_cell": 0.49411764705882355,
+    "1_to_4x": 0.23137254901960785,
+    "4_to_16x": 0.1130718954248366,
+    "ge_16x": 0.16143790849673204
+  },
+  "scenarios": {
+    "can": {
+      "scenario": "can",
+      "n_regions": 66,
+      "native_size": [
+        2232,
+        1024
+      ],
+      "input_aspect": [
+        672,
+        288
+      ],
+      "grid": [
+        36,
+        84
+      ],
+      "n_patches": 3024,
+      "cell_area": 755.8095238095239,
+      "median_px": 195.0,
+      "q25_px": 105.0,
+      "q75_px": 259.0,
+      "iqr_px": 154.0,
+      "frac_sub_cell (<1x)": 1.0,
+      "frac_<2x": 1.0,
+      "frac_<4x": 1.0,
+      "frac_1_to_4x": 0.0,
+      "frac_4_to_16x": 0.0,
+      "frac_ge_16x": 0.0,
+      "counts": {
+        "sub_cell": 66,
+        "1_to_4x": 0,
+        "4_to_16x": 0,
+        "ge_16x": 0
+      }
+    },
+    "fabric": {
+      "scenario": "fabric",
+      "n_regions": 120,
+      "native_size": [
+        2448,
+        2048
+      ],
+      "input_aspect": [
+        480,
+        416
+      ],
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "cell_area": 1606.8923076923077,
+      "median_px": 412.0,
+      "q25_px": 211.0,
+      "q75_px": 1079.5,
+      "iqr_px": 868.5,
+      "frac_sub_cell (<1x)": 0.85,
+      "frac_<2x": 0.85,
+      "frac_<4x": 0.9,
+      "frac_1_to_4x": 0.05,
+      "frac_4_to_16x": 0.05,
+      "frac_ge_16x": 0.05,
+      "counts": {
+        "sub_cell": 102,
+        "1_to_4x": 6,
+        "4_to_16x": 6,
+        "ge_16x": 6
+      }
+    },
+    "fruit_jelly": {
+      "scenario": "fruit_jelly",
+      "n_regions": 216,
+      "native_size": [
+        2100,
+        1520
+      ],
+      "input_aspect": [
+        512,
+        384
+      ],
+      "grid": [
+        48,
+        64
+      ],
+      "n_patches": 3072,
+      "cell_area": 1039.0625,
+      "median_px": 732.0,
+      "q25_px": 294.0,
+      "q75_px": 6996.0,
+      "iqr_px": 6702.0,
+      "frac_sub_cell (<1x)": 0.5370370370370371,
+      "frac_<2x": 0.6481481481481481,
+      "frac_<4x": 0.7222222222222222,
+      "frac_1_to_4x": 0.18518518518518517,
+      "frac_4_to_16x": 0.1111111111111111,
+      "frac_ge_16x": 0.16666666666666666,
+      "counts": {
+        "sub_cell": 116,
+        "1_to_4x": 40,
+        "4_to_16x": 24,
+        "ge_16x": 36
+      }
+    },
+    "rice": {
+      "scenario": "rice",
+      "n_regions": 114,
+      "native_size": [
+        2448,
+        2048
+      ],
+      "input_aspect": [
+        480,
+        416
+      ],
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "cell_area": 1606.8923076923077,
+      "median_px": 5336.0,
+      "q25_px": 2572.0,
+      "q75_px": 8197.0,
+      "iqr_px": 5625.0,
+      "frac_sub_cell (<1x)": 0.15789473684210525,
+      "frac_<2x": 0.3157894736842105,
+      "frac_<4x": 0.6842105263157895,
+      "frac_1_to_4x": 0.5263157894736842,
+      "frac_4_to_16x": 0.21052631578947367,
+      "frac_ge_16x": 0.10526315789473684,
+      "counts": {
+        "sub_cell": 18,
+        "1_to_4x": 60,
+        "4_to_16x": 24,
+        "ge_16x": 12
+      }
+    },
+    "sheet_metal": {
+      "scenario": "sheet_metal",
+      "n_regions": 444,
+      "native_size": [
+        4224,
+        1056
+      ],
+      "input_aspect": [
+        896,
+        224
+      ],
+      "grid": [
+        28,
+        112
+      ],
+      "n_patches": 3136,
+      "cell_area": 1422.3673469387754,
+      "median_px": 868.5,
+      "q25_px": 534.0,
+      "q75_px": 2838.25,
+      "iqr_px": 2304.25,
+      "frac_sub_cell (<1x)": 0.6486486486486487,
+      "frac_<2x": 0.75,
+      "frac_<4x": 0.9324324324324325,
+      "frac_1_to_4x": 0.28378378378378377,
+      "frac_4_to_16x": 0.02702702702702703,
+      "frac_ge_16x": 0.04054054054054054,
+      "counts": {
+        "sub_cell": 288,
+        "1_to_4x": 126,
+        "4_to_16x": 12,
+        "ge_16x": 18
+      }
+    },
+    "vial": {
+      "scenario": "vial",
+      "n_regions": 168,
+      "native_size": [
+        1400,
+        1900
+      ],
+      "input_aspect": [
+        384,
+        512
+      ],
+      "grid": [
+        64,
+        48
+      ],
+      "n_patches": 3072,
+      "cell_area": 865.8854166666666,
+      "median_px": 14820.0,
+      "q25_px": 4583.25,
+      "q75_px": 30939.75,
+      "iqr_px": 26356.5,
+      "frac_sub_cell (<1x)": 0.16666666666666666,
+      "frac_<2x": 0.25,
+      "frac_<4x": 0.25,
+      "frac_1_to_4x": 0.08333333333333333,
+      "frac_4_to_16x": 0.20833333333333334,
+      "frac_ge_16x": 0.5416666666666666,
+      "counts": {
+        "sub_cell": 28,
+        "1_to_4x": 14,
+        "4_to_16x": 35,
+        "ge_16x": 91
+      }
+    },
+    "wallplugs": {
+      "scenario": "wallplugs",
+      "n_regions": 90,
+      "native_size": [
+        2448,
+        2048
+      ],
+      "input_aspect": [
+        480,
+        416
+      ],
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "cell_area": 1606.8923076923077,
+      "median_px": 1928.0,
+      "q25_px": 1279.0,
+      "q75_px": 15518.0,
+      "iqr_px": 14239.0,
+      "frac_sub_cell (<1x)": 0.26666666666666666,
+      "frac_<2x": 0.6,
+      "frac_<4x": 0.6666666666666666,
+      "frac_1_to_4x": 0.4,
+      "frac_4_to_16x": 0.2,
+      "frac_ge_16x": 0.13333333333333333,
+      "counts": {
+        "sub_cell": 24,
+        "1_to_4x": 36,
+        "4_to_16x": 18,
+        "ge_16x": 12
+      }
+    },
+    "walnuts": {
+      "scenario": "walnuts",
+      "n_regions": 312,
+      "native_size": [
+        2448,
+        2048
+      ],
+      "input_aspect": [
+        480,
+        416
+      ],
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "cell_area": 1606.8923076923077,
+      "median_px": 3615.5,
+      "q25_px": 976.25,
+      "q75_px": 13418.5,
+      "iqr_px": 12442.25,
+      "frac_sub_cell (<1x)": 0.36538461538461536,
+      "frac_<2x": 0.46153846153846156,
+      "frac_<4x": 0.5961538461538461,
+      "frac_1_to_4x": 0.23076923076923078,
+      "frac_4_to_16x": 0.17307692307692307,
+      "frac_ge_16x": 0.23076923076923078,
+      "counts": {
+        "sub_cell": 114,
+        "1_to_4x": 72,
+        "4_to_16x": 54,
+        "ge_16x": 72
+      }
+    }
+  }
+}

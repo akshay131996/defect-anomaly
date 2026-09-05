@@ -155,6 +155,14 @@ results.append(ok_rl)
 print(f"{'reg_labels':<10} pixel_auroc {res_rl['pixel_auroc']:.4f}   "
       f"AU-PRO@5% {res_rl['au_pro@0.05']:.4f}   @30% {res_rl['au_pro@0.3']:.4f}   "
       f"regions {res_rl['n_regions']:>3}   {'PASS' if ok_rl else '** FAIL **'}")
+# per_region_pro exact mean parity check (E5a)
+ok_pr = (np.isclose(np.mean(res_rl["per_region_pro"][0.05]), res_rl["au_pro@0.05"]) and
+         np.isclose(np.mean(res_rl["per_region_pro"][0.30]), res_rl["au_pro@0.3"]) and
+         len(res_rl["per_region_pro"][0.05]) == tot_expected_regs)
+results.append(ok_pr)
+print(f"{'per_region':<10} mean_p5 {np.mean(res_rl['per_region_pro'][0.05]):.4f}   "
+      f"au_pro {res_rl['au_pro@0.05']:.4f}   "
+      f"regions {len(res_rl['per_region_pro'][0.05]):>3}   {'PASS' if ok_pr else '** FAIL **'}")
 
 print()
 print("ALL PASS" if all(results) else "** SOME CHECKS FAILED - the metric is suspect **")

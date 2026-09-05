@@ -193,6 +193,37 @@ def aspect_transform(ex, w_in, h_in):
     return ex
 
 
+def extract_paths_prealloc(ex, paths, pool, batch=8):
+    """Preallocate CPU tensor for patch feature extraction to eliminate the 2x memory
+    spike from torch.cat. Bit-identical to sb.extract_paths (verified in test_prealloc.py)."""
+    from PIL import Image
+    n_total = len(paths)
+    sample_imgs = list(pool.map(lambda p: Image.open(p).convert("RGB"), paths[:batch]))
+    sample_x = torch.stack(list(pool.map(ex._one, sample_imgs))).to(sb.DEVICE)
+    with torch.no_grad():
+        f0 = ex.forward_feats(sample_x)
+
+    patches_per_img = f0.shape[0] // len(sample_imgs)
+    dim = f0.shape[1]
+    total_patches = n_total * patches_per_img
+
+    feats = torch.empty((total_patches, dim), dtype=torch.float32)
+    feats[:f0.shape[0]] = f0
+    del sample_imgs, sample_x, f0
+
+    curr = batch
+    while curr < n_total:
+        b_paths = paths[curr:curr + batch]
+        imgs = list(pool.map(lambda p: Image.open(p).convert("RGB"), b_paths))
+        x = torch.stack(list(pool.map(ex._one, imgs))).to(sb.DEVICE)
+        with torch.no_grad():
+            f = ex.forward_feats(x)
+        feats[curr * patches_per_img : (curr + len(b_paths)) * patches_per_img] = f
+        del imgs, x, f
+        curr += batch
+    return feats
+
+
 @torch.no_grad()
 def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None, eval_shape=(EVAL_SIDE, EVAL_SIDE), gauss_sigma=GAUSS_SIGMA):
     """Returns (image_scores, list of HxW float maps at eval_shape resolution)."""
@@ -384,8 +415,8 @@ def main():
             eval_w, eval_h = aspect_dimensions(w_nat, h_nat, target_img=args.eval_side, stride=32)
             eval_shape = (eval_h, eval_w)
 
-        # Bank from train
-        f_tr = sb.extract_paths(ex, train, _POOL)
+        # Bank from train (preallocated to eliminate transient 2x memory doubling)
+        f_tr = extract_paths_prealloc(ex, train, _POOL)
         n_patches = ex.grid[0] * ex.grid[1]
         keep = sb.coreset_indices(f_tr, ratio=CORESET_RATIO, seed=SEED,
                                   max_k=args.bank_cap or None)
@@ -404,6 +435,7 @@ def main():
 
         masks = []
         region_labels = []
+        scenario_region_sizes = []
         total_native_regions = 0
         use_fixed_regions = not args.no_fixed_regions
 
@@ -418,9 +450,11 @@ def main():
                 n_comp = 0
                 for r in range(1, n_comp_all + 1):
                     sel = (labelled == r)
-                    if sel.sum() >= args.native_min_region_px:
+                    sz = int(sel.sum())
+                    if sz >= args.native_min_region_px:
                         n_comp += 1
                         clean_labels[sel] = n_comp
+                        scenario_region_sizes.append(sz)
                 total_native_regions += n_comp
 
                 # Resize clean_labels into evaluation space with NEAREST
@@ -476,6 +510,35 @@ def main():
         if use_fixed_regions:
             assert res["n_regions"] == total_native_regions, \
                 f"Region count mismatch: {res['n_regions']} vs {total_native_regions}"
+
+        cell_area = (w_nat * h_nat) / n_patches
+        if "per_region_pro" in res and res["per_region_pro"].get(0.05) and len(scenario_region_sizes) == len(res["per_region_pro"][0.05]):
+            p5s = res["per_region_pro"][0.05]
+            p30s = res["per_region_pro"][0.3]
+            buckets = {b: {"count": 0, "pro5_sum": 0.0, "pro30_sum": 0.0}
+                       for b in ["sub_cell", "1_to_4x", "4_to_16x", "ge_16x"]}
+            for sz, p5, p30 in zip(scenario_region_sizes, p5s, p30s):
+                if sz < cell_area:
+                    b = "sub_cell"
+                elif sz < 4 * cell_area:
+                    b = "1_to_4x"
+                elif sz < 16 * cell_area:
+                    b = "4_to_16x"
+                else:
+                    b = "ge_16x"
+                buckets[b]["count"] += 1
+                buckets[b]["pro5_sum"] += p5
+                buckets[b]["pro30_sum"] += p30
+            res["cell_area"] = float(cell_area)
+            res["buckets"] = {
+                b: {
+                    "count": buckets[b]["count"],
+                    "mean_au_pro@0.05": float(buckets[b]["pro5_sum"] / buckets[b]["count"]) if buckets[b]["count"] else None,
+                    "mean_au_pro@0.3": float(buckets[b]["pro30_sum"] / buckets[b]["count"]) if buckets[b]["count"] else None,
+                }
+                for b in ["sub_cell", "1_to_4x", "4_to_16x", "ge_16x"]
+            }
+            del res["per_region_pro"]
 
         res.update({
             "image_auroc": img_auroc, "n_train": len(train), "n_val": len(val),
@@ -539,6 +602,50 @@ def main():
               f"AU-PRO@5% {summary['mean_au_pro@0.05']:.4f}   "
               f"AU-PRO@30% {summary['mean_au_pro@0.3']:.4f}   "
               f"active {total_active}/{total_suite_regions}")
+
+        total_bucket_counts = {"sub_cell": 0, "1_to_4x": 0, "4_to_16x": 0, "ge_16x": 0}
+        total_bucket_p5_sums = {"sub_cell": 0.0, "1_to_4x": 0.0, "4_to_16x": 0.0, "ge_16x": 0.0}
+        has_buckets = False
+        for sc_name, data in summary["scenarios"].items():
+            if "buckets" in data:
+                has_buckets = True
+                for b in total_bucket_counts:
+                    cnt = data["buckets"][b]["count"]
+                    total_bucket_counts[b] += cnt
+                    if data["buckets"][b]["mean_au_pro@0.05"] is not None:
+                        total_bucket_p5_sums[b] += data["buckets"][b]["mean_au_pro@0.05"] * cnt
+        if has_buckets:
+            tot_b_regs = sum(total_bucket_counts.values())
+            summary["buckets"] = {
+                b: {
+                    "count": total_bucket_counts[b],
+                    "fraction": total_bucket_counts[b] / tot_b_regs if tot_b_regs else 0.0,
+                    "mean_au_pro@0.05": float(total_bucket_p5_sums[b] / total_bucket_counts[b]) if total_bucket_counts[b] else None,
+                }
+                for b in total_bucket_counts
+            }
+            ge4_cnt = total_bucket_counts["4_to_16x"] + total_bucket_counts["ge_16x"]
+            ge4_sum = total_bucket_p5_sums["4_to_16x"] + total_bucket_p5_sums["ge_16x"]
+            summary["buckets"]["ge_4_cells_combined"] = {
+                "count": ge4_cnt,
+                "fraction": ge4_cnt / tot_b_regs if tot_b_regs else 0.0,
+                "mean_au_pro@0.05": float(ge4_sum / ge4_cnt) if ge4_cnt else None,
+            }
+            print("\n" + "=" * 70)
+            print(f"{'Size Bucket':<18} {'Count':<8} {'% of Regs':<12} {'Mean AU-PRO@5%':<16}")
+            print("-" * 70)
+            for b in ["sub_cell", "1_to_4x", "4_to_16x", "ge_16x"]:
+                c = total_bucket_counts[b]
+                f = c / tot_b_regs * 100 if tot_b_regs else 0.0
+                m = summary["buckets"][b]["mean_au_pro@0.05"]
+                m_str = f"{m:.4f}" if m is not None else "None"
+                print(f"{b:<18} {c:<8} {f:<11.1f}% {m_str:<16}")
+            print("-" * 70)
+            ge4_m = summary["buckets"]["ge_4_cells_combined"]["mean_au_pro@0.05"]
+            ge4_m_str = f"{ge4_m:.4f}" if ge4_m is not None else "None"
+            print(f"{'>= 4 cells combined':<18} {ge4_cnt:<8} {ge4_cnt/tot_b_regs*100:<11.1f}% {ge4_m_str:<16}")
+            print("=" * 70 + "\n")
+
     try:
         import resource
         peak_rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss

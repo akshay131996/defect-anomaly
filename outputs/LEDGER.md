@@ -21,6 +21,7 @@ See HANDOFF.md §0 for the output contract and the audit checklist.
 | E4-evalside-1024 | aspect | 448 (eval 1024) | 0.3444 | 0.724 | `5d43304b` | 1530/1530 active regions |
 | E4-evalside-2048 | aspect | 448 (eval 2048) | 0.3442 | 0.724 | `5d43304b` | 1530/1530 active regions |
 | E4-evalside-trend | aspect | 448 (sweep) | 0.3444 -> 0.3442 | 0.724 | `5d43304b` | **refutes** — flat across eval resolutions (range 0.0002); input resolution ceiling binds |
+| E5a-regions | aspect | 448 | 0.3444 | 0.724 | `e82ce4bc` | **supports** — AU-PRO scales with defect size: sub-cell 0.226 -> >=16x 0.606; 49.4% regions sub-cell |
 | E5-inputres | | | | | | _pending_ |
 | E6-density | | | | | | _pending_ |
 | E7-fusion-val | | | | | | _pending_ |

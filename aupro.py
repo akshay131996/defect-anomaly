@@ -129,7 +129,20 @@ def evaluate(maps_good, maps_bad, masks, lo, hi, nbins=NBINS, pro_limits=PRO_LIM
             p_interp = np.interp(grid, f_sorted, p_sorted,
                                  left=float(p_sorted[0]), right=float(p_sorted[-1]))
             out[f"au_pro@{lim}"] = float(np.trapezoid(p_interp, grid) / lim)
+
+        # Per-region PRO values exposed for granular region breakdown (E5a)
+        per_region_pro = {lim: [] for lim in pro_limits}
+        for h in region_hists:
+            s_k = np.cumsum(h[::-1])[::-1]
+            s_sorted = s_k[o]
+            for lim in pro_limits:
+                grid = np.linspace(0.0, lim, 512)
+                p_interp = np.interp(grid, f_sorted, s_sorted,
+                                     left=float(s_sorted[0]), right=float(s_sorted[-1]))
+                per_region_pro[lim].append(float(np.trapezoid(p_interp, grid) / lim))
+        out["per_region_pro"] = per_region_pro
     else:
         for lim in pro_limits:
             out[f"au_pro@{lim}"] = None
+        out["per_region_pro"] = {lim: [] for lim in pro_limits}
     return out

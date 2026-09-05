@@ -1,0 +1,12 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+can           img 0.4835  pix 0.6585  AU-PRO@5% 0.04673  @30% 0.22948  regions   66  117s
+fabric        img 0.6380  pix 0.6285  AU-PRO@5% 0.12437  @30% 0.39990  regions  120  132s
+fruit_jelly   img 0.9050  pix 0.9483  AU-PRO@5% 0.46078  @30% 0.70428  regions  216  75s
+rice          img 0.4651  pix 0.8602  AU-PRO@5% 0.22414  @30% 0.46538  regions  114  103s
+sheet_metal   img 0.7079  pix 0.9149  AU-PRO@5% 0.11317  @30% 0.29336  regions  444  49s
+vial          img 0.9565  pix 0.9031  AU-PRO@5% 0.67543  @30% 0.89165  regions  168  83s
+wallplugs     img 0.3763  pix 0.9249  AU-PRO@5% 0.25058  @30% 0.51155  regions   90  90s
+walnuts       img 0.8257  pix 0.9558  AU-PRO@5% 0.44998  @30% 0.74644  regions  312  138s
+
+mean image AUROC 0.6697   pixel AUROC 0.8493   AU-PRO@5% 0.2932   AU-PRO@30% 0.5303
+wrote outputs/runs/E2R-letterbox-448.json

@@ -1,0 +1,12 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+can           img 0.5140  pix 0.6950  AU-PRO@5% 0.11930  @30% 0.33779  regions   96  112s
+fabric        img 0.6079  pix 0.6196  AU-PRO@5% 0.15739  @30% 0.46031  regions  114  127s
+fruit_jelly   img 0.9283  pix 0.9464  AU-PRO@5% 0.42029  @30% 0.65054  regions  252  71s
+rice          img 0.6376  pix 0.8117  AU-PRO@5% 0.22608  @30% 0.41248  regions  120  99s
+sheet_metal   img 0.7912  pix 0.9181  AU-PRO@5% 0.27669  @30% 0.56092  regions 1101  45s
+vial          img 0.9551  pix 0.9168  AU-PRO@5% 0.69999  @30% 0.91192  regions  174  78s
+wallplugs     img 0.5409  pix 0.9098  AU-PRO@5% 0.27681  @30% 0.48060  regions   90  86s
+walnuts       img 0.8133  pix 0.9526  AU-PRO@5% 0.40316  @30% 0.74610  regions  432  132s
+
+mean image AUROC 0.7236   pixel AUROC 0.8463   AU-PRO@5% 0.3225   AU-PRO@30% 0.5701
+wrote outputs/runs/E3-aspect-448.json

@@ -1,0 +1,6 @@
+vial          img 0.9156  pix 0.9242  AU-PRO@5% 0.73856  @30% 0.91980  regions  174  80s
+wallplugs     img 0.5650  pix 0.9210  AU-PRO@5% 0.29514  @30% 0.50422  regions   84  94s
+walnuts       img 0.8167  pix 0.9532  AU-PRO@5% 0.37372  @30% 0.69653  regions  450  132s
+
+mean image AUROC 0.7658   pixel AUROC 0.9328   AU-PRO@5% 0.4691   AU-PRO@30% 0.7069
+wrote outputs/ad2_pixel_eval.json

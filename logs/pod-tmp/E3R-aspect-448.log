@@ -1,0 +1,11 @@
+can           img 0.5140  pix 0.7204  AU-PRO@5% 0.13385  @30% 0.34077  regions   66  113s
+fabric        img 0.6079  pix 0.6196  AU-PRO@5% 0.18156  @30% 0.45844  regions  120  130s
+fruit_jelly   img 0.9283  pix 0.9466  AU-PRO@5% 0.47468  @30% 0.71404  regions  216  73s
+rice          img 0.6376  pix 0.8118  AU-PRO@5% 0.22715  @30% 0.40763  regions  114  103s
+sheet_metal   img 0.7912  pix 0.9182  AU-PRO@5% 0.25197  @30% 0.51063  regions  444  49s
+vial          img 0.9551  pix 0.9168  AU-PRO@5% 0.71910  @30% 0.91402  regions  168  80s
+wallplugs     img 0.5409  pix 0.9098  AU-PRO@5% 0.27698  @30% 0.48365  regions   90  90s
+walnuts       img 0.8133  pix 0.9526  AU-PRO@5% 0.47792  @30% 0.74875  regions  312  138s
+
+mean image AUROC 0.7236   pixel AUROC 0.8495   AU-PRO@5% 0.3429   AU-PRO@30% 0.5722
+wrote outputs/runs/E3R-aspect-448.json

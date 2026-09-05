@@ -1,0 +1,1974 @@
+{
+  "dataset": "TheoM55/mvtec_all_objects_split",
+  "categories": [
+    "bottle",
+    "cable",
+    "capsule",
+    "carpet",
+    "grid",
+    "hazelnut",
+    "leather",
+    "metal_nut",
+    "pill",
+    "screw",
+    "tile",
+    "toothbrush",
+    "transistor",
+    "wood",
+    "zipper"
+  ],
+  "coreset_ratio": 0.01,
+  "calibration_split": {
+    "frac": 0.2,
+    "seed": 0
+  },
+  "threshold_rule": "99.0th percentile of held-out calibration scores",
+  "cost_ratio_escape_to_false_alarm": 100.0,
+  "device": "NVIDIA RTX 4000 Ada Generation",
+  "arms": {
+    "A_wrn50_224": {
+      "backbone": "wide_resnet50_2",
+      "img": 224,
+      "categories": {
+        "bottle": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1309,
+          "n_fit_images": 167,
+          "n_cal_images": 42,
+          "operating_point": {
+            "threshold": 41.19802474975586,
+            "escapes": 0,
+            "false_alarms": 0,
+            "recall": 1.0,
+            "far": 0.0,
+            "cost": 0.0
+          },
+          "seconds": 22.6
+        },
+        "cable": {
+          "auroc": 0.9782608695652173,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1403,
+          "n_fit_images": 179,
+          "n_cal_images": 45,
+          "operating_point": {
+            "threshold": 59.346458435058594,
+            "escapes": 19,
+            "false_alarms": 3,
+            "recall": 0.7934782608695652,
+            "far": 0.05172413793103448,
+            "cost": 1903.0
+          },
+          "seconds": 40.7
+        },
+        "capsule": {
+          "auroc": 0.9573195053849222,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1372,
+          "n_fit_images": 175,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 47.342681884765625,
+            "escapes": 56,
+            "false_alarms": 1,
+            "recall": 0.48623853211009177,
+            "far": 0.043478260869565216,
+            "cost": 5601.0
+          },
+          "seconds": 36.5
+        },
+        "carpet": {
+          "auroc": 0.9863563402889246,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1756,
+          "n_fit_images": 224,
+          "n_cal_images": 56,
+          "operating_point": {
+            "threshold": 36.77423095703125,
+            "escapes": 2,
+            "false_alarms": 7,
+            "recall": 0.9775280898876404,
+            "far": 0.25,
+            "cost": 207.0
+          },
+          "seconds": 46.5
+        },
+        "grid": {
+          "auroc": 0.9507101086048455,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1654,
+          "n_fit_images": 211,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 44.92295455932617,
+            "escapes": 9,
+            "false_alarms": 1,
+            "recall": 0.8421052631578947,
+            "far": 0.047619047619047616,
+            "cost": 901.0
+          },
+          "seconds": 29.3
+        },
+        "hazelnut": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 2453,
+          "n_fit_images": 313,
+          "n_cal_images": 78,
+          "operating_point": {
+            "threshold": 59.72174835205078,
+            "escapes": 1,
+            "false_alarms": 0,
+            "recall": 0.9857142857142858,
+            "far": 0.0,
+            "cost": 100.0
+          },
+          "seconds": 58.0
+        },
+        "leather": {
+          "auroc": 0.9996603260869565,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1536,
+          "n_fit_images": 196,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 35.634559631347656,
+            "escapes": 0,
+            "false_alarms": 7,
+            "recall": 1.0,
+            "far": 0.21875,
+            "cost": 7.0
+          },
+          "seconds": 38.5
+        },
+        "metal_nut": {
+          "auroc": 0.9990224828934506,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1379,
+          "n_fit_images": 176,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 53.1884880065918,
+            "escapes": 2,
+            "false_alarms": 1,
+            "recall": 0.978494623655914,
+            "far": 0.045454545454545456,
+            "cost": 201.0
+          },
+          "seconds": 21.9
+        },
+        "pill": {
+          "auroc": 0.9530823786142935,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1677,
+          "n_fit_images": 214,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 48.57129669189453,
+            "escapes": 44,
+            "false_alarms": 1,
+            "recall": 0.6879432624113475,
+            "far": 0.038461538461538464,
+            "cost": 4401.0
+          },
+          "seconds": 34.7
+        },
+        "screw": {
+          "auroc": 0.9549087927854069,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 2007,
+          "n_fit_images": 256,
+          "n_cal_images": 64,
+          "operating_point": {
+            "threshold": 47.181270599365234,
+            "escapes": 33,
+            "false_alarms": 1,
+            "recall": 0.7226890756302521,
+            "far": 0.024390243902439025,
+            "cost": 3301.0
+          },
+          "seconds": 38.1
+        },
+        "tile": {
+          "auroc": 0.9891774891774893,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1442,
+          "n_fit_images": 184,
+          "n_cal_images": 46,
+          "operating_point": {
+            "threshold": 53.5289306640625,
+            "escapes": 8,
+            "false_alarms": 0,
+            "recall": 0.9047619047619048,
+            "far": 0.0,
+            "cost": 800.0
+          },
+          "seconds": 28.7
+        },
+        "toothbrush": {
+          "auroc": 0.9388888888888889,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 376,
+          "n_fit_images": 48,
+          "n_cal_images": 12,
+          "operating_point": {
+            "threshold": 49.23413848876953,
+            "escapes": 3,
+            "false_alarms": 2,
+            "recall": 0.9,
+            "far": 0.16666666666666666,
+            "cost": 302.0
+          },
+          "seconds": 10.0
+        },
+        "transistor": {
+          "auroc": 0.9958333333333333,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1332,
+          "n_fit_images": 170,
+          "n_cal_images": 43,
+          "operating_point": {
+            "threshold": 52.738216400146484,
+            "escapes": 3,
+            "false_alarms": 1,
+            "recall": 0.925,
+            "far": 0.016666666666666666,
+            "cost": 301.0
+          },
+          "seconds": 34.2
+        },
+        "wood": {
+          "auroc": 0.9894736842105263,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1552,
+          "n_fit_images": 198,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 66.52507781982422,
+            "escapes": 14,
+            "false_alarms": 0,
+            "recall": 0.7666666666666667,
+            "far": 0.0,
+            "cost": 1400.0
+          },
+          "seconds": 36.6
+        },
+        "zipper": {
+          "auroc": 0.9852941176470589,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1505,
+          "n_fit_images": 192,
+          "n_cal_images": 48,
+          "operating_point": {
+            "threshold": 36.805450439453125,
+            "escapes": 1,
+            "false_alarms": 2,
+            "recall": 0.9915966386554622,
+            "far": 0.0625,
+            "cost": 102.0
+          },
+          "seconds": 28.9
+        }
+      },
+      "mean_auroc": 0.9785325544987543,
+      "total_cost": 19527.0,
+      "seconds_total": 508.2
+    },
+    "B0_dinov2_224": {
+      "backbone": "vit_base_patch14_dinov2.lvd142m",
+      "img": 224,
+      "categories": {
+        "bottle": {
+          "auroc": 1.0,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 427,
+          "n_fit_images": 167,
+          "n_cal_images": 42,
+          "operating_point": {
+            "threshold": 16.992786407470703,
+            "escapes": 0,
+            "false_alarms": 0,
+            "recall": 1.0,
+            "far": 0.0,
+            "cost": 0.0
+          },
+          "seconds": 17.0
+        },
+        "cable": {
+          "auroc": 0.9419040479760119,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 458,
+          "n_fit_images": 179,
+          "n_cal_images": 45,
+          "operating_point": {
+            "threshold": 22.225831985473633,
+            "escapes": 15,
+            "false_alarms": 2,
+            "recall": 0.8369565217391305,
+            "far": 0.034482758620689655,
+            "cost": 1502.0
+          },
+          "seconds": 29.1
+        },
+        "capsule": {
+          "auroc": 0.8891104906262465,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 448,
+          "n_fit_images": 175,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 18.18513298034668,
+            "escapes": 68,
+            "false_alarms": 0,
+            "recall": 0.3761467889908257,
+            "far": 0.0,
+            "cost": 6800.0
+          },
+          "seconds": 26.8
+        },
+        "carpet": {
+          "auroc": 0.9963884430176565,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 573,
+          "n_fit_images": 224,
+          "n_cal_images": 56,
+          "operating_point": {
+            "threshold": 24.756250381469727,
+            "escapes": 6,
+            "false_alarms": 1,
+            "recall": 0.9325842696629213,
+            "far": 0.03571428571428571,
+            "cost": 601.0
+          },
+          "seconds": 30.1
+        },
+        "grid": {
+          "auroc": 0.998329156223893,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 540,
+          "n_fit_images": 211,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 20.25133514404297,
+            "escapes": 0,
+            "false_alarms": 3,
+            "recall": 1.0,
+            "far": 0.14285714285714285,
+            "cost": 3.0
+          },
+          "seconds": 19.3
+        },
+        "hazelnut": {
+          "auroc": 0.9985714285714286,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 801,
+          "n_fit_images": 313,
+          "n_cal_images": 78,
+          "operating_point": {
+            "threshold": 26.7677001953125,
+            "escapes": 5,
+            "false_alarms": 0,
+            "recall": 0.9285714285714286,
+            "far": 0.0,
+            "cost": 500.0
+          },
+          "seconds": 38.5
+        },
+        "leather": {
+          "auroc": 1.0,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 501,
+          "n_fit_images": 196,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 24.023706436157227,
+            "escapes": 1,
+            "false_alarms": 0,
+            "recall": 0.9891304347826086,
+            "far": 0.0,
+            "cost": 100.0
+          },
+          "seconds": 26.5
+        },
+        "metal_nut": {
+          "auroc": 0.979960899315738,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 450,
+          "n_fit_images": 176,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 19.850553512573242,
+            "escapes": 4,
+            "false_alarms": 3,
+            "recall": 0.956989247311828,
+            "far": 0.13636363636363635,
+            "cost": 403.0
+          },
+          "seconds": 13.9
+        },
+        "pill": {
+          "auroc": 0.9288052373158756,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 547,
+          "n_fit_images": 214,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 18.617319107055664,
+            "escapes": 28,
+            "false_alarms": 1,
+            "recall": 0.8014184397163121,
+            "far": 0.038461538461538464,
+            "cost": 2801.0
+          },
+          "seconds": 23.4
+        },
+        "screw": {
+          "auroc": 0.7349866775978684,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 655,
+          "n_fit_images": 256,
+          "n_cal_images": 64,
+          "operating_point": {
+            "threshold": 21.41157341003418,
+            "escapes": 101,
+            "false_alarms": 3,
+            "recall": 0.15126050420168066,
+            "far": 0.07317073170731707,
+            "cost": 10103.0
+          },
+          "seconds": 28.0
+        },
+        "tile": {
+          "auroc": 1.0,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 471,
+          "n_fit_images": 184,
+          "n_cal_images": 46,
+          "operating_point": {
+            "threshold": 21.293628692626953,
+            "escapes": 0,
+            "false_alarms": 0,
+            "recall": 1.0,
+            "far": 0.0,
+            "cost": 0.0
+          },
+          "seconds": 20.0
+        },
+        "toothbrush": {
+          "auroc": 0.9500000000000001,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 122,
+          "n_fit_images": 48,
+          "n_cal_images": 12,
+          "operating_point": {
+            "threshold": 20.198923110961914,
+            "escapes": 2,
+            "false_alarms": 4,
+            "recall": 0.9333333333333333,
+            "far": 0.3333333333333333,
+            "cost": 204.0
+          },
+          "seconds": 8.3
+        },
+        "transistor": {
+          "auroc": 0.96875,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 435,
+          "n_fit_images": 170,
+          "n_cal_images": 43,
+          "operating_point": {
+            "threshold": 18.45843505859375,
+            "escapes": 8,
+            "false_alarms": 3,
+            "recall": 0.8,
+            "far": 0.05,
+            "cost": 803.0
+          },
+          "seconds": 24.5
+        },
+        "wood": {
+          "auroc": 0.9570175438596491,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 506,
+          "n_fit_images": 198,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 27.707988739013672,
+            "escapes": 2,
+            "false_alarms": 7,
+            "recall": 0.9666666666666667,
+            "far": 0.3684210526315789,
+            "cost": 207.0
+          },
+          "seconds": 24.8
+        },
+        "zipper": {
+          "auroc": 0.9960609243697479,
+          "grid": [
+            16,
+            16
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 256,
+          "bank_size": 491,
+          "n_fit_images": 192,
+          "n_cal_images": 48,
+          "operating_point": {
+            "threshold": 20.77327537536621,
+            "escapes": 4,
+            "false_alarms": 0,
+            "recall": 0.9663865546218487,
+            "far": 0.0,
+            "cost": 400.0
+          },
+          "seconds": 22.3
+        }
+      },
+      "mean_auroc": 0.9559923232582743,
+      "total_cost": 24427.0,
+      "seconds_total": 357.9
+    },
+    "B1_dinov2_392": {
+      "backbone": "vit_base_patch14_dinov2.lvd142m",
+      "img": 392,
+      "categories": {
+        "bottle": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1309,
+          "n_fit_images": 167,
+          "n_cal_images": 42,
+          "operating_point": {
+            "threshold": 16.847198486328125,
+            "escapes": 0,
+            "false_alarms": 3,
+            "recall": 1.0,
+            "far": 0.15,
+            "cost": 3.0
+          },
+          "seconds": 24.8
+        },
+        "cable": {
+          "auroc": 0.9741379310344828,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1403,
+          "n_fit_images": 179,
+          "n_cal_images": 45,
+          "operating_point": {
+            "threshold": 22.912546157836914,
+            "escapes": 10,
+            "false_alarms": 1,
+            "recall": 0.8913043478260869,
+            "far": 0.017241379310344827,
+            "cost": 1001.0
+          },
+          "seconds": 38.3
+        },
+        "capsule": {
+          "auroc": 0.9541284403669725,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1372,
+          "n_fit_images": 175,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 20.27446174621582,
+            "escapes": 31,
+            "false_alarms": 1,
+            "recall": 0.7155963302752294,
+            "far": 0.043478260869565216,
+            "cost": 3101.0
+          },
+          "seconds": 35.7
+        },
+        "carpet": {
+          "auroc": 0.9995987158908507,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1756,
+          "n_fit_images": 224,
+          "n_cal_images": 56,
+          "operating_point": {
+            "threshold": 21.556055068969727,
+            "escapes": 0,
+            "false_alarms": 2,
+            "recall": 1.0,
+            "far": 0.07142857142857142,
+            "cost": 2.0
+          },
+          "seconds": 42.2
+        },
+        "grid": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1654,
+          "n_fit_images": 211,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 20.644134521484375,
+            "escapes": 0,
+            "false_alarms": 0,
+            "recall": 1.0,
+            "far": 0.0,
+            "cost": 0.0
+          },
+          "seconds": 29.3
+        },
+        "hazelnut": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 2453,
+          "n_fit_images": 313,
+          "n_cal_images": 78,
+          "operating_point": {
+            "threshold": 25.81552505493164,
+            "escapes": 0,
+            "false_alarms": 0,
+            "recall": 1.0,
+            "far": 0.0,
+            "cost": 0.0
+          },
+          "seconds": 56.1
+        },
+        "leather": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1536,
+          "n_fit_images": 196,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 27.761653900146484,
+            "escapes": 2,
+            "false_alarms": 0,
+            "recall": 0.9782608695652174,
+            "far": 0.0,
+            "cost": 200.0
+          },
+          "seconds": 36.2
+        },
+        "metal_nut": {
+          "auroc": 0.9975562072336266,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1379,
+          "n_fit_images": 176,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 21.508928298950195,
+            "escapes": 0,
+            "false_alarms": 1,
+            "recall": 1.0,
+            "far": 0.045454545454545456,
+            "cost": 1.0
+          },
+          "seconds": 24.5
+        },
+        "pill": {
+          "auroc": 0.9882705946535734,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1677,
+          "n_fit_images": 214,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 20.335893630981445,
+            "escapes": 10,
+            "false_alarms": 0,
+            "recall": 0.9290780141843972,
+            "far": 0.0,
+            "cost": 1000.0
+          },
+          "seconds": 35.3
+        },
+        "screw": {
+          "auroc": 0.8794835007173601,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 2007,
+          "n_fit_images": 256,
+          "n_cal_images": 64,
+          "operating_point": {
+            "threshold": 22.777210235595703,
+            "escapes": 74,
+            "false_alarms": 1,
+            "recall": 0.37815126050420167,
+            "far": 0.024390243902439025,
+            "cost": 7401.0
+          },
+          "seconds": 42.6
+        },
+        "tile": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1442,
+          "n_fit_images": 184,
+          "n_cal_images": 46,
+          "operating_point": {
+            "threshold": 23.347795486450195,
+            "escapes": 0,
+            "false_alarms": 0,
+            "recall": 1.0,
+            "far": 0.0,
+            "cost": 0.0
+          },
+          "seconds": 29.1
+        },
+        "toothbrush": {
+          "auroc": 0.9722222222222223,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 376,
+          "n_fit_images": 48,
+          "n_cal_images": 12,
+          "operating_point": {
+            "threshold": 20.107637405395508,
+            "escapes": 0,
+            "false_alarms": 5,
+            "recall": 1.0,
+            "far": 0.4166666666666667,
+            "cost": 5.0
+          },
+          "seconds": 9.6
+        },
+        "transistor": {
+          "auroc": 0.98875,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1332,
+          "n_fit_images": 170,
+          "n_cal_images": 43,
+          "operating_point": {
+            "threshold": 19.149276733398438,
+            "escapes": 0,
+            "false_alarms": 9,
+            "recall": 1.0,
+            "far": 0.15,
+            "cost": 9.0
+          },
+          "seconds": 32.4
+        },
+        "wood": {
+          "auroc": 0.9894736842105263,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1552,
+          "n_fit_images": 198,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 30.873519897460938,
+            "escapes": 3,
+            "false_alarms": 0,
+            "recall": 0.95,
+            "far": 0.0,
+            "cost": 300.0
+          },
+          "seconds": 34.3
+        },
+        "zipper": {
+          "auroc": 0.9989495798319328,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 768,
+          "patches_per_image": 784,
+          "bank_size": 1505,
+          "n_fit_images": 192,
+          "n_cal_images": 48,
+          "operating_point": {
+            "threshold": 20.37044334411621,
+            "escapes": 2,
+            "false_alarms": 0,
+            "recall": 0.9831932773109243,
+            "far": 0.0,
+            "cost": 200.0
+          },
+          "seconds": 32.3
+        }
+      },
+      "mean_auroc": 0.9828380584107699,
+      "total_cost": 13223.0,
+      "seconds_total": 507.5
+    },
+    "C_resnet18_224": {
+      "backbone": "resnet18",
+      "img": 224,
+      "categories": {
+        "bottle": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1309,
+          "n_fit_images": 167,
+          "n_cal_images": 42,
+          "operating_point": {
+            "threshold": 10.930031776428223,
+            "escapes": 0,
+            "false_alarms": 1,
+            "recall": 1.0,
+            "far": 0.05,
+            "cost": 1.0
+          },
+          "seconds": 21.0
+        },
+        "cable": {
+          "auroc": 0.9557721139430285,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1403,
+          "n_fit_images": 179,
+          "n_cal_images": 45,
+          "operating_point": {
+            "threshold": 20.05304718017578,
+            "escapes": 16,
+            "false_alarms": 6,
+            "recall": 0.8260869565217391,
+            "far": 0.10344827586206896,
+            "cost": 1606.0
+          },
+          "seconds": 31.5
+        },
+        "capsule": {
+          "auroc": 0.9744714798564021,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1372,
+          "n_fit_images": 175,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 11.389344215393066,
+            "escapes": 45,
+            "false_alarms": 0,
+            "recall": 0.5871559633027523,
+            "far": 0.0,
+            "cost": 4500.0
+          },
+          "seconds": 28.7
+        },
+        "carpet": {
+          "auroc": 0.9650882825040129,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1756,
+          "n_fit_images": 224,
+          "n_cal_images": 56,
+          "operating_point": {
+            "threshold": 10.920681953430176,
+            "escapes": 8,
+            "false_alarms": 0,
+            "recall": 0.9101123595505618,
+            "far": 0.0,
+            "cost": 800.0
+          },
+          "seconds": 34.1
+        },
+        "grid": {
+          "auroc": 0.8755221386800334,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1654,
+          "n_fit_images": 211,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 15.40802001953125,
+            "escapes": 34,
+            "false_alarms": 0,
+            "recall": 0.40350877192982454,
+            "far": 0.0,
+            "cost": 3400.0
+          },
+          "seconds": 23.4
+        },
+        "hazelnut": {
+          "auroc": 0.9939285714285715,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 2453,
+          "n_fit_images": 313,
+          "n_cal_images": 78,
+          "operating_point": {
+            "threshold": 18.47601318359375,
+            "escapes": 4,
+            "false_alarms": 0,
+            "recall": 0.9428571428571428,
+            "far": 0.0,
+            "cost": 400.0
+          },
+          "seconds": 44.8
+        },
+        "leather": {
+          "auroc": 0.9996603260869565,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1536,
+          "n_fit_images": 196,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 9.748078346252441,
+            "escapes": 0,
+            "false_alarms": 15,
+            "recall": 1.0,
+            "far": 0.46875,
+            "cost": 15.0
+          },
+          "seconds": 28.9
+        },
+        "metal_nut": {
+          "auroc": 0.982893450635386,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1379,
+          "n_fit_images": 176,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 17.102745056152344,
+            "escapes": 5,
+            "false_alarms": 2,
+            "recall": 0.946236559139785,
+            "far": 0.09090909090909091,
+            "cost": 502.0
+          },
+          "seconds": 15.9
+        },
+        "pill": {
+          "auroc": 0.8747954173486088,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1677,
+          "n_fit_images": 214,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 14.066550254821777,
+            "escapes": 48,
+            "false_alarms": 4,
+            "recall": 0.6595744680851063,
+            "far": 0.15384615384615385,
+            "cost": 4804.0
+          },
+          "seconds": 25.0
+        },
+        "screw": {
+          "auroc": 0.9046935847509736,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 2007,
+          "n_fit_images": 256,
+          "n_cal_images": 64,
+          "operating_point": {
+            "threshold": 15.73662281036377,
+            "escapes": 53,
+            "false_alarms": 2,
+            "recall": 0.5546218487394958,
+            "far": 0.04878048780487805,
+            "cost": 5302.0
+          },
+          "seconds": 32.6
+        },
+        "tile": {
+          "auroc": 0.9689754689754689,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1442,
+          "n_fit_images": 184,
+          "n_cal_images": 46,
+          "operating_point": {
+            "threshold": 14.909192085266113,
+            "escapes": 12,
+            "false_alarms": 0,
+            "recall": 0.8571428571428571,
+            "far": 0.0,
+            "cost": 1200.0
+          },
+          "seconds": 22.3
+        },
+        "toothbrush": {
+          "auroc": 0.8805555555555555,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 376,
+          "n_fit_images": 48,
+          "n_cal_images": 12,
+          "operating_point": {
+            "threshold": 14.776956558227539,
+            "escapes": 5,
+            "false_alarms": 3,
+            "recall": 0.8333333333333334,
+            "far": 0.25,
+            "cost": 503.0
+          },
+          "seconds": 8.1
+        },
+        "transistor": {
+          "auroc": 0.9775,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1332,
+          "n_fit_images": 170,
+          "n_cal_images": 43,
+          "operating_point": {
+            "threshold": 17.496089935302734,
+            "escapes": 9,
+            "false_alarms": 2,
+            "recall": 0.775,
+            "far": 0.03333333333333333,
+            "cost": 902.0
+          },
+          "seconds": 26.5
+        },
+        "wood": {
+          "auroc": 0.9833333333333334,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1552,
+          "n_fit_images": 198,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 20.99620246887207,
+            "escapes": 22,
+            "false_alarms": 0,
+            "recall": 0.6333333333333333,
+            "far": 0.0,
+            "cost": 2200.0
+          },
+          "seconds": 27.3
+        },
+        "zipper": {
+          "auroc": 0.9466911764705882,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 384,
+          "patches_per_image": 784,
+          "bank_size": 1505,
+          "n_fit_images": 192,
+          "n_cal_images": 48,
+          "operating_point": {
+            "threshold": 11.020264625549316,
+            "escapes": 6,
+            "false_alarms": 4,
+            "recall": 0.9495798319327731,
+            "far": 0.125,
+            "cost": 604.0
+          },
+          "seconds": 24.5
+        }
+      },
+      "mean_auroc": 0.9522587266379279,
+      "total_cost": 26739.0,
+      "seconds_total": 395.5
+    },
+    "D_wrn50_320": {
+      "backbone": "wide_resnet50_2",
+      "img": 320,
+      "categories": {
+        "bottle": {
+          "auroc": 1.0,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 2672,
+          "n_fit_images": 167,
+          "n_cal_images": 42,
+          "operating_point": {
+            "threshold": 50.94476318359375,
+            "escapes": 3,
+            "false_alarms": 0,
+            "recall": 0.9523809523809523,
+            "far": 0.0,
+            "cost": 300.0
+          },
+          "seconds": 33.4
+        },
+        "cable": {
+          "auroc": 0.95952023988006,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 2864,
+          "n_fit_images": 179,
+          "n_cal_images": 45,
+          "operating_point": {
+            "threshold": 61.13941955566406,
+            "escapes": 22,
+            "false_alarms": 1,
+            "recall": 0.7608695652173914,
+            "far": 0.017241379310344827,
+            "cost": 2201.0
+          },
+          "seconds": 47.9
+        },
+        "capsule": {
+          "auroc": 0.9589150378938971,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 2800,
+          "n_fit_images": 175,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 53.76028823852539,
+            "escapes": 53,
+            "false_alarms": 1,
+            "recall": 0.5137614678899083,
+            "far": 0.043478260869565216,
+            "cost": 5301.0
+          },
+          "seconds": 45.3
+        },
+        "carpet": {
+          "auroc": 0.9887640449438202,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 3584,
+          "n_fit_images": 224,
+          "n_cal_images": 56,
+          "operating_point": {
+            "threshold": 41.999046325683594,
+            "escapes": 5,
+            "false_alarms": 1,
+            "recall": 0.9438202247191011,
+            "far": 0.03571428571428571,
+            "cost": 501.0
+          },
+          "seconds": 55.9
+        },
+        "grid": {
+          "auroc": 0.9749373433583959,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 3376,
+          "n_fit_images": 211,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 49.44970703125,
+            "escapes": 4,
+            "false_alarms": 0,
+            "recall": 0.9298245614035088,
+            "far": 0.0,
+            "cost": 400.0
+          },
+          "seconds": 41.5
+        },
+        "hazelnut": {
+          "auroc": 1.0,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 5008,
+          "n_fit_images": 313,
+          "n_cal_images": 78,
+          "operating_point": {
+            "threshold": 58.115421295166016,
+            "escapes": 0,
+            "false_alarms": 1,
+            "recall": 1.0,
+            "far": 0.025,
+            "cost": 1.0
+          },
+          "seconds": 83.8
+        },
+        "leather": {
+          "auroc": 1.0,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 3136,
+          "n_fit_images": 196,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 39.626258850097656,
+            "escapes": 0,
+            "false_alarms": 3,
+            "recall": 1.0,
+            "far": 0.09375,
+            "cost": 3.0
+          },
+          "seconds": 48.0
+        },
+        "metal_nut": {
+          "auroc": 0.9975562072336266,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 2816,
+          "n_fit_images": 176,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 55.618507385253906,
+            "escapes": 3,
+            "false_alarms": 1,
+            "recall": 0.967741935483871,
+            "far": 0.045454545454545456,
+            "cost": 301.0
+          },
+          "seconds": 31.6
+        },
+        "pill": {
+          "auroc": 0.9631751227495909,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 3424,
+          "n_fit_images": 214,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 50.28469467163086,
+            "escapes": 39,
+            "false_alarms": 0,
+            "recall": 0.723404255319149,
+            "far": 0.0,
+            "cost": 3900.0
+          },
+          "seconds": 48.2
+        },
+        "screw": {
+          "auroc": 0.985447837671654,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 4096,
+          "n_fit_images": 256,
+          "n_cal_images": 64,
+          "operating_point": {
+            "threshold": 50.34321594238281,
+            "escapes": 28,
+            "false_alarms": 0,
+            "recall": 0.7647058823529411,
+            "far": 0.0,
+            "cost": 2800.0
+          },
+          "seconds": 60.1
+        },
+        "tile": {
+          "auroc": 0.9877344877344878,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 2944,
+          "n_fit_images": 184,
+          "n_cal_images": 46,
+          "operating_point": {
+            "threshold": 51.227325439453125,
+            "escapes": 13,
+            "false_alarms": 1,
+            "recall": 0.8452380952380952,
+            "far": 0.030303030303030304,
+            "cost": 1301.0
+          },
+          "seconds": 38.2
+        },
+        "toothbrush": {
+          "auroc": 0.9638888888888889,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 768,
+          "n_fit_images": 48,
+          "n_cal_images": 12,
+          "operating_point": {
+            "threshold": 51.081764221191406,
+            "escapes": 1,
+            "false_alarms": 3,
+            "recall": 0.9666666666666667,
+            "far": 0.25,
+            "cost": 103.0
+          },
+          "seconds": 10.1
+        },
+        "transistor": {
+          "auroc": 0.97875,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 2720,
+          "n_fit_images": 170,
+          "n_cal_images": 43,
+          "operating_point": {
+            "threshold": 54.476322174072266,
+            "escapes": 2,
+            "false_alarms": 4,
+            "recall": 0.95,
+            "far": 0.06666666666666667,
+            "cost": 204.0
+          },
+          "seconds": 41.3
+        },
+        "wood": {
+          "auroc": 0.9885964912280701,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 3168,
+          "n_fit_images": 198,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 66.20784759521484,
+            "escapes": 13,
+            "false_alarms": 0,
+            "recall": 0.7833333333333333,
+            "far": 0.0,
+            "cost": 1300.0
+          },
+          "seconds": 45.7
+        },
+        "zipper": {
+          "auroc": 0.9921218487394958,
+          "grid": [
+            40,
+            40
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 1600,
+          "bank_size": 3072,
+          "n_fit_images": 192,
+          "n_cal_images": 48,
+          "operating_point": {
+            "threshold": 37.66915512084961,
+            "escapes": 1,
+            "false_alarms": 5,
+            "recall": 0.9915966386554622,
+            "far": 0.15625,
+            "cost": 105.0
+          },
+          "seconds": 41.6
+        }
+      },
+      "mean_auroc": 0.9826271700214658,
+      "total_cost": 18721.0,
+      "seconds_total": 675.3
+    },
+    "E_resnet50_224": {
+      "backbone": "resnet50",
+      "img": 224,
+      "categories": {
+        "bottle": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1309,
+          "n_fit_images": 167,
+          "n_cal_images": 42,
+          "operating_point": {
+            "threshold": 26.474878311157227,
+            "escapes": 0,
+            "false_alarms": 0,
+            "recall": 1.0,
+            "far": 0.0,
+            "cost": 0.0
+          },
+          "seconds": 23.1
+        },
+        "cable": {
+          "auroc": 0.9544602698650675,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1403,
+          "n_fit_images": 179,
+          "n_cal_images": 45,
+          "operating_point": {
+            "threshold": 42.08925247192383,
+            "escapes": 25,
+            "false_alarms": 1,
+            "recall": 0.7282608695652174,
+            "far": 0.017241379310344827,
+            "cost": 2501.0
+          },
+          "seconds": 34.9
+        },
+        "capsule": {
+          "auroc": 0.9744714798564021,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1372,
+          "n_fit_images": 175,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 25.611221313476562,
+            "escapes": 29,
+            "false_alarms": 0,
+            "recall": 0.7339449541284404,
+            "far": 0.0,
+            "cost": 2900.0
+          },
+          "seconds": 30.9
+        },
+        "carpet": {
+          "auroc": 0.9863563402889246,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1756,
+          "n_fit_images": 224,
+          "n_cal_images": 56,
+          "operating_point": {
+            "threshold": 24.777286529541016,
+            "escapes": 4,
+            "false_alarms": 2,
+            "recall": 0.9550561797752809,
+            "far": 0.07142857142857142,
+            "cost": 402.0
+          },
+          "seconds": 36.7
+        },
+        "grid": {
+          "auroc": 0.9423558897243108,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1654,
+          "n_fit_images": 211,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 31.215673446655273,
+            "escapes": 8,
+            "false_alarms": 3,
+            "recall": 0.8596491228070176,
+            "far": 0.14285714285714285,
+            "cost": 803.0
+          },
+          "seconds": 25.2
+        },
+        "hazelnut": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 2453,
+          "n_fit_images": 313,
+          "n_cal_images": 78,
+          "operating_point": {
+            "threshold": 39.02580261230469,
+            "escapes": 0,
+            "false_alarms": 0,
+            "recall": 1.0,
+            "far": 0.0,
+            "cost": 0.0
+          },
+          "seconds": 48.7
+        },
+        "leather": {
+          "auroc": 1.0,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1536,
+          "n_fit_images": 196,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 24.38707733154297,
+            "escapes": 0,
+            "false_alarms": 8,
+            "recall": 1.0,
+            "far": 0.25,
+            "cost": 8.0
+          },
+          "seconds": 30.6
+        },
+        "metal_nut": {
+          "auroc": 0.9926686217008798,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1379,
+          "n_fit_images": 176,
+          "n_cal_images": 44,
+          "operating_point": {
+            "threshold": 33.57925796508789,
+            "escapes": 3,
+            "false_alarms": 1,
+            "recall": 0.967741935483871,
+            "far": 0.045454545454545456,
+            "cost": 301.0
+          },
+          "seconds": 18.2
+        },
+        "pill": {
+          "auroc": 0.9279869067103109,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1677,
+          "n_fit_images": 214,
+          "n_cal_images": 53,
+          "operating_point": {
+            "threshold": 30.85426902770996,
+            "escapes": 52,
+            "false_alarms": 1,
+            "recall": 0.6312056737588653,
+            "far": 0.038461538461538464,
+            "cost": 5201.0
+          },
+          "seconds": 28.1
+        },
+        "screw": {
+          "auroc": 0.9460955113752817,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 2007,
+          "n_fit_images": 256,
+          "n_cal_images": 64,
+          "operating_point": {
+            "threshold": 31.014694213867188,
+            "escapes": 28,
+            "false_alarms": 3,
+            "recall": 0.7647058823529411,
+            "far": 0.07317073170731707,
+            "cost": 2803.0
+          },
+          "seconds": 35.5
+        },
+        "tile": {
+          "auroc": 0.9996392496392497,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1442,
+          "n_fit_images": 184,
+          "n_cal_images": 46,
+          "operating_point": {
+            "threshold": 32.928226470947266,
+            "escapes": 3,
+            "false_alarms": 0,
+            "recall": 0.9642857142857143,
+            "far": 0.0,
+            "cost": 300.0
+          },
+          "seconds": 24.0
+        },
+        "toothbrush": {
+          "auroc": 0.9,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 376,
+          "n_fit_images": 48,
+          "n_cal_images": 12,
+          "operating_point": {
+            "threshold": 31.683330535888672,
+            "escapes": 4,
+            "false_alarms": 3,
+            "recall": 0.8666666666666667,
+            "far": 0.25,
+            "cost": 403.0
+          },
+          "seconds": 8.5
+        },
+        "transistor": {
+          "auroc": 0.9795833333333334,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1332,
+          "n_fit_images": 170,
+          "n_cal_images": 43,
+          "operating_point": {
+            "threshold": 34.683143615722656,
+            "escapes": 1,
+            "false_alarms": 6,
+            "recall": 0.975,
+            "far": 0.1,
+            "cost": 106.0
+          },
+          "seconds": 27.8
+        },
+        "wood": {
+          "auroc": 0.9921052631578948,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1552,
+          "n_fit_images": 198,
+          "n_cal_images": 49,
+          "operating_point": {
+            "threshold": 43.12031555175781,
+            "escapes": 9,
+            "false_alarms": 0,
+            "recall": 0.85,
+            "far": 0.0,
+            "cost": 900.0
+          },
+          "seconds": 29.8
+        },
+        "zipper": {
+          "auroc": 0.9795168067226891,
+          "grid": [
+            28,
+            28
+          ],
+          "descriptor_dim": 1536,
+          "patches_per_image": 784,
+          "bank_size": 1505,
+          "n_fit_images": 192,
+          "n_cal_images": 48,
+          "operating_point": {
+            "threshold": 26.382545471191406,
+            "escapes": 4,
+            "false_alarms": 4,
+            "recall": 0.9663865546218487,
+            "far": 0.125,
+            "cost": 404.0
+          },
+          "seconds": 27.3
+        }
+      },
+      "mean_auroc": 0.9716826448249563,
+      "total_cost": 17032.0,
+      "seconds_total": 433.2
+    }
+  }
+}

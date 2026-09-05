@@ -1,0 +1,24 @@
+=== bank=4000 ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+vial          img 0.8582  pix 0.8488  AU-PRO@5% 0.35963  @30% 0.67090  regions  174  84s
+
+mean image AUROC 0.8582   pixel AUROC 0.8488   AU-PRO@5% 0.3596   AU-PRO@30% 0.6709
+wrote outputs/ad2_pixel_eval.json
+=== bank=2000 ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+vial          img 0.8441  pix 0.8534  AU-PRO@5% 0.33505  @30% 0.67520  regions  174  54s
+
+mean image AUROC 0.8441   pixel AUROC 0.8534   AU-PRO@5% 0.3351   AU-PRO@30% 0.6752
+wrote outputs/ad2_pixel_eval.json
+=== bank=1000 ===
+vial          img 0.8558  pix 0.8657  AU-PRO@5% 0.34365  @30% 0.65871  regions  174  39s
+
+mean image AUROC 0.8558   pixel AUROC 0.8657   AU-PRO@5% 0.3437   AU-PRO@30% 0.6587
+wrote outputs/ad2_pixel_eval.json
+=== bank=500 ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+vial          img 0.8411  pix 0.8332  AU-PRO@5% 0.31799  @30% 0.62504  regions  174  31s
+
+mean image AUROC 0.8411   pixel AUROC 0.8332   AU-PRO@5% 0.3180   AU-PRO@30% 0.6250
+wrote outputs/ad2_pixel_eval.json
+BANK_DONE

@@ -1,0 +1,12 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+can           img 0.4843  pix 0.5986  AU-PRO@5% 0.11288  @30% 0.25338  regions   66  117s
+fabric        img 0.6561  pix 0.6696  AU-PRO@5% 0.14984  @30% 0.39529  regions  120  131s
+fruit_jelly   img 0.9217  pix 0.9392  AU-PRO@5% 0.48167  @30% 0.71089  regions  216  76s
+rice          img 0.5765  pix 0.8349  AU-PRO@5% 0.19526  @30% 0.41472  regions  114  103s
+sheet_metal   img 0.7519  pix 0.8597  AU-PRO@5% 0.12310  @30% 0.31247  regions  444  49s
+vial          img 0.9113  pix 0.9272  AU-PRO@5% 0.69615  @30% 0.91647  regions  168  82s
+wallplugs     img 0.4811  pix 0.9282  AU-PRO@5% 0.27801  @30% 0.46526  regions   90  90s
+walnuts       img 0.7919  pix 0.9534  AU-PRO@5% 0.47402  @30% 0.73475  regions  312  138s
+
+mean image AUROC 0.6968   pixel AUROC 0.8389   AU-PRO@5% 0.3139   AU-PRO@30% 0.5254
+wrote outputs/runs/E1R-squash-448.json

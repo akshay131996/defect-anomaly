@@ -1,0 +1,11 @@
+=========================================================================
+       MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion Evaluation          
+=========================================================================
+Arm:            wrn50_l123
+Resolution:     448px (Eval Side: 512px)
+Bank Cap:       4000 vectors
+Post-Process:   Closing (k=5)
+Whitening/LCN:  Whiten=True, LCN=False
+=========================================================================
+
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.

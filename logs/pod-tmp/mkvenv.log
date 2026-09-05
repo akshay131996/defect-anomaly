@@ -1,0 +1,8 @@
+[venv] installing torch (large download, be patient)
+[venv] installing the rest
+[venv] --- verify ---
+torch   2.14.0+cu130 cuda build 13.0
+cuda available: True
+device: NVIDIA RTX 4000 Ada Generation
+timm    1.0.29
+datasets 5.0.1

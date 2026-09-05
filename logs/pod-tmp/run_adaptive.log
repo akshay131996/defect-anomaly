@@ -1,0 +1,28 @@
+=========================================================================
+       MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion Evaluation          
+=========================================================================
+Arm:            adaptive
+Resolution:     448px (Eval Side: 512px)
+Bank Cap:       4000 vectors
+Post-Process:   Closing (k=5)
+Whitening/LCN:  Whiten=False, LCN=False
+=========================================================================
+
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+can           [dinov2_448] img 0.4660  pix 0.6593  AU-PRO@5% 0.01693  @30% 0.24778  regions   96  62s
+fabric        [dinov2_448] img 0.5503  pix 0.9734  AU-PRO@5% 0.05907  @30% 0.25530  regions  150  73s
+fruit_jelly   [fusion    ] img 0.8767  pix 0.9044  AU-PRO@5% 0.18615  @30% 0.51125  regions  320  102s
+rice          [fusion    ] img 0.6000  pix 0.6489  AU-PRO@5% 0.11653  @30% 0.33442  regions  126  139s
+sheet_metal   [wrn50_l123] img 0.7380  pix 0.5306  AU-PRO@5% 0.01829  @30% 0.15294  regions 1539  60s
+vial          [wrn50_l23 ] img 0.8887  pix 0.8726  AU-PRO@5% 0.33237  @30% 0.70546  regions  174  82s
+wallplugs     [wrn50_l123] img 0.5974  pix 0.7409  AU-PRO@5% 0.06961  @30% 0.22896  regions   84  105s
+walnuts       [fusion    ] img 0.8144  pix 0.8296  AU-PRO@5% 0.10467  @30% 0.31233  regions  450  182s
+
+=========================================================================
+SUMMARY SCOREBOARD [ADAPTIVE]:
+  Mean Image AUROC:   0.6914
+  Mean Pixel AUROC:   0.7700
+  Mean AU-PRO@5%:     0.1130  (Baseline was 0.1307)
+  Mean AU-PRO@30%:    0.3436  (Baseline was 0.3416)
+=========================================================================
+wrote outputs/ad2_feature_fusion.json

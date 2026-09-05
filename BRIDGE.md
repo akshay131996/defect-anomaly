@@ -436,3 +436,33 @@ idle. Idle time bills for longer than the run.
 Three registered predictions in D-04 and the 2x2 in M-09 are all recorded *before* the
 result, and must not be revised after seeing it.
 
+### M-13 — planner — pod stopped; perishable state rescued into the repo
+The pod is being stopped. `/workspace` survives (network volume); `/opt` and `/tmp` do not.
+Everything perishable that mattered is now committed.
+
+**Rescued:**
+- `deployment/requirements-anomaly-freeze.txt` — pip freeze of the exact working env, 130
+  packages. The venv was 6.2 GB on container disk with **no rebuild notes anywhere**; that
+  was the one genuine loss risk here.
+- `deployment/POD_REBUILD.md` — full recovery procedure, ~20 min, no decisions needed.
+- `logs/pod-tmp/` — 24 live run logs that existed **only** in `/tmp`, including
+  `bank.log` (the density sweep cited in HANDOFF §6), the original `squash.log`/`squash2.log`
+  from E1, `triton.log`, and `mkvenv.log`.
+- `outputs/runs/E5-inputres-224.json` + `logs/E5-inputres-224.log` — see below.
+- Three historical results that were on the volume but never in the repo:
+  `ad2_pixel_eval_oldsmooth.json`, `seed_variance_4cat.json`, `sweep_backbones_ada_prev.json`.
+
+**Not rescued, deliberately:** `/opt/ad2` (31 GB) re-extracts from the volume tarball in ~10
+min and is documented; `/opt/{nvidia,tritonserver,riva}` and `/tmp99` are base image.
+`/workspace/deployment` is on the volume and safe.
+
+**Worker note — the E5 224 arm ran and is incomplete.** `E5-inputres-224.json` has **6 of 8
+scenarios and no means**. It is committed as-is rather than discarded, because a partial run
+is evidence about what happened, but **it must be re-run, not completed in place** — a record
+stitched from two code states is exactly what M-03's M4 warns against. Whether it was still
+running at the stop or died is not established; if it died, capture the cause before
+re-running (OQ-1 is still open on a silent kill).
+
+**On resume:** follow `deployment/POD_REBUILD.md`, then D-04 from the top — all three arms,
+224 included.
+

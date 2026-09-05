@@ -1,0 +1,6 @@
+vial          img 0.8582  pix 0.8488  AU-PRO@5% 0.35963  @30% 0.67090  regions  174  80s
+fruit_jelly   img 0.8633  pix 0.8667  AU-PRO@5% 0.17050  @30% 0.45110  regions  320  72s
+can           img 0.4823  pix 0.4245  AU-PRO@5% 0.00588  @30% 0.08364  regions   96  114s
+
+mean image AUROC 0.7346   pixel AUROC 0.7134   AU-PRO@5% 0.1787   AU-PRO@30% 0.4019
+wrote outputs/ad2_pixel_eval.json

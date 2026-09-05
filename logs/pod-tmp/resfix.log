@@ -1,0 +1,18 @@
+=== img=448 ===
+vial          img 0.8582  pix 0.8488  AU-PRO@5% 0.35963  @30% 0.67090  regions  174  80s
+
+mean image AUROC 0.8582   pixel AUROC 0.8488   AU-PRO@5% 0.3596   AU-PRO@30% 0.6709
+wrote outputs/ad2_pixel_eval.json
+=== img=768 ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+vial          img 0.7363  pix 0.8632  AU-PRO@5% 0.28988  @30% 0.67327  regions  174  218s
+
+mean image AUROC 0.7363   pixel AUROC 0.8632   AU-PRO@5% 0.2899   AU-PRO@30% 0.6733
+wrote outputs/ad2_pixel_eval.json
+=== img=1024 ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+vial          img 0.7878  pix 0.8426  AU-PRO@5% 0.25444  @30% 0.64139  regions  174  383s
+
+mean image AUROC 0.7878   pixel AUROC 0.8426   AU-PRO@5% 0.2544   AU-PRO@30% 0.6414
+wrote outputs/ad2_pixel_eval.json
+SWEEP_DONE

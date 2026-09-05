@@ -1,0 +1,12 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+can           img 0.4823  pix 0.5222  AU-PRO@5% 0.01108  @30% 0.10434  regions   96  114s
+fabric        img 0.5155  pix 0.6501  AU-PRO@5% 0.00470  @30% 0.18765  regions  150  124s
+fruit_jelly   img 0.8633  pix 0.9020  AU-PRO@5% 0.22578  @30% 0.50733  regions  320  72s
+rice          img 0.4646  pix 0.6081  AU-PRO@5% 0.09667  @30% 0.28695  regions  126  98s
+sheet_metal   img 0.7005  pix 0.6226  AU-PRO@5% 0.03446  @30% 0.15541  regions 1539  44s
+vial          img 0.8582  pix 0.8909  AU-PRO@5% 0.43635  @30% 0.78515  regions  174  78s
+wallplugs     img 0.6230  pix 0.8115  AU-PRO@5% 0.12408  @30% 0.33630  regions   84  85s
+walnuts       img 0.7961  pix 0.8590  AU-PRO@5% 0.11205  @30% 0.36937  regions  450  131s
+
+mean image AUROC 0.6629   pixel AUROC 0.7333   AU-PRO@5% 0.1307   AU-PRO@30% 0.3416
+wrote outputs/ad2_pixel_eval.json

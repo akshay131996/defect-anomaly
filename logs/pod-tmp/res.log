@@ -1,0 +1,6 @@
+--- img=448 ---
+can           img 0.4823  pix 0.5222  AU-PRO@5% 0.01108  @30% 0.10434  regions   96  119s
+--- img=768 ---
+can           img 0.5144  pix 0.4283  AU-PRO@5% 0.01083  @30% 0.06771  regions   96  321s
+--- img=1024 ---
+RES_DONE

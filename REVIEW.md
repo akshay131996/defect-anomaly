@@ -74,6 +74,51 @@ badly broken, and if false, means we have been chasing a phantom.
 Given the dataset authors put SOTA below 60% and our @30% is 57.4%, **the phantom reading is much
 more likely.**
 
+### Why 76.35% is so far from anything we can measure
+
+Three independent lines, none of which require assuming bad faith.
+
+**1. The metric is extraordinarily protocol-sensitive, and our own data shows by how much.**
+Recomputing *our* result under other entirely defensible protocol choices:
+
+| variant | value | delta |
+|---|---|---|
+| AU-PRO@5%, macro over scenarios (ours) | 0.3444 | — |
+| AU-PRO@5%, micro over regions | 0.3708 | +0.026 |
+| AU-PRO@30%, macro (6x looser FPR budget) | 0.5736 | +0.229 |
+| AU-PRO@5%, only regions >= 4 cells | 0.5826 | +0.238 |
+| AU-PRO@5%, only regions >= 16 cells | 0.6056 | +0.261 |
+
+**49.4% of AD 2's ground-truth regions are smaller than one patch cell and score 0.227.** Excluding
+them alone lifts our mean to 0.583. A looser FPR limit alone lifts it to 0.574. **Stacked, those
+two land in the 0.70-0.80 range — bracketing 0.7635.** No modelling difference is needed to
+explain the gap; two evaluation choices suffice.
+
+**2. The claimed improvement is to PatchCore's default configuration.** Roth et al. (CVPR 2022)
+specify **blocks 2 and 3 of a WideResNet-50** as PatchCore's standard feature levels. So
+"multi-scale feature fusion (ResNet50 layer 2 + layer 3)" is **stock PatchCore**, and the 8.87%
+"baseline" is a deliberately crippled layer3-only variant. An 8.6x gain from restoring the
+default is not a research finding, it is a bug report — and this project has a direct analogue:
+our own coordinate-frame bug produced 0.131 -> 0.344 (2.6x) from a pure fix, with no modelling
+change whatsoever.
+
+**3. The dataset's own authors contradict it.** Heckler-Kram et al. benchmark seven methods
+**including standard PatchCore** and report state of the art **below 60% average AU-PRO**. If
+stock layer2+layer3 PatchCore reached 76%, their own table would have shown it. Both statements
+cannot describe the same measurement.
+
+**The most economical explanation:** 76.35% is a real number measured under a different protocol
+— most likely a more permissive FPR limit, a region set that excludes the small defects AD 2 was
+built around, or both — reported against a broken rather than a standard baseline.
+
+**What would settle it:** PatchCore's AU-PRO@5% per scenario from the dataset paper's own table.
+That is task 0 in the queue and needs no GPU.
+
+**And the reason this matters beyond bookkeeping:** if 76.35% were a like-for-like number, our
+implementation would have to be badly broken, and the correct response would be to hunt the bug.
+It is not, so the correct response is to stop treating it as the bar. Those are opposite research
+programmes, and the project has been running the wrong one.
+
 ### What remains genuinely open
 
 - **The exact PatchCore AU-PRO@5% baseline is not yet in hand.** The per-scenario figures above are

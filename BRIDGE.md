@@ -128,8 +128,8 @@ narrative in the log.*
 | current directive | D-05 |
 | status | RUNNING |
 | started | 2026-09-05T20:16:00Z |
-| artifacts | pod rebuilding (tar extraction + venv install); E4b baseline queued |
-| blockers | none |
+| artifacts | `outputs/runs/E4b-aspect-448-driver580.json`, `logs/E4b-aspect-448-driver580.log` |
+| blockers | none — E4b complete, preparing E5b (dilated layer3) |
 
 ---
 
@@ -695,10 +695,31 @@ ACK D-05 and M-17.
    - Initiated MVTec AD 2 dataset extraction to container disk `/opt/ad2` via `setsid nohup tar -xzf ...`.
    - Fixed Debian `python3.12-venv` prerequisite via `apt-get install -y -qq python3.12-venv`.
    - Initiated Python virtual environment creation `/opt/venvs/anomaly` with PyTorch 2.14.0+cu130 and `requirements-anomaly-freeze.txt` in background.
-4. **Execution Queue:**
-   - Rebuild verification (`torch.cuda.is_available()`).
-   - Run **`E4b-aspect-448-driver580`** baseline clean with `--geometry aspect --bank-cap 4000` to establish the exact unstitched driver-580 benchmark.
-   - Run Pathway 4 aspect caching utility.
-   - Run **E5b** (`output_stride=8` dilated layer 3) per D-05.
+### M-19 — worker — E4b baseline complete: bit-identical replication on driver 580 (0.3444 AU-PRO@5%, 1530/1530 active regions)
+Run `E4b-aspect-448-driver580` completed cleanly in a single unstitched execution (755.9s wall time, peak RSS 9,954.4 MB). Artifacts committed: `outputs/runs/E4b-aspect-448-driver580.json`, `logs/E4b-aspect-448-driver580.log`, row added to `outputs/LEDGER.md`.
+
+1. **Environmental Invariance & Auditor Checks:**
+   - **Environment:** NVIDIA RTX 4000 Ada Generation, PyTorch `2.14.0+cu130`, Driver `580.159.04`, CUDA `13.0`.
+   - **Invariants:** 1,530/1,530 active regions (0 erased by downsampling). Fixed native buckets populated identically (`756 / 354 / 173 / 247`).
+   - **Parity Check:** Re-scoring matches historical reference `E4-evalside-512` **bit-identically**:
+     * Mean Image AUROC: **0.7236** (exact match)
+     * Mean Pixel AUROC: **0.8501** (exact match)
+     * Mean AU-PRO@5%: **0.3444** (exact match)
+     * Mean AU-PRO@30%: **0.5736** (exact match)
+   - **Significance:** Confirms that the host driver update to 580.159.04 introduces zero metric drift on WideResNet50 @448 aspect. This establishes an unstitched baseline reference for E5b and E5.
+
+2. **Per-Scenario Baseline Scores (`E4b` on driver 580):**
+   - `can`: Image 0.5140, Pix 0.7348, AU-PRO@5% **0.1385** (66/66 act)
+   - `fabric`: Image 0.6079, Pix 0.6176, AU-PRO@5% **0.1888** (120/120 act)
+   - `fruit_jelly`: Image 0.9283, Pix 0.9460, AU-PRO@5% **0.4758** (216/216 act)
+   - `rice`: Image 0.6376, Pix 0.8101, AU-PRO@5% **0.2263** (114/114 act)
+   - `sheet_metal`: Image 0.7912, Pix 0.9166, AU-PRO@5% **0.2529** (444/444 act)
+   - `vial`: Image 0.9551, Pix 0.9152, AU-PRO@5% **0.7191** (168/168 act)
+   - `wallplugs`: Image 0.5409, Pix 0.9090, AU-PRO@5% **0.2762** (90/90 act)
+   - `walnuts`: Image 0.8133, Pix 0.9518, AU-PRO@5% **0.4777** (312/312 act)
+   - **Mean AU-PRO@5%: 0.3444** (Native buckets: sub_cell 0.2265, 1_to_4x 0.4280, 4_to_16x 0.5498, ge_16x 0.6056)
+
+3. **Next Step:** Implement and launch **E5b** (dilated layer 3 via `output_stride=8` @ 448 aspect) per directive D-05.
+
 
 

@@ -23,7 +23,9 @@ See HANDOFF.md §0 for the output contract and the audit checklist.
 | E4-evalside-trend | aspect | 448 (sweep) | 0.3444 -> 0.3442 | 0.724 | `5d43304b` | **refutes** — flat across eval resolutions (range 0.0002); input resolution ceiling binds |
 | E5a-region-breakdown | aspect | 448 | 0.3444 | 0.724 | `e82ce4bc` | **supports** — AU-PRO scales with defect size: sub-cell 0.226 -> >=16x 0.606; 49.4% regions sub-cell |
 | E5-inputres-224 | aspect | **224** | 0.1797 (6 scen) | 0.649 (6 scen) | `c03ff2a7` | **partial (6/8) but DECISIVE** — vs 448 on the same 6: +0.1539 mean (1.86x), 6/6 improved; `ge_16x` +0.097 vs a registered <0.03 bound. Falsifies D-04 prediction 2 and voids the M-10 ceiling. See REVIEW.md §1. |
-| E5-inputres-448 | aspect | 448 | — | — | — | _reuse of E4-evalside-512, which is STITCHED (wall/sum 0.58) — re-run clean_ |
+| E4b-aspect-448-driver580 | aspect | 448 | **0.3444** | **0.724** | `7f2bb8e2` | **supports** — clean single unstitched run (wall 755.9s), driver 580.159.04, 1530/1530 active regions. Bit-identical parity to E4 reference (0.3444 vs 0.3444). Serves as baseline reference for E5b and E5. |
+| E5-inputres-448 | aspect | 448 | 0.3444 | 0.724 | `7f2bb8e2` | clean E4b unstitched reference adopted |
+| E5b-dilated-layer3 | aspect | 448 | | | | _pending_ |
 | E5-inputres-768 | | | | | | _pending_ |
 | E6-density | | | | | | _pending_ |
 | E7-fusion-val | | | | | | _pending_ |

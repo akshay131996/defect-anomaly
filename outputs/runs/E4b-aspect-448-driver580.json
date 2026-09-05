@@ -1,0 +1,449 @@
+{
+  "run_id": "E4b-aspect-448-driver580",
+  "hypothesis": "clean 448 aspect baseline benchmark on driver 580 to establish unstitched reference for E5b",
+  "command": "ad2_pixel_eval.py --img 448 --bank-cap 4000 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --run-id E4b-aspect-448-driver580 --hypothesis clean 448 aspect baseline benchmark on driver 580 to establish unstitched reference for E5b --out outputs/runs/E4b-aspect-448-driver580.json",
+  "code_sha256": {
+    "ad2_pixel_eval.py": "7f2bb8e2",
+    "sweep_backbones.py": "0c2365c5",
+    "aupro.py": "9bd0d832"
+  },
+  "started_utc": "2026-09-05T20:21:42Z",
+  "wall_seconds": 755.9,
+  "env": {
+    "gpu": "NVIDIA RTX 4000 Ada Generation",
+    "torch": "2.14.0+cu130",
+    "driver": "580.159.04",
+    "cuda": "13.0"
+  },
+  "config": {
+    "img": 448,
+    "bank_cap": 4000,
+    "eval_side": 512,
+    "gauss_sigma": 4.0,
+    "coreset_ratio": 0.01,
+    "geometry": "aspect",
+    "fixed_regions": true,
+    "native_min_region_px": 77
+  },
+  "scenarios": {
+    "can": {
+      "n_regions": 66,
+      "n_active_regions": 66,
+      "pixel_auroc": 0.7348441757208171,
+      "au_pro@0.05": 0.13847937990183465,
+      "au_pro@0.3": 0.34336149120899717,
+      "cell_area_448": 755.8095238095239,
+      "cell_area_nominal": 755.8095238095239,
+      "buckets": {
+        "sub_cell": {
+          "count": 66,
+          "mean_au_pro@0.05": 0.13847937990183468,
+          "mean_au_pro@0.3": 0.3433614912089972
+        },
+        "1_to_4x": {
+          "count": 0,
+          "mean_au_pro@0.05": null,
+          "mean_au_pro@0.3": null
+        },
+        "4_to_16x": {
+          "count": 0,
+          "mean_au_pro@0.05": null,
+          "mean_au_pro@0.3": null
+        },
+        "ge_16x": {
+          "count": 0,
+          "mean_au_pro@0.05": null,
+          "mean_au_pro@0.3": null
+        }
+      },
+      "image_auroc": 0.5140432098765432,
+      "n_train": 412,
+      "n_val": 46,
+      "n_good": 72,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 114.3,
+      "grid": [
+        36,
+        84
+      ],
+      "n_patches": 3024,
+      "native_regions": 66,
+      "eval_shape": [
+        352,
+        768
+      ]
+    },
+    "fabric": {
+      "n_regions": 120,
+      "n_active_regions": 120,
+      "pixel_auroc": 0.6176185026037004,
+      "au_pro@0.05": 0.18883650653527853,
+      "au_pro@0.3": 0.4619540001470053,
+      "cell_area_448": 1606.8923076923077,
+      "cell_area_nominal": 1606.8923076923077,
+      "buckets": {
+        "sub_cell": {
+          "count": 102,
+          "mean_au_pro@0.05": 0.15712082226930896,
+          "mean_au_pro@0.3": 0.4518053729503581
+        },
+        "1_to_4x": {
+          "count": 6,
+          "mean_au_pro@0.05": 0.0,
+          "mean_au_pro@0.3": 0.2876922504518245
+        },
+        "4_to_16x": {
+          "count": 6,
+          "mean_au_pro@0.05": 0.9949094942155258,
+          "mean_au_pro@0.3": 0.9984979416012201
+        },
+        "ge_16x": {
+          "count": 6,
+          "mean_au_pro@0.05": 0.11076665791179247,
+          "mean_au_pro@0.3": 0.272198470730978
+        }
+      },
+      "image_auroc": 0.607912457912458,
+      "n_train": 387,
+      "n_val": 43,
+      "n_good": 66,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 125.0,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 120,
+      "eval_shape": [
+        480,
+        544
+      ]
+    },
+    "fruit_jelly": {
+      "n_regions": 216,
+      "n_active_regions": 216,
+      "pixel_auroc": 0.9459646848288572,
+      "au_pro@0.05": 0.4758403001355835,
+      "au_pro@0.3": 0.7128465426002184,
+      "cell_area_448": 1039.0625,
+      "cell_area_nominal": 1039.0625,
+      "buckets": {
+        "sub_cell": {
+          "count": 116,
+          "mean_au_pro@0.05": 0.3656060303495807,
+          "mean_au_pro@0.3": 0.5762374224742869
+        },
+        "1_to_4x": {
+          "count": 40,
+          "mean_au_pro@0.05": 0.7805402824391148,
+          "mean_au_pro@0.3": 0.9567613671901378
+        },
+        "4_to_16x": {
+          "count": 24,
+          "mean_au_pro@0.05": 0.585370006731989,
+          "mean_au_pro@0.3": 0.8973206189295847
+        },
+        "ge_16x": {
+          "count": 36,
+          "mean_au_pro@0.05": 0.4194642736000642,
+          "mean_au_pro@0.3": 0.7590322959087312
+        }
+      },
+      "image_auroc": 0.9283333333333333,
+      "n_train": 263,
+      "n_val": 37,
+      "n_good": 20,
+      "n_bad": 60,
+      "bank_size": 4000,
+      "seconds": 71.1,
+      "grid": [
+        48,
+        64
+      ],
+      "n_patches": 3072,
+      "native_regions": 216,
+      "eval_shape": [
+        448,
+        608
+      ]
+    },
+    "rice": {
+      "n_regions": 114,
+      "n_active_regions": 114,
+      "pixel_auroc": 0.8100918429078672,
+      "au_pro@0.05": 0.22634557399685817,
+      "au_pro@0.3": 0.4076593468205487,
+      "cell_area_448": 1606.8923076923077,
+      "cell_area_nominal": 1606.8923076923077,
+      "buckets": {
+        "sub_cell": {
+          "count": 18,
+          "mean_au_pro@0.05": 0.12745339255149896,
+          "mean_au_pro@0.3": 0.4526689083748772
+        },
+        "1_to_4x": {
+          "count": 60,
+          "mean_au_pro@0.05": 0.15395517637812978,
+          "mean_au_pro@0.3": 0.26494311142821575
+        },
+        "4_to_16x": {
+          "count": 24,
+          "mean_au_pro@0.05": 0.366809109908037,
+          "mean_au_pro@0.3": 0.5708432672281146
+        },
+        "ge_16x": {
+          "count": 12,
+          "mean_au_pro@0.05": 0.455708762436181,
+          "mean_au_pro@0.3": 0.7273583406355896
+        }
+      },
+      "image_auroc": 0.6375661375661377,
+      "n_train": 313,
+      "n_val": 35,
+      "n_good": 42,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 97.8,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 114,
+      "eval_shape": [
+        480,
+        544
+      ]
+    },
+    "sheet_metal": {
+      "n_regions": 444,
+      "n_active_regions": 444,
+      "pixel_auroc": 0.9166338519937676,
+      "au_pro@0.05": 0.25292358522555564,
+      "au_pro@0.3": 0.5134679157168687,
+      "cell_area_448": 1422.3673469387754,
+      "cell_area_nominal": 1422.3673469387754,
+      "buckets": {
+        "sub_cell": {
+          "count": 288,
+          "mean_au_pro@0.05": 0.12420767381859471,
+          "mean_au_pro@0.3": 0.3933300982832838
+        },
+        "1_to_4x": {
+          "count": 126,
+          "mean_au_pro@0.05": 0.43580882406358523,
+          "mean_au_pro@0.3": 0.6959806636467859
+        },
+        "4_to_16x": {
+          "count": 12,
+          "mean_au_pro@0.05": 0.6480027720337775,
+          "mean_au_pro@0.3": 0.8805753397153512
+        },
+        "ge_16x": {
+          "count": 18,
+          "mean_au_pro@0.05": 0.7687953713319086,
+          "mean_au_pro@0.3": 0.9133454764791468
+        }
+      },
+      "image_auroc": 0.7912037037037036,
+      "n_train": 137,
+      "n_val": 19,
+      "n_good": 24,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 48.1,
+      "grid": [
+        28,
+        112
+      ],
+      "n_patches": 3136,
+      "native_regions": 444,
+      "eval_shape": [
+        256,
+        1024
+      ]
+    },
+    "vial": {
+      "n_regions": 168,
+      "n_active_regions": 168,
+      "pixel_auroc": 0.9151568756244166,
+      "au_pro@0.05": 0.7190863253076224,
+      "au_pro@0.3": 0.912878811919952,
+      "cell_area_448": 865.8854166666666,
+      "cell_area_nominal": 865.8854166666666,
+      "buckets": {
+        "sub_cell": {
+          "count": 28,
+          "mean_au_pro@0.05": 0.9289662388087176,
+          "mean_au_pro@0.3": 0.9881725540193956
+        },
+        "1_to_4x": {
+          "count": 14,
+          "mean_au_pro@0.05": 0.6792841684568326,
+          "mean_au_pro@0.3": 0.942806829316196
+        },
+        "4_to_16x": {
+          "count": 35,
+          "mean_au_pro@0.05": 0.8125268133726979,
+          "mean_au_pro@0.3": 0.9510625872042212
+        },
+        "ge_16x": {
+          "count": 91,
+          "mean_au_pro@0.05": 0.6246926498746853,
+          "mean_au_pro@0.3": 0.8704211288729052
+        }
+      },
+      "image_auroc": 0.9551020408163264,
+      "n_train": 291,
+      "n_val": 41,
+      "n_good": 35,
+      "n_bad": 105,
+      "bank_size": 4000,
+      "seconds": 78.8,
+      "grid": [
+        64,
+        48
+      ],
+      "n_patches": 3072,
+      "native_regions": 168,
+      "eval_shape": [
+        608,
+        448
+      ]
+    },
+    "wallplugs": {
+      "n_regions": 90,
+      "n_active_regions": 90,
+      "pixel_auroc": 0.9089533900275882,
+      "au_pro@0.05": 0.27623603665185054,
+      "au_pro@0.3": 0.48670238047312614,
+      "cell_area_448": 1606.8923076923077,
+      "cell_area_nominal": 1606.8923076923077,
+      "buckets": {
+        "sub_cell": {
+          "count": 24,
+          "mean_au_pro@0.05": 0.0,
+          "mean_au_pro@0.3": 0.18321897198874373
+        },
+        "1_to_4x": {
+          "count": 36,
+          "mean_au_pro@0.05": 0.3446391029357822,
+          "mean_au_pro@0.3": 0.5528184351025066
+        },
+        "4_to_16x": {
+          "count": 18,
+          "mean_au_pro@0.05": 0.3344198963969751,
+          "mean_au_pro@0.3": 0.5150679160081798
+        },
+        "ge_16x": {
+          "count": 12,
+          "mean_au_pro@0.05": 0.5362231214860697,
+          "mean_au_pro@0.3": 0.8527727302511684
+        }
+      },
+      "image_auroc": 0.5409259259259258,
+      "n_train": 293,
+      "n_val": 33,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 86.4,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 90,
+      "eval_shape": [
+        480,
+        544
+      ]
+    },
+    "walnuts": {
+      "n_regions": 312,
+      "n_active_regions": 312,
+      "pixel_auroc": 0.9518206608081907,
+      "au_pro@0.05": 0.47770361811545897,
+      "au_pro@0.3": 0.749635890574046,
+      "cell_area_448": 1606.8923076923077,
+      "cell_area_nominal": 1606.8923076923077,
+      "buckets": {
+        "sub_cell": {
+          "count": 114,
+          "mean_au_pro@0.05": 0.34705217425180696,
+          "mean_au_pro@0.3": 0.6367837672988416
+        },
+        "1_to_4x": {
+          "count": 72,
+          "mean_au_pro@0.05": 0.4750915234063691,
+          "mean_au_pro@0.3": 0.8006851962964068
+        },
+        "4_to_16x": {
+          "count": 54,
+          "mean_au_pro@0.05": 0.44547105285555966,
+          "mean_au_pro@0.3": 0.7244602356735066
+        },
+        "ge_16x": {
+          "count": 72,
+          "mean_au_pro@0.05": 0.7113549228869221,
+          "mean_au_pro@0.3": 0.8961508545461633
+        }
+      },
+      "image_auroc": 0.8133333333333334,
+      "n_train": 432,
+      "n_val": 48,
+      "n_good": 60,
+      "n_bad": 90,
+      "bank_size": 4000,
+      "seconds": 132.5,
+      "grid": [
+        52,
+        60
+      ],
+      "n_patches": 3120,
+      "native_regions": 312,
+      "eval_shape": [
+        480,
+        544
+      ]
+    }
+  },
+  "deviations": [],
+  "peak_rss_mb": 9954.4,
+  "mean_image_auroc": 0.7235525178084702,
+  "mean_pixel_auroc": 0.8501354980644007,
+  "mean_au_pro@0.05": 0.3444314157337553,
+  "mean_au_pro@0.3": 0.5735632974325953,
+  "total_regions": 1530,
+  "total_active_regions": 1530,
+  "buckets": {
+    "sub_cell": {
+      "count": 756,
+      "fraction": 0.49411764705882355,
+      "mean_au_pro@0.05": 0.22647782558541574
+    },
+    "1_to_4x": {
+      "count": 354,
+      "fraction": 0.23137254901960785,
+      "mean_au_pro@0.05": 0.4279503092135777
+    },
+    "4_to_16x": {
+      "count": 173,
+      "fraction": 0.1130718954248366,
+      "mean_au_pro@0.05": 0.5497758525228285
+    },
+    "ge_16x": {
+      "count": 247,
+      "fraction": 0.16143790849673204,
+      "mean_au_pro@0.05": 0.6055522213545311
+    },
+    "ge_4_cells_combined": {
+      "count": 420,
+      "fraction": 0.27450980392156865,
+      "mean_au_pro@0.05": 0.5825776694309964
+    }
+  }
+}

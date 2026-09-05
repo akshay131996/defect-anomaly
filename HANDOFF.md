@@ -798,6 +798,8 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E4~~ | eval protocol: `EVAL_SIDE`, sigma | — | — | **done, refutes** |
 | ~~E5a~~ | region size vs patch cell size | — | — | **done, supports (narrowed)** |
 | **E9** | pre-resize cache + `setsid` launches | — | no | ~0.3 h eng |
+| **E10a** | reduce embedding 1536 -> 384 (enabler) | — | yes | ~0.4 GPU-h |
+| **E10b** | backbone ensemble, one at a time | E10a | yes | ~1.5 GPU-h |
 | **E5b** | dilated layer3 `output_stride=8` @448 | — | yes | **~0.4 GPU-h** |
 | E5 | input resolution 768 arm | E5b | yes | ~1.9 GPU-h |
 | E5c | unstrided layer1 pyramid (stride 4) | E5, E5b | yes | ~2 GPU-h |
@@ -1130,7 +1132,91 @@ the Triton serving path (§7 of REVIEW.md).
 
 ---
 
-### E5b — dilated layer3 (`output_stride=8`) at 448  **<- NEXT experiment, cheaper than E5**
+### E10 — close the 9.6-point low-resolution deficit  **<- highest expected value in the queue**
+
+At matched resolution the paper's PatchCore beats ours by **9.6 points** — larger than our current
+**+5.8** lead. Closing it while keeping 448 roughly doubles the margin. Their configuration is
+published, so this is a configuration diff, not a search.
+
+| | theirs (paper §benchmark) | ours (arm A) |
+|---|---|---|
+| backbone | **ensemble: WideResNet-101 + ResNeXt-101 + DenseNet-201** | single WideResNet50-2 |
+| embedding dim | **384** (reduced) | **1536** (full, no reduction) |
+| coreset ratio | "0.01%" — see note | 1% nominal, 0.3-0.9% effective |
+| centre crop | **disabled** | disabled (`aspect`) — same |
+| input | 256x256 | 448 |
+
+Two things this settles immediately.
+
+**They never had our coordinate-frame bug.** The paper says they "disable the center cropping to
+enable the detection of defects occurring at the image borders" — the same conclusion this project
+reached the hard way. So the geometry fix that took us 0.131 -> 0.301 bought us **parity, not
+advantage**, which is exactly why geometry does not correlate with our per-scenario margin.
+
+**Our only real edge is resolution**, and the deficit underneath it is architectural.
+
+---
+
+#### E10a — reduce the embedding to 384 (do this first; it is an enabler, not just an arm)
+
+PatchCore reduces the aggregated embedding to **384** by random projection. We store and score in
+the full **1536**. Ours uses a projection *only* inside `coreset_indices` (`proj_dim=128`, at
+`sweep_backbones.py:206`) for greedy selection — the bank and every distance are full-dimension.
+
+This is a **4x cut in bank memory and in `patch_distances` cost**, which is why it comes first:
+it directly buys the 768 arm we have been calling expensive. The `walnuts` feature tensor at 768
+drops from **24.3 GB to ~6 GB**, well clear of the 58 GiB ceiling, and E5's ~1.9 GPU-h falls
+towards ~0.5.
+
+**Hypothesis:** 384-dim scoring is within 0.01 mean AU-PRO@5% of 1536-dim at 448, at ~4x lower
+cost. PatchCore's own design says the discarded dimensions are redundant; if that holds here, every
+later arm gets cheaper for free.
+
+**If it is *better*, not merely equal**, that is a genuine finding — it would mean our full-dim
+bank is diluting the nearest-neighbour metric, which is the mechanism PatchCore's projection
+exists to prevent.
+
+---
+
+#### E10b — backbone ensemble
+
+The largest architectural gap and the most likely bulk of the 9.6 points. **Do not implement all
+three at once** — that is a three-variable arm and this project has been burned by exactly that.
+
+Order: **WideResNet-101 alone** (one variable against arm A) -> add **ResNeXt-101** -> add
+**DenseNet-201**. Report each step. If WRN-101 alone captures most of the gain, the ensemble is not
+worth its 3x inference cost and we stop there.
+
+**Hypothesis:** WRN-101 alone recovers more than half of the 9.6-point deficit at matched
+resolution.
+
+**Cost note:** an ensemble triples feature extraction and triples embedding width before
+reduction. **E10a first makes this affordable**; without it, three backbones at 448 is close to
+the memory ceiling.
+
+---
+
+#### E10c — coreset ratio *(low priority, and check the number first)*
+
+The paper reports "0.01%". PatchCore's own paper uses **1%** as its headline (`PatchCore-1%`), and
+`0.01` written as a *fraction* is exactly 1%. **This is very likely a units artifact, not a real
+difference from ours.** Read the paper's own table before spending a run on it — if it is 1%, we
+already match and there is nothing here.
+
+---
+
+**Sequencing.** E10a -> E10b -> then re-run E5's 768 arm on top of whatever wins. E10a is the
+prerequisite that makes the rest affordable, and E5b (dilated layer3) stays worth running because
+it is orthogonal to all of this.
+
+**One caution on framing.** Everything here narrows a gap to *their configuration at 256*. Our
+lead over the leaderboard exists because they did not run at 448. If we adopt their architecture
+and keep our resolution we should be clearly ahead — but that is still a configuration advantage,
+and an honest write-up says so.
+
+---
+
+### E5b — dilated layer3 (`output_stride=8`) at 448  **(orthogonal to E10; still worth running)**
 
 **The single-variable test E5 does not provide.** `sweep_backbones.py:130-134` upsamples layer3
 bilinearly 2x onto the layer2 grid. layer3 is **1024 of 1536 dims (66.7%)** and natively stride

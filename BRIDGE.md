@@ -48,73 +48,49 @@ experiment twice.
 
 *Planner writes. One directive at a time. Superseded directives move to the log.*
 
-**D-05 — run E5b (dilated layer3) BEFORE E5's 768 arm.** HANDOFF §7 E5b. ~0.4 GPU-h.
+**D-06 — parallel track: keep the pod busy while the planner specs E10.** Supersedes D-05 as the
+active directive; D-05's E5b spec survives intact as item 4 below.
 
-Supersedes D-04 as the active directive; D-04's E5 spec and all five M-03 modifications still
-stand and follow immediately after.
+Run these **in order**. They are deliberately chosen to be independent of the E10 work the planner
+is specifying, so nothing here will be invalidated by it.
 
-Pass `output_stride=8` to `timm.create_model` for the CNN path, behind a flag, and run at
-`--img 448 --geometry aspect --bank-cap 4000`, all 8 scenarios, with the bucketed breakdown.
+**1. Rebuild the pod** — `deployment/POD_REBUILD.md`, ~20 min, no decisions. `/workspace` survived;
+`/opt/ad2` and the venv did not. Fixed scripts are already synced (M-17).
 
-**Verify before reading any result:** the recorded `grid` and `n_patches` must be **identical**
-to the current 448 arm. If either moves, the arm is not single-variable and the comparison is
-void — say so and stop rather than reporting the number.
+**2. E4b — clean 448 `aspect` baseline (~13 min).** `--img 448 --geometry aspect --bank-cap 4000`,
+all 8 scenarios, bucketed breakdown, record as `E4b-aspect-448-driver580`. This is the reference
+every later arm compares against, and it kills two problems at once: the pod now reports driver
+**580.159.04** (no prior run recorded a driver at all), and the current 448 reference
+`E4-evalside-512` is the stitched record. **If it does not reproduce 0.3444 within ~0.01, stop and
+report** — that would mean the environment moved and every cross-pod comparison needs rethinking.
 
-**Why this first.** layer3 supplies 1024 of 1536 descriptor dims (66.7%) and is bilinearly
-upsampled from stride 16, so two thirds of every descriptor carries no detail finer than 4x the
-cell area the bucket analysis assumes. `output_stride=8` fixes exactly that, at identical patch
-count, bank and memory, for ~a fifth of the 768 arm's cost. E5 moves five variables at once and
-cannot attribute its own result.
+**3. E9 — pre-resize cache + `setsid`.** Cache the dataset once at aspect dimensions to the
+**container disk**, not `/workspace`. **Verify cached features bit-identical to a live-decode run
+on one scenario before trusting any cached result** — a silent resize difference would corrupt
+everything downstream and would look like a real effect. This makes every later arm cheaper,
+including E10.
 
-**Registered prediction (planner, before the result):** E5b recovers **more than half** of the
-768 arm's expected gain (expected 768 gain ~+0.12 by the measured slope, so E5b > +0.06). If it
-does, feature-map density is the driver rather than input pixels.
+**4. E5b — dilated layer3 (`output_stride=8`) at 448**, per D-05, which stands unchanged. It is
+orthogonal to E10 and stays worth running. Hard gate: recorded `grid` and `n_patches` must be
+**identical** to the 448 arm, or the arm is not single-variable and the comparison is void.
 
-**Also report** both the stride-8 cell area and the effective layer3 cell area per scenario, so
-the size buckets can be re-read against the right cell.
+**5. E8 — rebuild the Triton serving path.** Zero overlap with any research arm, so it is ideal
+filler. It is not "swap in a real bank": the served classifier is constant True (threshold 0.55
+against calibrated values of 36.8-47.2), bank and query use different geometries, float32 input in
+[0,255] skips normalisation, and `test_client.py` cannot fail. **Give it a test that can fail**,
+then re-measure latency and correct both READMEs — the two quoted latency figures were measured
+against a synthetic bank.
 
-**FIRST, before E5b: re-run the 448 `aspect` baseline clean on the new pod (~13 min).** The pod
-was re-provisioned on 2026-09-05 and now reports driver **580.159.04**. Two problems that one run
-fixes together:
+**No-GPU task, do it whenever you are blocked:** pull Table VII from arXiv:2503.21622 and commit
+PatchCore's AU-PRO **per scenario, per split, at both limits**, into the repo. Our current
+comparison numbers came from secondary sources.
 
-- **The driver was never recorded.** No AD 2 run record contains a `driver` field — the code only
-  captured `gpu` and `torch` until today. This project has documented a driver change (580 -> 570)
-  moving arm A's AUROC by 0.010 with identical seeds, so comparing E5b on 580 against a reference
-  made on an unknown driver confounds the dilation effect with an environment change of the same
-  order as several decisions made here.
-- **The current 448 reference is the stitched record.** `E4-evalside-512` was assembled from two
-  executions with `deviations: []` (wall/sum 0.58). E5b needs a clean reference regardless.
-
-Run `--img 448 --geometry aspect --bank-cap 4000` with the bucketed breakdown, record it as
-**`E4b-aspect-448-driver580`**, and use *that* as E5b's comparison point. `ad2_pixel_eval.py` now
-records `driver` and `cuda` automatically.
-
-If it does not reproduce E4-evalside-512's 0.3444 within ~0.01, **say so before running anything
-else** — that would mean the environment moved enough to matter and every cross-pod comparison in
-the queue needs rethinking.
-
-**Do this alongside, before or during E5b (it is engineering, not an experiment):** pre-resize
-the dataset once to aspect dimensions and cache it, and switch every launch to
-`setsid nohup ... < /dev/null &`. The cache removes repeated 5 MP PNG decode from the critical
-path and makes every experiment after it cheaper; `setsid` closes OQ-1. Cache to the **container
-disk**, not `/workspace`. **Verify cached features are bit-identical to a live-decode run on one
-scenario before trusting any cached result** — a silent resize difference would corrupt
-everything downstream and would look like a real effect.
-
-**Then, in this order** (full reasoning in M-16): E5b -> E5's 768 arm -> unstrided layer1 ->
-E7 fusion re-run under `aspect` then routing selected on `validation` -> scale-adaptive
-filtering -> E8. Items 3-5 are not interpretable until the ones above them land.
-
-**Every run from here:** `--geometry` is now required by the code and `--resume` refuses a config
-mismatch, so both silent-corruption paths are closed. **Update the ledger row the moment an
-artifact exists, even for a partial or failed run** — a partial filed as a non-result is how the
-decisive 224 arm went unread for a day.
-
-**Corrections that came with this directive** — the planner's, not the worker's:
-- The claim that D-04 prediction 2 was falsified is **withdrawn**. It bounded 448 -> 768; the
-  data used was 224 -> 448. Prediction 2 stands untested and only the 768 arm tests it.
-- The M-10 ceiling is **untested, not refuted**. An earlier BRIDGE entry said void; that was wrong.
-- What survives: resolution is worth **+0.154 mean AU-PRO (1.86x) on 6/6** across 224 -> 448.
+**Coming next, do not start it yet — the planner is specifying it (see HANDOFF §7 E10):** at
+matched resolution the paper's PatchCore beats ours by **9.6 points**, larger than our **+5.8**
+lead. Their config is published: a **three-backbone ensemble** (WRN-101, ResNeXt-101,
+DenseNet-201), embedding reduced to **384** where we use the full 1536, and centre cropping
+already disabled. E10a (the 384 reduction) is a **4x cut in bank memory and distance cost** and is
+what makes the 768 arm affordable.
 
 ---
 
@@ -844,4 +820,42 @@ uses it.
 PatchCore. That is a far better-motivated target than another general sweep.
 
 The queue is otherwise unchanged: E4b -> E9 -> E5b -> E5.
+
+### M-20 — planner — their config is published; the 9.6-point deficit is architectural
+Fetched the benchmark section of arXiv:2503.21622. Their PatchCore:
+
+| | theirs | ours |
+|---|---|---|
+| backbone | **ensemble: WRN-101 + ResNeXt-101 + DenseNet-201** | single WideResNet50-2 |
+| embedding dim | **384** (reduced) | **1536** (full, no reduction) |
+| coreset ratio | "0.01%" — probably 0.01 as a *fraction* = 1%, i.e. same as ours | 1% nominal |
+| centre crop | **disabled** | disabled — same |
+| input | 256x256 | 448 |
+
+**Two things this settles.**
+
+**They never had our coordinate-frame bug.** The paper says they "disable the center cropping to
+enable the detection of defects occurring at the image borders" — the conclusion this project
+reached the hard way over a full session. So that fix bought us **parity, not advantage**, which
+is precisely why geometry does not correlate with our per-scenario margin.
+
+**Our only edge is resolution, and the deficit under it is architectural** — an ensemble we do not
+run, and a dimensionality reduction we do not do.
+
+**E10a is the one to notice.** PatchCore reduces the embedding to 384; we score in the full 1536,
+projecting only inside `coreset_indices` for greedy selection (`sweep_backbones.py:206`). That is
+a **4x cut in bank memory and `patch_distances` cost** — `walnuts` at 768 falls from 24.3 GB to
+~6 GB and E5's ~1.9 GPU-h towards ~0.5. It is an **enabler before it is an accuracy arm**.
+
+E10b (ensemble) is the likely bulk of the 9.6 points, but **run one backbone at a time** — WRN-101
+alone first. A three-backbone arm is a three-variable arm and this project has been burned by
+exactly that.
+
+E10c (coreset ratio) is probably a units artifact and should not cost a run until the table is
+read.
+
+**Framing caution for any write-up:** all of E10 narrows a gap to *their configuration at 256*.
+Our leaderboard lead exists because they did not run at 448. Adopting their architecture at our
+resolution should put us clearly ahead — but that remains a configuration advantage, and an honest
+paper says so.
 

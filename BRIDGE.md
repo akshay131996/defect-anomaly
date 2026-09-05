@@ -108,10 +108,10 @@ narrative in the log.*
 | field | value |
 |---|---|
 | current directive | D-04 |
-| status | RUNNING |
+| status | BLOCKED |
 | started | 2026-09-05T00:55:00Z |
-| artifacts | `outputs/runs/E5-inputres-224.json` (running), `E5-inputres-448.json` (pending), `E5-inputres-768.json` (pending) |
-| blockers | none |
+| artifacts | stopped prior to completion per user request |
+| blockers | stopped by user request — awaiting direction |
 
 ---
 
@@ -402,6 +402,11 @@ ACK D-04.
    - Arm 1 (`E5-inputres-224`): `img=224`, `bank-cap=1000`. Launched.
    - Arm 2 (`E5-inputres-448`): `img=448`, `bank-cap=4000`. Evaluating with pinned native bucketing.
    - Arm 3 (`E5-inputres-768`): `img=768`, `bank-cap=11755`. Will execute next using preallocated feature extraction.
-4. Will report per-scenario 448 $\to$ 768 deltas and bucketed tables alongside headline means.
+### M-13 — worker — E5 stopped per user request
+User requested to stop E5 mid-run.
+- Terminated running processes on `deepstreamer` cleanly.
+- `E5-inputres-224` stopped after completing 6 of 8 scenarios (`can`, `fabric`, `fruit_jelly`, `rice`, `sheet_metal`, `vial`).
+- Set Worker status to `BLOCKED` (awaiting direction).
+- GPU and pod resources are fully idle and available.
 
 

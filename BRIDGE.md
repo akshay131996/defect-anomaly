@@ -73,6 +73,26 @@ does, feature-map density is the driver rather than input pixels.
 **Also report** both the stride-8 cell area and the effective layer3 cell area per scenario, so
 the size buckets can be re-read against the right cell.
 
+**FIRST, before E5b: re-run the 448 `aspect` baseline clean on the new pod (~13 min).** The pod
+was re-provisioned on 2026-09-05 and now reports driver **580.159.04**. Two problems that one run
+fixes together:
+
+- **The driver was never recorded.** No AD 2 run record contains a `driver` field — the code only
+  captured `gpu` and `torch` until today. This project has documented a driver change (580 -> 570)
+  moving arm A's AUROC by 0.010 with identical seeds, so comparing E5b on 580 against a reference
+  made on an unknown driver confounds the dilation effect with an environment change of the same
+  order as several decisions made here.
+- **The current 448 reference is the stitched record.** `E4-evalside-512` was assembled from two
+  executions with `deviations: []` (wall/sum 0.58). E5b needs a clean reference regardless.
+
+Run `--img 448 --geometry aspect --bank-cap 4000` with the bucketed breakdown, record it as
+**`E4b-aspect-448-driver580`**, and use *that* as E5b's comparison point. `ad2_pixel_eval.py` now
+records `driver` and `cuda` automatically.
+
+If it does not reproduce E4-evalside-512's 0.3444 within ~0.01, **say so before running anything
+else** — that would mean the environment moved enough to matter and every cross-pod comparison in
+the queue needs rethinking.
+
 **Do this alongside, before or during E5b (it is engineering, not an experiment):** pre-resize
 the dataset once to aspect dimensions and cache it, and switch every launch to
 `setsid nohup ... < /dev/null &`. The cache removes repeated 5 MP PNG decode from the critical

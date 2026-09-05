@@ -79,7 +79,7 @@ Per run, three artifacts, committed together:
   "code_sha256": {"ad2_pixel_eval.py": "5168721b...", "sweep_backbones.py": "..."},
   "started_utc": "2026-09-04T19:10:00Z",
   "wall_seconds": 1180,
-  "env": {"gpu": "NVIDIA RTX 4000 Ada", "torch": "2.14.0", "driver": "570.x"},
+  "env": {"gpu": "NVIDIA RTX 4000 Ada", "torch": "2.14.0+cu130", "driver": "580.159.04", "cuda": "13.0"},
   "config": {"img": 448, "bank_cap": 4000, "eval_side": 512,
              "gauss_sigma": 4.0, "coreset_ratio": 0.01, "geometry": "aspect"},
   "scenarios": {
@@ -115,8 +115,12 @@ Stated here so the worker knows what will be verified, and can pre-empt a reject
 - `n_good` / `n_bad` per scenario match previous runs on the same split. A silent change
   means the data selection moved and nothing is comparable.
 - `config` echoes the flags actually present in `command`.
-- `env` matches the run being compared against. torch 2.13 -> 2.14 alone moved an AD 1
-  arm by 0.010 AUROC, which is larger than margins two experiments were spent narrowing.
+- `env` matches the run being compared against — **including `driver`**. torch 2.13 -> 2.14
+  alone moved an AD 1 arm by 0.010 AUROC, and a driver change of 580 -> 570 moved it again,
+  both larger than margins two experiments were spent narrowing. **`driver` was not captured
+  at all until 2026-09-05**, so every AD 2 record before that is missing the field that would
+  say whether it survives a pod re-provision. Treat `driver: null` as "unknown, assume not
+  comparable across a re-provision", not as "fine".
 - `au_pro@0.05` <= `au_pro@0.3` for every scenario. The metric is monotonic in its limit;
   a violation means the integration is broken, as it once was.
 - Means recompute from the per-scenario values.
@@ -190,6 +194,11 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 Order:
 
+0. **E4b — re-run the 448 `aspect` baseline clean on the re-provisioned pod (~13 min).** The pod
+   now reports driver **580.159.04** and no existing record captured a driver at all, while a
+   580 -> 570 change has previously moved arm A by 0.010. The current 448 reference is also the
+   stitched `E4-evalside-512`. One run fixes both. If it does not reproduce 0.3444 within ~0.01,
+   stop and report — every cross-pod comparison would need rethinking.
 1. **E9** — pre-resize cache + `setsid` launches. Engineering; makes everything after cheaper and
    closes OQ-1. Verify cached features bit-identical on one scenario first.
 2. **E5b** — dilated layer3 (`output_stride=8`) at 448, ~0.4 GPU-h. The single-variable test of

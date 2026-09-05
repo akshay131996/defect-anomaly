@@ -40,6 +40,7 @@ import argparse
 import glob
 import json
 import os
+import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -224,6 +225,22 @@ def extract_paths_prealloc(ex, paths, pool, batch=8):
     return feats
 
 
+def _nvidia_driver_version():
+    """Driver version as reported by nvidia-smi, or None if it cannot be determined.
+
+    Deliberately best-effort: a missing driver string must never abort a run, but a silently
+    absent one must be distinguishable from a genuine value, hence None rather than "".
+    """
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=10)
+        v = out.stdout.strip().splitlines()
+        return v[0].strip() if v and out.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
 @torch.no_grad()
 def anomaly_maps(ex, bank, paths, n_patches, grid, batch=8, valid_grid=None, eval_shape=(EVAL_SIDE, EVAL_SIDE), gauss_sigma=GAUSS_SIGMA):
     """Returns (image_scores, list of HxW float maps at eval_shape resolution)."""
@@ -345,6 +362,14 @@ def main():
         "env": {
             "gpu": torch.cuda.get_device_name(0) if sb.DEVICE == "cuda" else "cpu",
             "torch": torch.__version__,
+            # The NVIDIA driver is a known result-moving variable on this project and was
+            # NOT captured until 2026-09-05: a driver change of 580 -> 570 mid-project shifted
+            # arm A's grid AUROC 0.9507 -> 0.9607 with identical seeds (HANDOFF §2), larger
+            # than margins two experiments were spent narrowing. Every AD 2 record before this
+            # line is therefore missing the one field that would say whether it is comparable
+            # to a run made after a pod re-provision.
+            "driver": _nvidia_driver_version(),
+            "cuda": torch.version.cuda,
         },
         "config": {
             "img": arm["img"],

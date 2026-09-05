@@ -92,6 +92,12 @@ other.
 
 Report the bucketed table per arm alongside the headline means. One sweep-level verdict.
 
+**Also report the per-scenario 448 -> 768 delta explicitly**, not just the means. M-09
+registers a 2x2 prediction that E5 tests at no extra cost: `sheet_metal` and `fruit_jelly`
+should gain most, `rice` and `wallplugs` should gain almost nothing. **If `sheet_metal` does
+not gain, the resolution hypothesis is in trouble regardless of what the mean does** — say
+so plainly rather than reporting the mean and moving on.
+
 ---
 
 ## Worker status
@@ -137,6 +143,11 @@ stated conclusion follows from the numbers — those are two different checks.*
   RSS **before** re-running.
 - **OQ-2 — E0 does not cover `aspect`**, which is now the winning geometry. The
   implementation was hand-checked and is correct, but hand-checking is not a test. Add it.
+- **OQ-4 — is the real lever the representation rather than resolution?** Four of eight
+  scenarios sit at or near chance on image AUROC (`can` 0.514, `wallplugs` 0.541, `fabric`
+  0.608, `rice` 0.638) and average 0.208 AU-PRO against 0.481 for the other four. Detection
+  quality predicts AU-PRO better than defect scale does (R^2 0.744 vs 0.605). See M-09. If
+  E5 confirms this, **E7 becomes the second load-bearing experiment**, not a tidy-up.
 - **OQ-3 — what closes the remaining 2.2x?** Evaluation protocol is closed (E4 refuted it).
   The live hypothesis is the patch grid. Note that even 1024 input leaves cells at ~308
   native px against a 77 px floor, so resolution alone is not obviously sufficient. If E5
@@ -258,4 +269,61 @@ is relative to cell area, which changes with resolution, so regions would migrat
 buckets across arms and the comparison would compare different populations — the defect that
 invalidated E3, one level up. Three predictions are registered in the directive, including
 the outcome under which resolution is a confound rather than the cause.
+
+### M-09 — planner — the gap has two causes, not one; E5 gets a 2x2 design for free
+Planner analysis from existing artifacts only — no pod time, nothing to re-run.
+
+**Detection quality predicts AU-PRO better than defect scale does.** Regressing per-scenario
+AU-PRO@5% on each factor alone:
+
+| model | R^2 |
+|---|---|
+| image AUROC alone | **0.744** |
+| log2(median region / cell) alone | 0.605 |
+| both | 0.877 |
+
+**Four of eight scenarios are at or near chance on detection**, and no evaluation or
+resolution change can localise a defect the representation does not separate at all:
+
+| | image AUROC | median defect | AU-PRO@5% |
+|---|---|---|---|
+| can | 0.514 | 0.26 cells | 0.139 |
+| wallplugs | 0.541 | 1.20 cells | 0.276 |
+| fabric | 0.608 | 0.26 cells | 0.189 |
+| rice | 0.638 | 3.32 cells | 0.226 |
+| **mean of the four** | | | **0.208** |
+| fruit_jelly / sheet_metal / vial / walnuts | 0.79-0.96 | | **0.481** |
+
+**Necessary caveat: image AUROC is a co-symptom, not an independent cause.** Both metrics
+derive from the same anomaly scores, so a representation that separates defects scores well
+on both by construction. This does not prove detection *causes* the AU-PRO gap; it shows the
+gap concentrates in scenarios where the backbone barely separates defects at all, which
+points at the representation rather than at anything spatial. **Defect scale is measured
+independently of the scores, so the 2x2 below is still a valid design.**
+
+**The 2x2, and what E5 should show under each cell.** These are registered predictions:
+
+| | small defects (< 1 cell) | large defects (> 1 cell) |
+|---|---|---|
+| **good detection** | `sheet_metal`, `fruit_jelly` — **largest gains from 448 -> 768** | `vial`, `walnuts` — modest; already resolved |
+| **weak detection** | `can`, `fabric` — limited; cannot detect what it cannot separate | `rice`, `wallplugs` — **negative control, near-zero gain** |
+
+`sheet_metal` is the cleanest pure-resolution case in the benchmark: detection works
+(0.791), defects are small (0.61 cells, 64.9% sub-cell), and AU-PRO is poor (0.253). **If
+resolution is the lever, `sheet_metal` gains the most. If `sheet_metal` does not gain, the
+resolution hypothesis is in serious trouble regardless of what the mean does.**
+
+`rice` and `wallplugs` are the negative control: defects already exceed one cell, so
+resolution has little to offer them. **If they gain as much as `sheet_metal`, the gain is
+not spatial** — it is something that improves with resolution generally, and the ceiling
+story is wrong.
+
+**Implication for the queue.** If this holds, resolution addresses at most half the problem
+and **E7 (backbone/fusion re-selected on `validation`) stops being a tidy-up item and
+becomes the second load-bearing experiment.** DINOv2 already lifted `fabric`'s pixel AUROC
+from 0.650 to 0.973 in the earlier fusion work — on one of the four weak-detection
+scenarios. That is worth revisiting under correct geometry, and it is a different lever from
+resolution rather than a competing explanation for the same one.
+
+Recorded now, before E5 runs, so the predictions cannot be fitted after the fact.
 

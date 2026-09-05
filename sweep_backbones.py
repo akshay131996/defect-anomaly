@@ -116,6 +116,8 @@ class PatchExtractor:
         self.tfm = timm.data.create_transform(**cfg, is_training=False)
         self.grid = None
         self.dim = None
+        self.proj_dim = spec.get("proj_dim", 0)
+        self.proj = None
 
     def _one(self, im):
         return self.tfm(im.convert("RGB"))
@@ -145,8 +147,17 @@ class PatchExtractor:
 
         fmap = F.avg_pool2d(fmap, kernel_size=3, stride=1, padding=1)
         b, c, h, w = fmap.shape
-        self.grid, self.dim = (h, w), c
-        return fmap.permute(0, 2, 3, 1).reshape(b * h * w, c).cpu()
+        self.grid = (h, w)
+        flat = fmap.permute(0, 2, 3, 1).reshape(b * h * w, c)
+        if self.proj_dim:
+            if self.proj is None:
+                g = torch.Generator().manual_seed(0)
+                self.proj = (torch.randn(c, self.proj_dim, generator=g) / (self.proj_dim ** 0.5)).to(flat.device)
+            flat = flat @ self.proj
+            self.dim = self.proj_dim
+        else:
+            self.dim = c
+        return flat.cpu()
 
     @torch.no_grad()
     def __call__(self, pil_batch):

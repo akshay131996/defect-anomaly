@@ -77,7 +77,7 @@ EVAL_SIDE = 512              # masks and maps are compared at this resolution - 
 _POOL = ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 8)))
 
 
-def load_paths(scenario):
+def load_paths(scenario, cache_dir=None):
     r = os.path.join(AD2_ROOT, scenario)
     train = sorted(glob.glob(os.path.join(r, "train", "**", "*.png"), recursive=True))
     val = sorted(glob.glob(os.path.join(r, "validation", "**", "*.png"), recursive=True))
@@ -86,6 +86,20 @@ def load_paths(scenario):
     bad = sorted(glob.glob(os.path.join(r, "test_public", "bad", "**", "*.png"),
                            recursive=True))
     gt_dir = os.path.join(r, "test_public", "ground_truth")
+
+    if cache_dir and os.path.isdir(cache_dir):
+        def to_cache(paths):
+            cached = []
+            for p in paths:
+                rel = os.path.relpath(p, AD2_ROOT)
+                cp = os.path.join(cache_dir, rel)
+                cached.append(cp if os.path.isfile(cp) else p)
+            return cached
+        train = to_cache(train)
+        val = to_cache(val)
+        good = to_cache(good)
+        bad = to_cache(bad)
+
     return train, val, good, bad, gt_dir
 
 
@@ -316,6 +330,10 @@ def main():
                     help="Resume evaluation by reusing scenarios already computed in output JSON")
     ap.add_argument("--output-stride", type=int, default=None, choices=[8, 16],
                     help="Output stride for CNN backbones (e.g. 8 to dilate layer 3, E5b)")
+    ap.add_argument("--proj-dim", type=int, default=0,
+                    help="Project patch embeddings to target dimension (e.g. 384 for E10a, default 0: full dim)")
+    ap.add_argument("--cache-dir", default="",
+                    help="Path to pre-resized aspect cache directory (e.g. /opt/ad2/cache_aspect448)")
     args = ap.parse_args()
 
     if args.squash:
@@ -336,6 +354,9 @@ def main():
     if args.output_stride:
         arm["output_stride"] = args.output_stride
         arm["tag"] = f"{arm['tag']}_os{args.output_stride}"
+    if args.proj_dim:
+        arm["proj_dim"] = args.proj_dim
+        arm["tag"] = f"{arm['tag']}_proj{args.proj_dim}"
     ex = sb.PatchExtractor(arm)
 
     if args.geometry == "squash":
@@ -384,6 +405,8 @@ def main():
             "coreset_ratio": CORESET_RATIO,
             "geometry": args.geometry,
             "output_stride": args.output_stride,
+            "proj_dim": args.proj_dim,
+            "cache_dir": args.cache_dir or None,
             "fixed_regions": not args.no_fixed_regions,
             "native_min_region_px": args.native_min_region_px if not args.no_fixed_regions else None,
         },
@@ -436,7 +459,7 @@ def main():
                     continue
 
         t0 = time.time()
-        train, val, good, bad, gt_dir = load_paths(sc)
+        train, val, good, bad, gt_dir = load_paths(sc, cache_dir=args.cache_dir)
         if args.limit:
             train, val, good, bad = (train[:args.limit], val[:args.limit],
                                      good[:args.limit], bad[:args.limit])

@@ -207,7 +207,7 @@ D-03 complete. Evaluated all 8 scenarios (1,530/1,530 active regions) with exact
   - `4–16x cells` (173 regs, 11.3%): **0.5498**
   - `ge 16x cells` (247 regs, 16.1%): **0.6056**
   - `>= 4 cells combined` (420 regs, 27.5%): **0.5826** (AU-PRO@30% reaches **0.8033**)
-  - In `vial` (largest defects), `>= 16x` defects score **0.7516**, directly reaching published parity (0.764).
+  - ~~In `vial`, `>= 16x` defects score 0.7516~~ **WRONG — the artifact says 0.6247, and vial's largest bucket is its *worst*. See REVIEW.md §3.**
 
 **Decisive read:** Defects are NOT scoring uniformly mediocre. Large defects already score strongly (0.58–0.75), while sub-cell defects pull down the average to 0.344. **The gap is proven to be a spatial resolution ceiling.** E5 is vindicated and ready to execute. Halted awaiting next directive.
 
@@ -250,8 +250,10 @@ still pending.
 ### M-08 — planner — E5a accepted, conclusion narrowed; directive D-04 issued
 Verified from `outputs/runs/E5a-region-breakdown.json`: bucket counts sum to 1,530 exactly,
 the reported values reproduce, and AU-PRO@5% is monotonic in defect size — 0.2265 (sub-cell,
-49.4%) / 0.4280 / 0.5498 / 0.6056, with `vial`'s `ge_16x` at 0.7516 against a published
+49.4%) / 0.4280 / 0.5498 / 0.6056, with `vial`'s `ge_16x` at **0.6247** (not 0.7516) against a published
 0.764. **E5a is accepted and the planner's registered prediction is substantially supported.**
+*(Correction 2026-09-05: `vial`'s ge_16x is 0.6247, not 0.7516 — the planner asserted these
+values reproduced without checking that one. See REVIEW.md §3.)*
 
 Two corrections to the stated conclusion, neither of which changes the decision to run E5:
 
@@ -465,4 +467,49 @@ re-running (OQ-1 is still open on a silent kill).
 
 **On resume:** follow `deployment/POD_REBUILD.md`, then D-04 from the top — all three arms,
 224 included.
+
+### M-14 — planner — peer review done; the ceiling argument is dead and E5 is now top priority
+Full writeup in `REVIEW.md`; raw reviewer output in `REVIEW_FINDINGS.md`. Read REVIEW.md before
+quoting any AU-PRO number from HANDOFF.
+
+**The big one: M-10 is void and D-04 prediction 2 is falsified.** `outputs/runs/E5-inputres-224.json`
+was committed and filed by M-13 as a partial "non-result to be re-run". Its numbers were never
+read. It carries full bucket data under the M6 native-pinned edges with **bit-identical** bucket
+counts to the 448 arm, so it is exactly the test D-04 specified. Across 224 -> 448:
+
+| bucket | 224 | 448 | delta |
+|---|---|---|---|
+| sub-cell | 0.0873 | 0.2130 | +0.126 |
+| 1-4x | 0.2059 | 0.4263 | +0.221 |
+| 4-16x | 0.3960 | 0.6439 | +0.248 |
+| **>= 16x** | 0.4672 | 0.5639 | **+0.097** |
+
+Prediction 2 bounded `ge_16x` movement at **< 0.03**; it moved **0.097**, 3.2x that. M-10's
+ceiling rests on `ge_16x` being fixed, so the ceiling does not exist. Mean AU-PRO@5% rose
+**+0.154 (1.86x) on 6 of 6 scenarios** across one doubling. **Resolution is the most valuable
+direction available, not a bounded one.**
+
+The predicted *mechanism* was still wrong: the sub-cell bucket gained **least** of the three
+smallest. Every bucket moved together — the outcome D-04 itself named as "resolution is a
+confound rather than the cause". So resolution helps a lot, and not because it resolves small
+defects.
+
+**Errors the planner owes.** `vial`'s `ge_16x` is **0.6247**, not the 0.7516 quoted three times
+including in M-08, which asserted "the reported values reproduce" — the correct value had already
+been printed in the planner's own session output. vial does not support the claim it was used
+for: its largest bucket is its **worst** (0.625) and its sub-cell bucket its best (0.929). The
+pooled monotone size trend is largely composition — only **2 of 7** scenarios are monotonic and
+the `ge_16x` bucket is 66% supplied by the two best scenarios. And M-10 compared a region-pooled
+0.606 against scenario-mean 0.344 and 0.764 — three numbers, two frames.
+
+**E7 is not ready to interpret.** `ad2_feature_fusion.py` has no geometry support at all; its
+entire evidence base was measured in the broken crop frame. Mark
+`outputs/ad2_feature_fusion.json` void and strike the two "new project high" claims — plain arm A
+under aspect beats both.
+
+**Before the next run:** launch with `setsid` (three runs died silently to `nohup` alone — this
+closes OQ-1, and memory was never the cause) and add a config guard to `--resume`, which reuses
+scenarios without comparing any config field and is in the committed E5 command.
+
+**Revised order: E5 -> E7 (after a geometry re-run) -> E8 (rebuild, not swap) -> E6.**
 

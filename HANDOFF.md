@@ -185,26 +185,19 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Run E5** — approved, see `BRIDGE.md` directive **D-04** for the one blocking change (bucket
-edges pinned to native pixels) and the registered predictions. E5a passed the gate.
+**Read `REVIEW.md` first.** A peer review on 2026-09-05 invalidated several conclusions in this
+document, including the resolution ceiling in §6 and three quoted `vial` numbers.
 
-E5a found that AU-PRO is monotonic in defect size (0.227 sub-cell -> 0.606 at >= 16x cells,
-with `vial`'s largest regions at 0.751 against a published 0.764). Half of all regions are
-smaller than a single patch cell, and those drag the mean to 0.344. **But that is equally
-consistent with large defects being easier for any detector**, so E5 is what separates a
-resolution ceiling from defect salience — not a formality.
+**Then run E5.** It is now the highest-value experiment in the queue. One resolution doubling
+(224 -> 448) gained **+0.154 mean AU-PRO@5%, 1.86x, on 6 of 6 scenarios** — and every size
+bucket moved, including the one the ceiling argument assumed was fixed.
 
-**E8** (replace the synthetic Triton bank) remains independent and can run in parallel.
+Before launching, two fixes (REVIEW.md §6): launch with `setsid` (three runs have died silently
+to `nohup` alone) and add a config guard to `--resume`, which currently reuses scenarios without
+comparing any config field and is already in the committed E5 command.
 
-Current standing on AD 2, arm A, `aspect` geometry at 448px, fixed native region set:
-
-| metric | ours | published baseline |
-|---|---|---|
-| image AUROC | **0.724** | 0.659 |
-| pixel AUROC | **0.850** | 0.763 |
-| AU-PRO@5% | 0.344 | 0.764 |
-
-Two of three exceed the published baseline. The AU-PRO gap is 2.2x.
+**E7 is blocked on a re-run, not ready to interpret** — `ad2_feature_fusion.py` has no geometry
+support and its entire evidence base was measured in the broken crop frame (REVIEW.md §5).
 
 ---
 
@@ -553,8 +546,9 @@ E5a measured the native area of all 1,530 regions and broke AU-PRO@5% down by si
 | 4-16x cells | 173 | 11.3% | 0.5498 |
 | >= 16x cells | 247 | 16.1% | **0.6056** |
 
-Monotonic in defect size, and `vial`'s `>= 16x` regions reach **0.7516** against the
-published 0.764. Across scenarios, median region size in cell units tracks AU-PRO@5% at
+Monotonic **only when pooled across scenarios** -- within scenarios just 2 of 7 hold, and
+`vial` is inverted (sub-cell 0.929 > `>= 16x` 0.625). The figure 0.7516 quoted here previously
+for `vial` appears in no artifact; the real value is **0.6247**. See REVIEW.md §2-§3. Across scenarios, median region size in cell units tracks AU-PRO@5% at
 **r = +0.788**: `vial` at 17.1x cell scores 0.719, while `can` and `fabric` — whose median
 defect is about **a quarter of one patch cell** — score 0.139 and 0.189.
 
@@ -615,7 +609,15 @@ previously lifted `fabric`'s pixel AUROC from 0.650 to 0.973 — on one of these
 work was done under broken geometry and selected on `test_public`, so it must be redone, but
 it is aimed at the right half of the problem.
 
-### The ceiling on resolution, computed from data we already have
+### ~~The ceiling on resolution~~ — VOID, see REVIEW.md §1
+
+> **This section is wrong and is kept only so the error is legible.** Its stated condition
+> — that higher resolution does not also lift the `>= 16x` bucket — is empirically false.
+> Across 224 -> 448 that bucket rose 0.467 -> 0.564 (+0.097), and mean AU-PRO@5% rose
+> +0.154 (1.86x) on 6 of 6 scenarios. **Resolution is the most valuable direction
+> available, not a bounded one.** The refuting data (`outputs/runs/E5-inputres-224.json`)
+> was in the repo before this section was written and was filed unread as a partial run.
+
 
 Regions at `>= 16x` cell area are already spatially unconstrained — sixteen or more patch
 cells across, so a finer grid has little to add. **They score 0.6056 (n = 247).**

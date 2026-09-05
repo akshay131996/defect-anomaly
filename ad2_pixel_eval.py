@@ -276,8 +276,17 @@ def main():
                     help=f"Nominal side length for evaluation frame (default: {EVAL_SIDE})")
     ap.add_argument("--gauss-sigma", type=float, default=GAUSS_SIGMA,
                     help=f"Gaussian smoothing sigma for anomaly maps (default: {GAUSS_SIGMA})")
-    ap.add_argument("--geometry", choices=["crop", "squash", "letterbox", "aspect"], default="crop",
-                    help="Coordinate frame geometry (crop, squash, letterbox, or aspect)")
+    # No default. `crop` was the historical default and it is the geometry this project
+    # PROVED destroys AU-PRO (map and mask land in different coordinate frames - see
+    # squash_transform's docstring and REVIEW.md). Defaulting to it means an ad-hoc run that
+    # forgets the flag produces silently wrong numbers that pass every audit check, because
+    # `config` still echoes `command` faithfully. Defaulting to `aspect` instead would swap one
+    # silent behaviour for another and change the meaning of any command written before this
+    # line. Requiring it costs one error message and removes both failure modes.
+    ap.add_argument("--geometry", choices=["crop", "squash", "letterbox", "aspect"], default=None,
+                    help="Coordinate frame geometry. REQUIRED unless --squash is given. "
+                         "Use `aspect` unless you have a specific reason not to - it is the "
+                         "measured winner (E3R). `crop` is retained only to reproduce pre-fix runs.")
     ap.add_argument("--squash", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--out", default=OUT, help="Path for output JSON record")
     ap.add_argument("--run-id", default="", help="Optional run identifier for LEDGER tracking")
@@ -292,6 +301,9 @@ def main():
 
     if args.squash:
         args.geometry = "squash"
+    if args.geometry is None:
+        ap.error("--geometry is required (crop|squash|letterbox|aspect). Use `aspect` unless "
+                 "you have a reason not to. See REVIEW.md; `crop` misregisters map and mask.")
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     scenarios = ([s for s in args.scenarios.split(",") if s] or
@@ -350,15 +362,47 @@ def main():
 
     for sc in scenarios:
         if args.resume and os.path.isfile(args.out):
+            # Reuse a previously computed scenario ONLY if it was produced by the same
+            # configuration and the same code. Without these checks, resuming with a changed
+            # flag silently merges results from two configurations into one record - and the
+            # record then reports only the NEW config, because `summary` is built fresh. The
+            # output looks clean and no audit check can catch it, since `config` still echoes
+            # `command` faithfully. This bit us once already: E4-evalside-512 is stitched
+            # across two executions with `deviations: []` (see REVIEW.md P-2).
+            #
+            # A bare `except Exception: pass` used to wrap this, so a truncated or corrupt
+            # JSON was indistinguishable from "no previous run".
             try:
                 with open(args.out) as f:
                     prev = json.load(f)
-                if sc in prev.get("scenarios", {}) and prev["scenarios"][sc].get("au_pro@0.05") is not None:
+            except (OSError, json.JSONDecodeError) as e:
+                print(f"{sc:<13} --resume: cannot read {args.out} ({e}); computing fresh",
+                      flush=True)
+                prev = None
+            if prev is not None:
+                mismatch = None
+                for key, cur in (("config", summary["config"]),
+                                 ("code_sha256", summary["code_sha256"])):
+                    old_val = prev.get(key)
+                    if old_val is not None and old_val != cur:
+                        differing = sorted(k for k in set(old_val) | set(cur)
+                                           if old_val.get(k) != cur.get(k))
+                        mismatch = f"{key} differs on {differing}"
+                        break
+                if mismatch:
+                    raise SystemExit(
+                        f"--resume refused: {args.out} was written under a different "
+                        f"configuration ({mismatch}). Reusing it would merge two "
+                        f"configurations into one record. Delete the file or use a "
+                        f"different --out.")
+                entry = prev.get("scenarios", {}).get(sc)
+                if entry is not None and entry.get("au_pro@0.05") is not None:
                     print(f"{sc:<13} already computed in {args.out}, reusing", flush=True)
-                    summary["scenarios"][sc] = prev["scenarios"][sc]
+                    summary["scenarios"][sc] = entry
+                    summary.setdefault("deviations", []).append(
+                        f"{sc}: reused from a prior execution via --resume (config and code "
+                        f"hashes verified identical)")
                     continue
-            except Exception:
-                pass
 
         t0 = time.time()
         train, val, good, bad, gt_dir = load_paths(sc)

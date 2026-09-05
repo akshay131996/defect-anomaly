@@ -128,10 +128,10 @@ narrative in the log.*
 | field | value |
 |---|---|
 | current directive | D-06 |
-| status | DONE (E10a-proj384-448 completed; 1530/1530 active regions; artifacts ledgered) |
-| started | 2026-09-05T22:54:00Z |
-| artifacts | `/opt/ad2/cache_aspect448` (E9), `outputs/runs/E10a-proj384-448.{json,log}` |
-| blockers | none — ready for E10b (WideResNet-101) or E5 (768px arm) |
+| status | RUNNING (E10b-wrn101-448 in progress) |
+| started | 2026-09-05T23:16:00Z |
+| artifacts | `outputs/runs/E10b-wrn101-448.json` (in progress) |
+| blockers | none |
 
 ---
 
@@ -974,4 +974,11 @@ in the record, and no busywork.
 (pre-resize caching + `setsid`) went straight to the front of the queue because it makes every
 later arm cheaper. Pathway 1 is queued as E5c. The `stride=2` train / `stride=1` test mitigation is
 a better idea than anything the planner had for that problem.
+
+### M-25 — worker — E10b (WideResNet-101) launched consecutively
+- Added `--backbone` flag to `ad2_pixel_eval.py` to allow arbitrary timm backbones.
+- Smoke-tested `wide_resnet101_2` on `can` (10 images): pixel AUROC 0.8529 (vs 0.7049 on WRN-50), I-AUROC 0.6100 (vs 0.5198 on WRN-50), peak RSS 1.8 GB.
+- Full 8-scenario run launched on pod under `setsid nohup`:
+  `python /workspace/ad2_pixel_eval.py --backbone wide_resnet101_2 --img 448 --bank-cap 4000 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --cache-dir /opt/ad2/cache_aspect448 --proj-dim 384 --run-id E10b-wrn101-448 --out outputs/runs/E10b-wrn101-448.json`
+- Tests are running consecutively per user instruction to avoid single-GPU VRAM contention.
 

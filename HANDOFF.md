@@ -185,35 +185,26 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Run E5a** (§7) — no GPU, minutes, and it decides whether E5 is worth hours. **It has not
-been run**, and the current E5 plan skips it; E5 is approved with modifications but must not
-start until E5a reports.
+**Run E5** — approved, see `BRIDGE.md` directive **D-04** for the one blocking change (bucket
+edges pinned to native pixels) and the registered predictions. E5a passed the gate.
 
-**Pod memory:** a `blender` process holding ~3.9 GB has since exited; only Triton (~1.4 GB)
-remains. E5's 768 arm needs ~24 GB against a 57.7 GiB ceiling, so check free memory
-immediately before launching rather than assuming the box is empty.
-
-E4 refuted the last evaluation-protocol hypothesis: sweeping the evaluation frame 16x moved
-mean AU-PRO@5% by 0.0002, and 1,530 of 1,530 regions were already active at 512, so there
-was nothing for a finer frame to recover. **The remaining gap is not a scoring artifact.**
-
-The live hypothesis is that the patch grid is coarser than the defects: at `img = 448` one
-grid cell covers 756-1,607 native pixels while the smallest scored region is 77, so most
-regions are **10-20x smaller than a single cell** and cannot be localised at any evaluation
-resolution. E5a measures the region-size distribution to test that before E5 spends hours
-on it.
+E5a found that AU-PRO is monotonic in defect size (0.227 sub-cell -> 0.606 at >= 16x cells,
+with `vial`'s largest regions at 0.751 against a published 0.764). Half of all regions are
+smaller than a single patch cell, and those drag the mean to 0.344. **But that is equally
+consistent with large defects being easier for any detector**, so E5 is what separates a
+resolution ceiling from defect salience — not a formality.
 
 **E8** (replace the synthetic Triton bank) remains independent and can run in parallel.
 
 Current standing on AD 2, arm A, `aspect` geometry at 448px, fixed native region set:
 
-| metric | ours (E4-512) | published baseline |
+| metric | ours | published baseline |
 |---|---|---|
 | image AUROC | **0.724** | 0.659 |
-| pixel AUROC | **0.849** | 0.763 |
+| pixel AUROC | **0.850** | 0.763 |
 | AU-PRO@5% | 0.344 | 0.764 |
 
-Two of three exceed the published baseline. The AU-PRO gap is down from 5.8x to 2.2x.
+Two of three exceed the published baseline. The AU-PRO gap is 2.2x.
 
 ---
 
@@ -550,6 +541,39 @@ whether E5's hours are worth spending. Do not skip it — if regions of every si
 uniformly mediocre, resolution is not the answer and E5 would burn hours confirming that.
 
 
+### Defect scale, measured — and what it does and does not establish
+
+E5a measured the native area of all 1,530 regions and broke AU-PRO@5% down by size, at
+`img = 448` under `aspect`:
+
+| bucket | regions | share | AU-PRO@5% |
+|---|---|---|---|
+| sub-cell (< 1x) | 756 | 49.4% | **0.2265** |
+| 1-4x cells | 354 | 23.1% | 0.4280 |
+| 4-16x cells | 173 | 11.3% | 0.5498 |
+| >= 16x cells | 247 | 16.1% | **0.6056** |
+
+Monotonic in defect size, and `vial`'s `>= 16x` regions reach **0.7516** against the
+published 0.764. Across scenarios, median region size in cell units tracks AU-PRO@5% at
+**r = +0.788**: `vial` at 17.1x cell scores 0.719, while `can` and `fabric` — whose median
+defect is about **a quarter of one patch cell** — score 0.139 and 0.189.
+
+**What this establishes:** the low mean is not a detector that fails uniformly. Large
+defects are already at or near published parity; the mean is dragged down by the half of
+all regions that are smaller than a single patch cell.
+
+**What it does not establish:** that resolution is the *cause*. Monotonic size-vs-score is
+equally consistent with large defects simply being easier for any detector at any
+resolution — more salient in feature space, and AU-PRO over a large region averages more
+pixels so it is less noisy. E5a cannot separate the two. E5 does, by holding the bucket
+edges fixed in native pixels across resolutions: a genuine ceiling lifts the sub-cell bucket
+and leaves the largest one flat; salience moves them together.
+
+Two scenarios already warn against the simple story. **`rice` has a median region 3.3x cell
+area and still scores 0.226; `wallplugs` is 1.2x and scores 0.276.** Both have defects large
+enough to resolve at 448 and score poorly anyway, so at least one failure mode here is not
+resolution.
+
 ### What AD 2 actually measures — read this before trusting any single scenario
 
 #### Arm A Baseline (WideResNet50-2 @448px, Layer 2+3, 4,000 bank cap):
@@ -673,8 +697,8 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E3~~ | aspect-preserving rectangles | E2 | — | **done, inconclusive** |
 | ~~E4a~~ | fix region set, re-score E1/E2/E3 | — | — | **done, supports** |
 | ~~E4~~ | eval protocol: `EVAL_SIDE`, sigma | — | — | **done, refutes** |
-| **E5a** | region size vs patch cell size | — | no | minutes |
-| **E5** | input resolution — load-bearing | **E5a** | yes | hours; plan approved w/ mods |
+| ~~E5a~~ | region size vs patch cell size | — | — | **done, supports (narrowed)** |
+| **E5** | input resolution — load-bearing | — | yes | hours; approved, see D-04 |
 | E6 | coreset density, re-checked | E5 | yes | ~1 h |
 | E7 | fusion routing re-selected on `validation` | E5 | yes | ~1 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
@@ -1040,7 +1064,22 @@ concentrates in the scenarios and size buckets E5a identifies as sub-cell.
 
 One sweep-level verdict, not three.
 
-**Blocked on:** E5a.
+**M6 — pin the bucket edges to fixed native pixels.** `exp_e5a_bucketed_pro.py:207` sets
+`cell_area = (w_nat * h_nat) / n_patches`, so buckets are relative to cell size, which
+changes with input resolution. At 768 every region jumps 2.94x in cell units and migrates
+between buckets, so each bucket would hold a different population per arm — the defect that
+invalidated E3, one level up. Compute the edges once from the **448** geometry (1x/4x/16x of
+that scenario's 448 cell area) and reuse them verbatim at 224 and 768. **Assert per-bucket
+counts are identical across all three arms.**
+
+This is also what makes E5 decisive rather than merely confirmatory. E5a established that
+AU-PRO rises with defect size, but that is equally consistent with large defects being
+easier for any detector at any resolution. With native-pinned buckets the two separate: a
+resolution ceiling lifts the sub-cell bucket sharply from 448 to 768 while leaving `ge_16x`
+flat, whereas salience moves every bucket together. See BRIDGE D-04 for the registered
+predictions.
+
+**Blocked on:** nothing — E5a passed the gate.
 
 ---
 

@@ -73,6 +73,23 @@ does, feature-map density is the driver rather than input pixels.
 **Also report** both the stride-8 cell area and the effective layer3 cell area per scenario, so
 the size buckets can be re-read against the right cell.
 
+**Do this alongside, before or during E5b (it is engineering, not an experiment):** pre-resize
+the dataset once to aspect dimensions and cache it, and switch every launch to
+`setsid nohup ... < /dev/null &`. The cache removes repeated 5 MP PNG decode from the critical
+path and makes every experiment after it cheaper; `setsid` closes OQ-1. Cache to the **container
+disk**, not `/workspace`. **Verify cached features are bit-identical to a live-decode run on one
+scenario before trusting any cached result** — a silent resize difference would corrupt
+everything downstream and would look like a real effect.
+
+**Then, in this order** (full reasoning in M-16): E5b -> E5's 768 arm -> unstrided layer1 ->
+E7 fusion re-run under `aspect` then routing selected on `validation` -> scale-adaptive
+filtering -> E8. Items 3-5 are not interpretable until the ones above them land.
+
+**Every run from here:** `--geometry` is now required by the code and `--resume` refuses a config
+mismatch, so both silent-corruption paths are closed. **Update the ledger row the moment an
+artifact exists, even for a partial or failed run** — a partial filed as a non-result is how the
+decisive 224 arm went unread for a day.
+
 **Corrections that came with this directive** — the planner's, not the worker's:
 - The claim that D-04 prediction 2 was falsified is **withdrawn**. It bounded 448 -> 768; the
   data used was 224 -> 448. Prediction 2 stands untested and only the 768 arm tests it.
@@ -392,7 +409,8 @@ User requested to stop E5 mid-run.
 - Set Worker status to `BLOCKED` (awaiting direction).
 - GPU and pod resources are fully idle and available.
 
-### M-12 — planner — session paused; state is clean, D-04 remains active
+### M-12b — planner — session paused; state is clean, D-04 remains active
+*(renumbered: M-12 was taken by the worker)*
 Planner going offline for the day. **Nothing is half-finished and no directive changes.**
 
 **Where things stand.** D-04 (E5, native-pinned buckets) is ACK'd and in implementation. All
@@ -419,7 +437,8 @@ idle. Idle time bills for longer than the run.
 Three registered predictions in D-04 and the 2x2 in M-09 are all recorded *before* the
 result, and must not be revised after seeing it.
 
-### M-13 — planner — pod stopped; perishable state rescued into the repo
+### M-13b — planner — pod stopped; perishable state rescued into the repo
+*(renumbered: M-13 was taken by the worker)*
 The pod is being stopped. `/workspace` survives (network volume); `/opt` and `/tmp` do not.
 Everything perishable that mattered is now committed.
 
@@ -449,7 +468,8 @@ re-running (OQ-1 is still open on a silent kill).
 **On resume:** follow `deployment/POD_REBUILD.md`, then D-04 from the top — all three arms,
 224 included.
 
-### M-14 — planner — peer review done; the ceiling argument is dead and E5 is now top priority
+### M-14 — planner — peer review done; E5 is top priority  
+*(original title said "the ceiling argument is dead" — **that claim was withdrawn in M-15b/M-16**; the ceiling is untested, not refuted)*
 Full writeup in `REVIEW.md`; raw reviewer output in `REVIEW_FINDINGS.md`. Read REVIEW.md before
 quoting any AU-PRO number from HANDOFF.
 
@@ -499,6 +519,7 @@ Read M-14 and `REVIEW.md`. Findings and research pathways synthesized:
 
 1. **The 224 -> 448 Empirical Surge (+0.154 across 6/6 scenarios):**
    - Full agreement with M-14: the numbers in `outputs/runs/E5-inputres-224.json` demonstrate that resolution is the single highest-yield lever currently available. The fact that the `>= 16x` bucket lifted from 0.4672 to 0.5639 (+0.097) completely refutes the flat-ceiling premise.
+     > **PLANNER CORRECTION (M-16): this last sentence is wrong and the error is the planner's, propagated from M-14.** The measured step is 224 -> 448, not the 448 -> 768 the ceiling claim is about; with edges pinned to the 448 cell and the 224 cell 4.06x larger, those regions sit at ~3.9x cell at 224 and are not "already resolved". **The ceiling is untested, not refuted.**
    - However, the fact that all size buckets moved together confirms that resolution operates globally on feature quality and SNR, rather than merely resolving sub-cell regions.
 
 2. **Why Monolithic Scaling Still Needs Representation & Metric Alignment:**
@@ -524,7 +545,8 @@ Read M-14 and `REVIEW.md`. Findings and research pathways synthesized:
    - Unit tests (`test_aupro.py`, `test_registration.py`) are 100% passing across all geometries.
    - Standing by to execute D-04 (clean E5 sweep across 224, 448, 768) as soon as the pod is provisioned.
 
-### M-15 — planner — review pass 2; D-04 superseded by D-05; a planner correction withdrawn
+### M-15b — planner — review pass 2; D-04 superseded by D-05; a planner correction withdrawn
+*(renumbered: M-15 was taken by the worker)*
 `REVIEW.md` updated (its §1 rewritten), `REVIEW_FINDINGS.md` extended with 11 more findings.
 
 **The planner over-claimed and is withdrawing it.** M-14 said D-04 prediction 2 was falsified and
@@ -550,4 +572,71 @@ ceiling.
 
 **Still unreviewed by anyone:** `optimization` and `fusion-and-legacy`. Four dimensions died on
 spend limits across two runs; the planner covered geometry and numerical-reproduction by hand.
+
+### M-16 — planner — worker's M-15 read; one claim corrected, four pathways triaged, queue set
+Read the worker's M-15 synthesis. Good work, and the ranking instinct is right. Three things.
+
+**1. One claim must be withdrawn — it is the planner's error, propagated.** M-15 says the
+`ge_16x` lift 0.4672 -> 0.5639 "completely refutes the flat-ceiling premise". That came from
+M-14, which was wrong, and M-15 (planner) already withdrew it. Restating for the worker because
+the bad version reached you first:
+
+> D-04 prediction 2 bounded the `ge_16x` bucket over **448 -> 768**. The measured step was
+> **224 -> 448**. Bucket edges are pinned to the **448** cell area, and the cell at 224 is
+> **4.06x larger** — so a ">= 16x" region occupies only ~3.9x the cell at 224. Those regions are
+> **not "already resolved" at 224**, so their gain is ordinary and says nothing about whether
+> regions already resolved at 448 improve at 768. **The ceiling is untested, not refuted.**
+
+Do not repeat "refutes the ceiling" in any report. The correct statement is: *resolution is worth
++0.154 mean AU-PRO (1.86x) on 6/6 across 224 -> 448; the ceiling above 448 is untested and only
+the 768 arm tests it.*
+
+**2. One observation in M-15 is right and worth keeping.** "All size buckets moved together
+confirms that resolution operates globally on feature quality and SNR, rather than merely
+resolving sub-cell regions." That is exactly the reading D-04 registered in advance as the
+outcome meaning *the sub-cell mechanism is not the cause*. Correct, and it is why E5b exists.
+
+**3. Triage of the four pathways.** All four are worth doing; the order matters more than the
+list, because two of them cannot be interpreted until something cheaper runs first.
+
+- **Pathway 1 (unstrided layer 1)** — right idea, wrong first step. Layer 1 at stride 4 gives a
+  112x112 grid: **4x the patches (12,544 vs 3,136)**, which is the configuration that already
+  OOM'd at >37 GB, and it changes patch count, feature dimensionality and cell area at once.
+  **D-05's E5b gets most of the same effect for a fifth of the cost and changes exactly one
+  thing**: `output_stride=8` dilates layer3 — 66.7% of the descriptor, currently a 2x blur of a
+  stride-16 map — to native stride 8 at **identical** grid, patch count, bank and memory. Run E5b
+  first. If density is the driver, Pathway 1 becomes the natural follow-up and we will know what
+  we are buying; if it is not, Pathway 1 was going to be an expensive way to find that out.
+- **Pathway 2 (validation-routed representation)** — correct and necessary, but **blocked**:
+  `ad2_feature_fusion.py` has no geometry support at all, so its entire evidence base sits in the
+  broken crop frame. The routing table in M-15 is derived from those void numbers. Re-run the
+  fusion arms under `aspect` **before** selecting any routing, then select on `validation` only.
+- **Pathway 3 (scale-adaptive filtering)** — defer. The morphological-closing damage it targets
+  was measured in the same void frame. Re-measure after Pathway 2's re-run; the problem may not
+  survive.
+- **Pathway 4 (pre-resized caching + `setsid`)** — **do this first, alongside E5b.** It is
+  engineering, not an experiment, it makes everything after it cheaper, and `setsid` closes OQ-1.
+  Cache to the container disk, not `/workspace` (MooseFS is slow with many small files), and
+  **verify bit-identical features against a live-decode run on one scenario before trusting any
+  cached result** — a silent resize difference would corrupt every experiment downstream.
+
+**Queue, in order:**
+
+| # | item | cost | why here |
+|---|---|---|---|
+| 0 | Pathway 4: pre-resize cache + `setsid` | ~0.3 h eng | makes everything after cheaper; closes OQ-1 |
+| 1 | **E5b — dilated layer3 @448** (D-05) | ~0.4 GPU-h | single-variable; cheapest real information |
+| 2 | E5 — 768 arm | ~1.9 GPU-h | the only test of the ceiling |
+| 3 | Pathway 1 — unstrided layer1 | ~2 GPU-h | only interpretable after 1 and 2 |
+| 4 | E7 / Pathway 2 — fusion re-run under `aspect`, then route on `validation` | ~1 h | blocked until the re-run exists |
+| 5 | Pathway 3 — scale-adaptive filtering | — | defer until 4 |
+| 6 | E8 — rebuild serving path | ~0.5 h | independent; fill idle time |
+
+**Standing requirements for every run from here:** launch with `setsid nohup ... < /dev/null &`;
+`--geometry` is now **required** by the code and `--resume` refuses a config mismatch; update the
+ledger row **the moment an artifact exists, even for a partial or failed run** — a partial run
+filed as a non-result is how the decisive 224 arm went unread for a day.
+
+**Also outstanding, unreviewed by anyone:** the `optimization` and `fusion-and-legacy` review
+dimensions. Pathway 4 overlaps the first; treat the second as open.
 

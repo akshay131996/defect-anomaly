@@ -574,6 +574,47 @@ area and still scores 0.226; `wallplugs` is 1.2x and scores 0.276.** Both have d
 enough to resolve at 448 and score poorly anyway, so at least one failure mode here is not
 resolution.
 
+### The gap has two causes, and resolution is the smaller one
+
+Regressing per-scenario AU-PRO@5% on each candidate factor: **image AUROC alone gives
+R^2 0.744, defect scale alone 0.605, both 0.877.** Detection quality is the stronger
+predictor.
+
+**Four of eight scenarios are at or near chance on detection.** No evaluation protocol or
+input resolution can localise a defect the representation does not separate at all:
+
+| | image AUROC | median defect | AU-PRO@5% |
+|---|---|---|---|
+| can | 0.514 | 0.26 cells | 0.139 |
+| wallplugs | 0.541 | 1.20 cells | 0.276 |
+| fabric | 0.608 | 0.26 cells | 0.189 |
+| rice | 0.638 | 3.32 cells | 0.226 |
+| **mean of these four** | | | **0.208** |
+| **the other four** | 0.79-0.96 | | **0.481** |
+
+**Caveat that must travel with this:** image AUROC and AU-PRO derive from the same anomaly
+scores, so image AUROC is a **co-symptom, not an independent cause**. It localises where the
+gap lives — scenarios where the backbone barely separates defects — rather than proving what
+creates it. Defect scale *is* measured independently of the scores, which is why the 2x2
+below is still a valid design.
+
+**The 2x2 E5 tests for free** (registered in BRIDGE M-09 before E5 ran):
+
+| | small defects (< 1 cell) | large defects (> 1 cell) |
+|---|---|---|
+| **good detection** | `sheet_metal`, `fruit_jelly` — should gain most | `vial`, `walnuts` — modest, already resolved |
+| **weak detection** | `can`, `fabric` — limited | `rice`, `wallplugs` — negative control, near-zero |
+
+`sheet_metal` is the cleanest pure-resolution case in the benchmark: detection works
+(0.791), defects are small (0.61 cells, 64.9% sub-cell), AU-PRO is poor (0.253). **If it
+does not gain, the resolution hypothesis is in trouble regardless of what the mean does.**
+
+**Consequence for the queue: E7 is now a second load-bearing experiment, not a tidy-up.**
+Half the benchmark is limited by representation rather than geometry or scale, and DINOv2
+previously lifted `fabric`'s pixel AUROC from 0.650 to 0.973 — on one of these four. That
+work was done under broken geometry and selected on `test_public`, so it must be redone, but
+it is aimed at the right half of the problem.
+
 ### What AD 2 actually measures — read this before trusting any single scenario
 
 #### Arm A Baseline (WideResNet50-2 @448px, Layer 2+3, 4,000 bank cap):
@@ -700,7 +741,7 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E5a~~ | region size vs patch cell size | — | — | **done, supports (narrowed)** |
 | **E5** | input resolution — load-bearing | — | yes | hours; approved, see D-04 |
 | E6 | coreset density, re-checked | E5 | yes | ~1 h |
-| E7 | fusion routing re-selected on `validation` | E5 | yes | ~1 h |
+| **E7** | backbone/fusion on `validation` — **2nd load-bearing** | E5 | yes | ~1-2 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
 
 **E5a is the one to start with** — no GPU, minutes, and it decides whether E5 is worth hours. E8 is independent of everything and can run in

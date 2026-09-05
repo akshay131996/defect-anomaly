@@ -1,0 +1,24 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+can           img 0.5034  pix 0.7298  AU-PRO@5% 0.06624  @30% 0.32104  regs    (66/66 act)  116s
+fabric        img 0.5274  pix 0.7248  AU-PRO@5% 0.16625  @30% 0.48525  regs  (120/120 act)  99s
+fruit_jelly   img 0.9675  pix 0.9456  AU-PRO@5% 0.45894  @30% 0.70016  regs  (216/216 act)  62s
+rice          img 0.7606  pix 0.8600  AU-PRO@5% 0.30955  @30% 0.54397  regs  (114/114 act)  78s
+sheet_metal   img 0.7366  pix 0.9127  AU-PRO@5% 0.26768  @30% 0.49536  regs  (444/444 act)  40s
+vial          img 0.9023  pix 0.9268  AU-PRO@5% 0.68507  @30% 0.90984  regs  (168/168 act)  71s
+wallplugs     img 0.5474  pix 0.8542  AU-PRO@5% 0.22302  @30% 0.45648  regs    (90/90 act)  75s
+walnuts       img 0.7830  pix 0.9516  AU-PRO@5% 0.44495  @30% 0.72427  regs  (312/312 act)  106s
+
+mean image AUROC 0.7160   pixel AUROC 0.8632   AU-PRO@5% 0.3277   AU-PRO@30% 0.5795   active 1530/1530
+
+======================================================================
+Size Bucket        Count    % of Regs    Mean AU-PRO@5%  
+----------------------------------------------------------------------
+sub_cell           756      49.4       % 0.2142          
+1_to_4x            354      23.1       % 0.4295          
+4_to_16x           173      11.3       % 0.5479          
+ge_16x             247      16.1       % 0.5784          
+----------------------------------------------------------------------
+>= 4 cells combined 420      27.5       % 0.5658          
+======================================================================
+
+wrote /workspace/outputs/runs/E10b-wrn101-448.json (peak RSS: 3510.2 MB)

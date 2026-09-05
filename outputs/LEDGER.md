@@ -27,6 +27,7 @@ See HANDOFF.md §0 for the output contract and the audit checklist.
 | E5-inputres-448 | aspect | 448 | 0.3444 | 0.724 | `7f2bb8e2` | clean E4b unstitched reference adopted |
 | E5b-dilated-layer3 | aspect | 448 | **0.3692** | **0.759** | `2866ecf7` | **supports** — 8/8 scenarios improve (+0.0248 mean AU-PRO@5%, +0.0352 I-AUROC); sub-cell +0.016, 1-4x +0.034, 4-16x +0.030. Confirms layer 3 bilinear blur was degrading descriptor resolution at stride 8. |
 | E10a-proj384-448 | aspect | 448 (proj 384) | 0.3269 | 0.719 | `6d421f0c` | **refutes bound** (-0.0175 vs <=0.01 hypothesis margin); 64.5% cut in peak RSS (3520 vs 9926 MB), 22% faster wall clock (587.5s vs 755.9s). 1530/1530 active regions. Macro defects unaffected (>=4x combined 0.5790 vs 0.5847); delta driven by sub-cell texture dilution in `can` (-0.068) and `fabric` (-0.077). Unlocks 768px arm and ensembles within RAM budget. |
+| E10b-wrn101-448 | aspect | 448 (WRN-101) | 0.3277 | 0.716 | `a2503dae` | **refutes sole driver** (+0.0008 vs WRN-50 E10a); lifts tough representation scenarios (`fabric` AU-PRO +0.054, pix +0.105; `rice` AU-PRO +0.081, img +0.218 to 0.761), but dips on `wallplugs` and `vial`. Sets new dataset-wide peak pixel AUROC (0.8632). Proves WRN-101 alone does not capture the 9.6-pt deficit; vindicates multi-backbone complementary ensemble requirement. |
 | E5-inputres-768 | | | | | | _pending_ |
 | E6-density | | | | | | _pending_ |
 | E7-fusion-val | | | | | | _pending_ |

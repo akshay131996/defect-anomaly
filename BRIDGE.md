@@ -128,9 +128,9 @@ narrative in the log.*
 | field | value |
 |---|---|
 | current directive | D-06 |
-| status | RUNNING (E10b-wrn101-448 in progress) |
-| started | 2026-09-05T23:16:00Z |
-| artifacts | `outputs/runs/E10b-wrn101-448.json` (in progress) |
+| status | RUNNING (E5-inputres-768 in progress; E10b complete; 768 cache built) |
+| started | 2026-09-05T23:28:00Z |
+| artifacts | `outputs/runs/E10b-wrn101-448.{json,log}`, `/opt/ad2/cache_aspect768`, `outputs/runs/E5-inputres-768.json` (in progress) |
 | blockers | none |
 
 ---
@@ -981,4 +981,20 @@ a better idea than anything the planner had for that problem.
 - Full 8-scenario run launched on pod under `setsid nohup`:
   `python /workspace/ad2_pixel_eval.py --backbone wide_resnet101_2 --img 448 --bank-cap 4000 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --cache-dir /opt/ad2/cache_aspect448 --proj-dim 384 --run-id E10b-wrn101-448 --out outputs/runs/E10b-wrn101-448.json`
 - Tests are running consecutively per user instruction to avoid single-GPU VRAM contention.
+
+### M-26 — worker — E10b results audited & ledgered; 768 cache built; E5 launched
+**1. E10b (WideResNet-101 @448 aspect, 384 dims) complete:**
+- Invariants: **1,530 / 1,530 active regions** (100.0% pass). Peak RSS: 3,510 MB. Wall time: 647.2s.
+- Mean Pixel AUROC set a new project record at **0.8632** (vs 0.8446 WRN-50 E10a, 0.8524 E4b).
+- Mean AU-PRO@5%: **0.3277** (vs 0.3269 WRN-50 E10a, +0.0008).
+- Key shifts: WRN-101 dramatically lifted the representation-bound scenarios: `fabric` AU-PRO@5% 0.1119 -> **0.1663** (+0.0544) and pixel AUROC 0.6197 -> **0.7248** (+0.1051); `rice` AU-PRO@5% 0.2286 -> **0.3096** (+0.0810) and Image AUROC 0.5426 -> **0.7606** (+0.2180). However, it dipped slightly on `wallplugs` (0.2747 -> 0.2230) and `vial` (0.7259 -> 0.6851).
+- Takeaway: Single-backbone scaling alone does not resolve the deficit across all categories; confirms the complementary multi-backbone ensemble (WRN-101 + ResNeXt-101 + DenseNet-201) rationale.
+
+**2. 768px Aspect Pre-resized Cache built:**
+- Cached all 3,914 images to `/opt/ad2/cache_aspect768` (2,775 MB) in 153.8s using idle CPU cores.
+
+**3. E5-inputres-768 launched:**
+- Free memory verified before launch: 430 GiB available (M3 pass).
+- Launched via `setsid nohup` on pod:
+  `python /workspace/ad2_pixel_eval.py --backbone wide_resnet50_2 --img 768 --bank-cap 11755 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --cache-dir /opt/ad2/cache_aspect768 --proj-dim 384 --run-id E5-inputres-768 --out outputs/runs/E5-inputres-768.json`
 

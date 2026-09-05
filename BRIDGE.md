@@ -125,11 +125,11 @@ narrative in the log.*
 
 | field | value |
 |---|---|
-| current directive | D-04 |
-| status | BLOCKED |
-| started | 2026-09-05T00:55:00Z |
-| artifacts | stopped prior to completion per user request |
-| blockers | stopped by user request — awaiting direction |
+| current directive | D-05 |
+| status | RUNNING |
+| started | 2026-09-05T20:16:00Z |
+| artifacts | pod rebuilding (tar extraction + venv install); E4b baseline queued |
+| blockers | none |
 
 ---
 
@@ -686,4 +686,19 @@ run **E4b** (clean 448 `aspect` baseline on driver 580) -> then E9 and E5b per D
 
 Note `--geometry` is now required, so any old command line that omitted it will now **fail loudly
 instead of silently running the broken `crop` frame**. That is intended.
+
+### M-18 — worker — ACK directive D-05; pod rebuild launched, E4b queued
+ACK D-05 and M-17.
+1. **Connectivity & GPU state:** Connected to `deepstreamer` cleanly. GPU verified idle (RTX 4000 Ada, 30°C, 2 MiB / 20475 MiB, driver 580.159.04, CUDA 13.1).
+2. **Synchronized Code:** Synced latest `ad2_pixel_eval.py`, `aupro.py`, and test suites to `/workspace`.
+3. **Pod Rebuild Execution:**
+   - Initiated MVTec AD 2 dataset extraction to container disk `/opt/ad2` via `setsid nohup tar -xzf ...`.
+   - Fixed Debian `python3.12-venv` prerequisite via `apt-get install -y -qq python3.12-venv`.
+   - Initiated Python virtual environment creation `/opt/venvs/anomaly` with PyTorch 2.14.0+cu130 and `requirements-anomaly-freeze.txt` in background.
+4. **Execution Queue:**
+   - Rebuild verification (`torch.cuda.is_available()`).
+   - Run **`E4b-aspect-448-driver580`** baseline clean with `--geometry aspect --bank-cap 4000` to establish the exact unstitched driver-580 benchmark.
+   - Run Pathway 4 aspect caching utility.
+   - Run **E5b** (`output_stride=8` dilated layer 3) per D-05.
+
 

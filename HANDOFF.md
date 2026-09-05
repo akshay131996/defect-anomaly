@@ -156,7 +156,7 @@ MVTec AD 1, all 15 categories, everything below measured not inferred:
 | Descriptor width | NOT the driver - 768 dims beat 1536, 384 lost badly. Quality over quantity |
 | Backbone choice | **category-dependent**. DINOv2 wins textures, CNNs win small parts |
 | DINOv3 vs DINOv2 | **v2 wins** grid-matched (0.9786 vs 0.9744) *and* input-matched (0.9813 vs 0.9744) |
-| Coreset ratio | a **stability** knob, not accuracy. 7% cost range over a 125x bank-size range; 4.5x better reproducibility at 25% |
+| Coreset ratio | ~~a **stability** knob, not accuracy. 7% cost range over a 125x bank-size range~~ **RECOMPUTED AS 1.8x, NOT 7%** — and from an image-level AD 1 experiment containing no AU-PRO, so it says nothing about the pixel metric. See REVIEW.md §6. Reproducibility claim (4.5x at 25%) not re-checked. |
 | Realistic cost re-weighting | **p99 vindicated**: 3.18x cheaper than p50 at 1% defect rate; 7.5x cheaper at 0.1% |
 | Threaded decode | Ported to `data_efficiency.py`; bit-identical parity verified (`scratch/test_threaded_decode.py`) |
 | Phase C Triton deployment | Triton model repo deployed; **6.34 ms direct latency (~157 FPS)**, 23.78 ms HTTP client |
@@ -186,18 +186,25 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 ### Immediate next step
 
 **Read `REVIEW.md` first.** A peer review on 2026-09-05 invalidated several conclusions in this
-document, including the resolution ceiling in §6 and three quoted `vial` numbers.
+document. Its own §1 was then corrected after a second pass caught it overstating a result — read
+the corrected version, not any summary of the first.
 
-**Then run E5.** It is now the highest-value experiment in the queue. One resolution doubling
-(224 -> 448) gained **+0.154 mean AU-PRO@5%, 1.86x, on 6 of 6 scenarios** — and every size
-bucket moved, including the one the ceiling argument assumed was fixed.
+**Then run the dilated-layer3 arm (`output_stride=8`) at 448, before E5's 768 arm.** layer3
+supplies 66.7% of every descriptor and is bilinearly upsampled from stride 16, so two thirds of
+the feature vector carries no detail finer than 4x the cell area the bucket analysis assumes.
+`output_stride=8` fixes that at identical patch count, identical bank, identical memory and
+roughly a fifth of the 768 arm's cost — and it is the only single-variable test of whether
+feature-map density or input pixels drive the gain. E5 moves five variables at once.
 
-Before launching, two fixes (REVIEW.md §6): launch with `setsid` (three runs have died silently
-to `nohup` alone) and add a config guard to `--resume`, which currently reuses scenarios without
-comparing any config field and is already in the committed E5 command.
+**Then E5's 768 arm.** Resolution is a strong lever (+0.154 per doubling, 6/6 scenarios), and 768
+is the only thing that tests the resolution ceiling, which is **untested — not refuted**.
 
-**E7 is blocked on a re-run, not ready to interpret** — `ad2_feature_fusion.py` has no geometry
-support and its entire evidence base was measured in the broken crop frame (REVIEW.md §5).
+Before launching either: use `setsid` (three runs have died silently to `nohup` alone) — the code
+now requires `--geometry` explicitly and `--resume` refuses a config mismatch, but the HANDOFF
+text that teaches the broken launch pattern still needs fixing.
+
+**E7 is blocked on a re-run** — `ad2_feature_fusion.py` has no geometry support and its entire
+evidence base was measured in the broken crop frame (REVIEW.md §5).
 
 ---
 
@@ -609,14 +616,21 @@ previously lifted `fabric`'s pixel AUROC from 0.650 to 0.973 — on one of these
 work was done under broken geometry and selected on `test_public`, so it must be redone, but
 it is aimed at the right half of the problem.
 
-### ~~The ceiling on resolution~~ — VOID, see REVIEW.md §1
+### ~~The ceiling on resolution~~ — UNTESTED, see REVIEW.md §1
 
-> **This section is wrong and is kept only so the error is legible.** Its stated condition
-> — that higher resolution does not also lift the `>= 16x` bucket — is empirically false.
-> Across 224 -> 448 that bucket rose 0.467 -> 0.564 (+0.097), and mean AU-PRO@5% rose
-> +0.154 (1.86x) on 6 of 6 scenarios. **Resolution is the most valuable direction
-> available, not a bounded one.** The refuting data (`outputs/runs/E5-inputres-224.json`)
-> was in the repo before this section was written and was filed unread as a partial run.
+> **Do not rely on this section, and do not treat it as refuted either.** Its stated
+> condition — that higher resolution does not also lift the `>= 16x` bucket — has never
+> been tested. Only the 768 arm can test it.
+>
+> An earlier correction claimed this was refuted by the 224 -> 448 data. **That claim was
+> itself wrong** and is withdrawn: the bucket edges are pinned to the *448* cell area, and
+> the cell at 224 is 4.06x larger, so a ">= 16x" region occupies only ~3.9x the cell at 224
+> — it is not "already resolved" there, and its gain says nothing about what happens above
+> 448.
+>
+> What IS established: resolution is a strong lever in the 224 -> 448 range, worth
+> **+0.154 mean AU-PRO@5% (1.86x) on 6 of 6 scenarios**. That data
+> (`outputs/runs/E5-inputres-224.json`) sat unread in the repo, filed as a partial run.
 
 
 Regions at `>= 16x` cell area are already spatially unconstrained — sixteen or more patch
@@ -733,8 +747,11 @@ fusion**, which this project already does, not from raw resolution.
 
 **The mitigation worth trying:** cap the bank at a fixed size (~4,000 vectors) instead of
 a fixed 1%. Cost then scales linearly rather than quadratically, and 768px drops to ~6
-min per scenario. Our own coreset experiment supports this - cost varied only 7% across a
-125x bank-size range.
+min per scenario. ~~Our own coreset experiment supports this - cost varied only 7% across a
+125x bank-size range.~~ **That 7% is one cell of a 3x5 grid; at the best operating point per
+ratio the range is 1.8x (11900 / 8061 / 6644 / 6619), and the experiment is image-level AD 1
+with no AU-PRO in it. See REVIEW.md §6.** Note also that the whole table above overstates
+measured cost by 5.2x (REVIEW.md §8, P-3).
 
 ### Decode bottleneck experiment: Pre-resizing vs. faster CPU decoders
 

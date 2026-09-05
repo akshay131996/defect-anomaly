@@ -1,71 +1,77 @@
 # Peer review — 2026-09-05
 
-An adversarial peer review of the whole project. Ten review dimensions were planned; the
-workflow lost its verification stage to a spend limit twice, so **three dimensions completed
-(`patchcore-core`, `inference-validity`, `deployment`) and nothing was machine-verified.** The
-raw reviewer output is in `REVIEW_FINDINGS.md`. This file records what was **independently
-verified by hand** and what it changes.
+An adversarial peer review of the whole project. Ten dimensions were planned. Spend limits killed
+the machine verification stage on every attempt, so **five dimensions completed across two runs**
+(`patchcore-core`, `inference-validity`, `deployment`, `design-gaps`, `documentation-integrity`)
+and **nothing was machine-verified** — every finding quoted here was verified by hand instead.
+Raw reviewer output is in `REVIEW_FINDINGS.md`.
 
-Five further findings (P-1 to P-5) came from the planner's own pass and are listed at the end.
+`geometry-registration` and `numerical-reproduction` were covered by the planner directly (§10);
+**`optimization` and `fusion-and-legacy` remain unexamined.**
+
+Further findings from the planner's own pass are at the end. §1 was **corrected** after a second
+pass caught it overstating its own result — that correction is the most important thing in this
+file.
 
 **Read this before quoting any AU-PRO number from HANDOFF.md.** Several are wrong.
 
 ---
 
-## 1. The headline reversal: resolution matters far more than we concluded
+## 1. Resolution is a strong lever — but the ceiling is UNTESTED, not refuted
 
-**M-10's ceiling argument is invalid, and the data refuting it was already in the repo.**
+**This section was overstated in its first version and is corrected here.** A second review pass
+caught it, and the error is the same one this review criticised in others: claiming a result the
+data does not reach.
 
-M-10 argued that regions at `>= 16x` cell area are already spatially resolved, score 0.6056,
-and therefore cap what resolution can buy at ~0.61 — leaving ~0.16 that only representation
-(E7) could carry. That argument carried one stated condition: *it assumes higher resolution
-does not also lift the `ge_16x` bucket.*
+### What the data actually shows
 
-**That condition is false.** `outputs/runs/E5-inputres-224.json` was committed on 2026-09-05 and
-filed in BRIDGE M-13 as a partial "non-result" to be re-run. Its numbers were never read. It
-carries full bucket data under the M6 native-pinned edges, and its per-bucket counts are
-**bit-identical** to the 448 arm for all six completed scenarios — so the 224 vs 448 comparison
-is exactly the test D-04 specified.
-
-Pooled over those six scenarios:
+`outputs/runs/E5-inputres-224.json` was committed and filed by BRIDGE M-13 as a partial
+"non-result to be re-run". Its numbers were never read. It carries full bucket data under the M6
+native-pinned edges, with bucket counts **bit-identical** to the 448 arm across all six completed
+scenarios. Pooled over those six:
 
 | bucket | n | 224 | 448 | delta |
 |---|---|---|---|---|
-| sub-cell | 618 | 0.0873 | 0.2130 | **+0.126** |
-| 1-4x | 246 | 0.2059 | 0.4263 | **+0.221** |
-| 4-16x | 101 | 0.3960 | 0.6439 | **+0.248** |
-| **>= 16x** | 163 | 0.4672 | 0.5639 | **+0.097** |
+| sub-cell | 618 | 0.0873 | 0.2130 | +0.126 |
+| 1-4x | 246 | 0.2059 | 0.4263 | +0.221 |
+| 4-16x | 101 | 0.3960 | 0.6439 | +0.248 |
+| >= 16x | 163 | 0.4672 | 0.5639 | +0.097 |
 
-Per scenario, one resolution doubling gained **+0.154 mean AU-PRO@5% (1.86x)**, improving
-**6 of 6**:
+Per scenario, one doubling gained **+0.154 mean AU-PRO@5% (1.86x), improving 6 of 6**:
+vial +0.258, fabric +0.146, sheet_metal +0.138, rice +0.136, fruit_jelly +0.126, can +0.119.
 
-| scenario | 224 | 448 | delta |
-|---|---|---|---|
-| vial | 0.4607 | 0.7191 | +0.258 |
-| fabric | 0.0432 | 0.1888 | +0.146 |
-| sheet_metal | 0.1151 | 0.2529 | +0.138 |
-| rice | 0.0902 | 0.2263 | +0.136 |
-| fruit_jelly | 0.3495 | 0.4758 | +0.126 |
-| can | 0.0193 | 0.1385 | +0.119 |
-| **mean** | **0.1797** | **0.3336** | **+0.154** |
+**Resolution is a strong lever in the 224 -> 448 range. That much is solid and it is the most
+useful result in this review.**
 
-Two consequences.
+### What it does NOT show, and what was wrongly claimed
 
-**The ceiling is gone.** `ge_16x` is not fixed — it rose 0.467 -> 0.564 across the same
-doubling, 3.2x the `< 0.03` bound registered in D-04 prediction 2. **That prediction is
-falsified.** The claim "resolution alone provably cannot close the gap" does not hold.
+The first version of this section said D-04 prediction 2 was falsified and the M-10 ceiling was
+void. **Both claims are withdrawn.**
 
-**But the mechanism claimed was wrong.** D-04 predicted the gain would concentrate in the
-sub-cell bucket. It did not: sub-cell gained least of the three smallest buckets (+0.126 vs
-+0.221 and +0.248). Every bucket moved together, which is precisely the outcome D-04 named as
-*"resolution is a confound rather than the cause"*. Resolution helps a great deal; the
-"sub-cell defects are unresolvable" story is not why.
+D-04 prediction 2 bounded the `ge_16x` bucket's movement at `< 0.03` **over 448 -> 768**. The
+measurement above is **224 -> 448** — a different step. The prediction is untested, not falsified.
 
-**Action:** E5 becomes the highest-value experiment in the queue, not a formality. Strike the
-ceiling argument from HANDOFF §6 and BRIDGE M-10. E7 remains worth running but is no longer
-justified by "resolution provably cannot close ~0.16".
+Worse, the substitution is not even approximately valid, because the bucket edges are pinned to
+the **448** cell area. Measured from the artifact: `fabric`'s cell at 224 is 6528 native px
+against 1607 at 448, a ratio of **4.06x**. So a region at ">= 16x the 448-cell" occupies only
+**3.9x the cell at 224** — moderately resolved, not "already resolved". Its +0.097 gain is
+exactly what one expects of a region moving from 4x to 16x cell coverage, and says nothing about
+whether a region already at 16x cell at 448 gains further at 768.
 
----
+**The ceiling argument is weakened but not refuted.** Its premise — that already-resolved regions
+have little left to gain — remains untested. The 768 arm is the only thing that tests it.
+
+### A further complication the size analysis has not accounted for
+
+`sweep_backbones.py:130-134` bilinearly upsamples layer3 2x onto the layer2 grid. layer3 supplies
+**1024 of the 1536 descriptor dimensions (66.7%)** and is natively stride 16, so **two thirds of
+every descriptor carries no spatial detail finer than stride 16** — four times the cell area used
+throughout the bucket analysis.
+
+Every "sub-cell" claim in this project is therefore measured against the cell of the *minority*
+feature block. Regions are more sub-cell than reported, and the `ge_16x` bucket sits at only ~4x
+the effective layer3 cell. This does not change the measured numbers, but it changes what the
+size buckets mean, and it points at a much cheaper experiment than E5 — see §9.
 
 ## 2. The monotone size trend is largely scenario composition
 
@@ -125,8 +131,9 @@ value 0.6056 is a **micro** mean over 247 regions. M-10 compared 0.6056 against 
 - `can` has **zero** `ge_16x` regions, so its ceiling is undefined and cannot be 0.606.
 
 HANDOFF.md:626 already computed the macro version (0.625), called it noisy, and instructed
-"use the global 0.606" — the wrong frame for the comparison being made. The ceiling conclusion
-is void anyway (§1), but the frame error would have mattered regardless.
+"use the global 0.606" — the wrong frame for the comparison being made. The ceiling conclusion is
+untested rather than void (§1), so this frame error still matters: whatever the 768 arm shows,
+the comparison must be made in one frame.
 
 ---
 
@@ -235,20 +242,115 @@ Mann-Whitney computation to **1e-5**. `aupro.py` is correct and nothing needs re
 
 ---
 
+## 9. The cheapest experiment in the queue is not in the queue: dilated layer3
+
+`sweep_backbones.py:130-134` upsamples layer3 bilinearly 2x onto the layer2 grid. layer3 is
+**1024 of 1536 dims (66.7%)** and natively stride 16, so two thirds of every descriptor is a 2x
+blur of a stride-16 map.
+
+timm's ResNet accepts **`output_stride=8`**, which dilates layer3 to a native stride-8 map at the
+**same input size**: identical grid, identical patch count, identical 4000-vector bank, identical
+NN-scoring cost and identical feature-tensor memory. Only layer3's convolutions run at 4x spatial.
+
+That is the single-variable experiment the project's own rule ("change one variable at a time")
+demands and which **E5 does not provide** — E5 moves input pixels, layer2 density, layer3 density,
+bank size and object-to-receptive-field ratio simultaneously, so whatever it returns it cannot say
+which of the five caused it.
+
+Costs, recomputed from recorded configs:
+
+| arm | patches x bank | feature tensor | est. GPU-h |
+|---|---|---|---|
+| current 448 | 3120 x 4000 | 8.3 GB | 0.22 |
+| **dilated layer3 @448** | **3120 x 4000** | **8.3 GB** | **~0.4** |
+| E5 768 | 9152 x 11755 | 24.3 GB | ~1.9 |
+
+The dilated arm gives layer3 a **finer** effective map (52x60) than the 768 arm does (44x52), at
+roughly a fifth of the cost. **Run it before E5's 768 arm.**
+
+Two things the reviewer verified and set aside, worth recording so they are not re-proposed:
+
+- **PatchCore's nearest-neighbour reweighting cannot move AU-PRO at all.** It reweights the
+  image-level max score only; `sweep_backbones.py:215-222` returns per-patch minima and the map is
+  built from them unchanged. It touches image AUROC and leaves AU-PRO bit-identical.
+- **Native-resolution tiling is not the fast path and should rank last.** `fabric` at native
+  2448x2048 gives 78,336 patches/image — 25x the current count — and a 387-image train set needs
+  **186 GB** of feature tensor before coreset selection, against a 58 GiB ceiling.
+
+Also verified and *not* filed as a finding: arm A is the **most** seed-stable of the six arms in
+`outputs/seed_variance.json` (macro-mean range 0.0011 across 5 seeds, per-category std 0.0043), so
+the "within 0.01 = equivalent" decision rule is probably safe despite having been set with no
+measured AU-PRO noise floor on AD 2. The evidence points the other way from the concern.
+
+---
+
+## 10. Documentation defects, and what the planner verified directly
+
+The documentation reviewer **re-derived REVIEW.md §1's own arithmetic from the artifacts and it
+reproduces to 3 dp**, including the bit-identical bucket counts across all 24 scenario/bucket
+pairs. The `vial` 0.7516 -> 0.6247 correction is complete in all three places with no fourth
+occurrence anywhere. Means 0.3444 / 0.8501 / 0.7236 recompute exactly. All ten other run records
+satisfy the §0 output contract. `deployment/README.md`'s quickstart flags all exist in the
+corresponding argparse blocks.
+
+Outstanding defects:
+
+- **`README.md` still leads with the void fusion results** and HANDOFF still lists them under
+  "Done and trustworthy". The README has not been updated for any finding in this review.
+- **README's headline cost table is arm E (ResNet50@224), not arm A** — every number comes from a
+  different arm than the one the project actually uses.
+- **`HANDOFF.md:159` still lists "7% cost range over a 125x bank-size range"** in "Done and
+  trustworthy"; §6 recomputed it as a **1.8x** range, from an image-level AD 1 experiment
+  containing no AU-PRO at all.
+- **`docs/MVTEC_AD2_IMPLEMENTATION_SPEC.md` is anchored entirely to the void crop-frame baseline**,
+  so all of its acceptance targets are meaningless. Its Step 2 command **cannot run**, and the
+  obvious repair silently evaluates **zero scenarios**.
+- **Two different Triton latency figures** appear in two documents, neither backed by any artifact
+  — and both were measured against the synthetic bank (§7).
+- **`deployment/POD_REBUILD.md:44`** points `pip install -r` at a path where the freeze file does
+  not exist. The planner wrote that file during this session; the path is wrong.
+- **README says "8 arms x 15 categories" in one place and "Six arms" in another.** Arms
+  `F_dinov3_448` and `G_dinov2_448` exist in `outputs/sweep_backbones.json` — G at mean AUROC
+  0.9813 and the **lowest total cost of all eight** — and are dropped from the README table
+  without a word, because only six were re-seeded. A defensible choice, undisclosed.
+
+Planner-verified directly, no reviewer involved:
+
+- **Numerical layer is clean.** Every `mean_*` reproduces, AU-PRO is monotonic in its limit
+  everywhere, bank caps hold, every fixed-region run is exactly 1530, `n_good`/`n_bad` stable
+  across all 11 runs. Only defect: the known stitched `E4-evalside-512` (wall/sum 0.58).
+- **Registration is clean.** The native region-label carry is correct for `aspect` and `letterbox`
+  — labels resize into exactly the frame the map occupies, NEAREST preserves ids, zero-pixel
+  regions stay in the denominator, and the assert at `ad2_pixel_eval.py:511` guards the count.
+  No third registration bug.
+
+---
+
 ## What this changes, in order
 
-1. **Run E5.** It is now the highest-value experiment in the queue, on direct evidence rather
-   than on the ceiling argument that opposed it.
-2. **Strike the ceiling argument** (HANDOFF §6, BRIDGE M-10) and D-04 prediction 2, which is
-   falsified.
-3. **Correct `vial` 0.7516 -> 0.6247** in three places, and stop citing vial as evidence that
-   large defects reach parity — its largest bucket is its worst.
-4. **Mark `outputs/ad2_feature_fusion.json` void** and strike the two "new project high" claims.
-   E7 must be re-run under `aspect` before any of its conclusions mean anything.
-5. **Fix the launch pattern** (`setsid`) and the `--resume` config guard before the next run.
-6. **Decide on `count_include_pad`** — a genuine defect whose fix re-baselines every number.
-7. **Cite the baseline's source and split**, or state that the gap is approximate.
-8. **Rebuild the serving path** with a test that can fail.
+1. **Run the dilated-layer3 arm (`output_stride=8`) at 448 before E5's 768 arm** (§9). Same
+   patches, same bank, same memory, ~a fifth of the cost, and it is the only single-variable test
+   of whether feature-map density or input pixels drive the gain. E5 changes five things at once.
+2. **Then run E5's 768 arm.** Resolution is a strong lever (+0.154 per doubling, 6/6 scenarios) and
+   768 is the *only* thing that tests the ceiling — which is untested, not refuted (§1).
+3. **Correct the record**: the ceiling claim and D-04 prediction 2 are withdrawn-as-untested, not
+   falsified; `vial` 0.7516 -> 0.6247 (done); aggregation frames must be matched (§4).
+4. **Mark `outputs/ad2_feature_fusion.json` void**, strike the two "new project high" claims, and
+   re-run the fusion arms under `aspect` before E7's conclusions mean anything (§5).
+5. **Fix the launch pattern (`setsid`) and the `--resume` config guard** — both done in code; the
+   HANDOFF text that teaches the broken pattern still needs updating.
+6. **Decide on `count_include_pad`** — a genuine defect whose fix re-baselines every number (§6).
+7. **Cite the baseline's source and split**, or state that the gap is approximate (§8).
+8. **Rebuild the serving path** with a test that can fail (§7).
+9. **Update README and the AD2 spec** — both still lead with void numbers (§10).
+10. **Run the two dimensions nobody has reviewed**: `optimization` and `fusion-and-legacy`.
 
 Nothing here invalidates the two findings the project rests on: the coordinate-frame fix
-(0.131 -> 0.301) and the fixed native region set. Both were re-verified during this review.
+(0.131 -> 0.301) and the fixed native region set. Both were re-verified during this review, and
+the numerical and registration layers were checked directly and are clean.
+
+**The most important lesson is about this review itself.** Its first version claimed the ceiling
+was refuted, on data that tested a different step. That is the same failure mode the review
+criticised in the worker's "proven" and in the `vial` number: a real measurement, stretched one
+step past what it supports. The correction came from a second adversarial pass, which is an
+argument for running one.

@@ -270,3 +270,145 @@ config.pbtxt:54-56 enables `dynamic_batching { max_queue_delay_microseconds: 500
 **Impact.** Up to 16 sequential WRN50 forwards where one batch-16 forward would do, plus up to 5 ms of pure queueing latency per request. The advertised throughput figure is unreachable by this implementation, which also means any re-measurement done for E8 will understate what the deployment could do.
 
 **Fix.** Concatenate the preprocessed tensors across all requests in the list into one [sum(B), 3, H, W] batch, run a single forward and a single chunked cdist, then split the outputs back per request by their original batch sizes. Only then does the 5 ms queue delay earn its cost.
+
+---
+
+# Second pass — design-gaps and documentation-integrity (2026-09-05)
+
+The other four dimensions of this pass (`geometry-registration`, `numerical-reproduction`,
+`optimization`, `fusion-and-legacy`) died on spend limits. The first two were covered by the
+planner directly; the last two remain unexamined.
+
+---
+
+### S-01 · E5 varies five things at once, and the one cheap arm that would attribute its own effect (dilated layer3, output_stride=8) is absent from the queue
+
+**MAJOR · experimental-design · design-gaps** — `HANDOFF.md:1067`
+
+The queue's top-priority GPU item sweeps `img` in {224, 448, 768} and simultaneously changes input pixel count, layer2 grid density, layer3 grid density, bank size (1000/4000/11755) and object-to-receptive-field ratio. It therefore cannot say *which* of those produced the +0.154 already measured at 224->448, and it buys layer3 resolution at ~8.6x the cost of an arm nobody has proposed. `sweep_backbones.py:130-134` interpolates layer3 (1024 of the 1536 descriptor dims, 66.7%) bilinearly 2x up from stride 16 to layer2's stride-8 grid, so two-thirds of every descriptor carries no detail finer than a stride-16 map. timm's ResNet accepts `output_stride=8`, which dilates layer3 to native stride 8 at the same input size: identical grid, identical patch count, identical 4000-vector bank, identical NN-scoring cost, identical feature-tensor memory — only layer3's convolutions run at 4x spatial. That arm holds input pixels fixed and moves feature-map density alone, which is the single-variable experiment the project's own §8 rule ("Change one variable at a time") demands and E5 does not provide.
+
+**Evidence.** sweep_backbones.py:130-134 sets `ref = fs[0].shape[-2:]` (layer2, stride 8) and `F.interpolate(f, size=ref, ...)` for layer3; out_indices=(2,3) on wide_resnet50_2 gives 512+1024=1536 dims, so 1024/1536 = 66.7% of the vector is a 2x bilinear blur. Recomputed effective cell areas (native px per cell): fabric layer2@448 = 1607, layer3@448 = 6428, layer3@768 = 2191, layer3 dilated@448 = 1607. The dilated arm gives layer3 a *finer* map (52x60) than the 768 arm does (44x52). Cost, recomputed from the recorded configs: E4-evalside-512 scenario-time sum = 801 s = 0.223 GPU-h at 3120 patches x 4000 bank; the 768 arm is 9152 patches x 11755 bank = 8.62x the NN work -> ~1.9 GPU-h, and 432 x 9152 x 1536 x 4 = 24.3 GB feature tensor (reproducing M-03's independently stated 24.3 GB for walnuts, which validates the model). The dilated arm stays at 3120 x 4000 and 8.3 GB, ~1.5-2x wall from layer3 alone -> ~0.35-0.45 GPU-h. The bucket machinery also inherits the error: ad2_pixel_eval.py:561-562 and exp_e5a_bucketed_pro.py:207 compute cell area from the stride-8 grid only, understating the effective cell of 66.7% of the descriptor by exactly 4x, so every 'sub-cell' bucket claim is measured against the wrong cell for the dominant feature block.
+
+**Impact.** E5 costs ~1.9 GPU-h and, by the project's own measured slope (+0.154 per doubling; 448->768 is 1.714x = 0.777 doublings), returns an expected +0.12 to ~0.464 — still 0.30 short of 0.764 — while producing no information about why. The dilated arm costs ~0.4 GPU-h, is the only measurement that separates 'the backbone sees more pixels' from 'the feature map is denser', and if the gain is feature-map density it recovers most of 768's benefit at a quarter of the price with no OOM risk, no prealloc dependency and no bank rescaling. Note this is *not* M-15's Pathway 1: adding layer1 quadruples the grid, the bank and the scoring cost and makes layer3's relative blur 4x worse, whereas this is free at the bank and the scorer.
+
+**Fix.** Add `--output-stride {32,8}` threaded into `timm.create_model(..., features_only=True, output_stride=8)` at sweep_backbones.py:104, assert the returned `ex.grid` is unchanged versus the current arm (that assertion is the whole test), and run one 8-scenario arm at img=448 aspect, bank-cap 4000, eval_side 512 — identical to E4-evalside-512 in every other field, so the comparison is exact. Run this before the 768 arm. Then reorder E5 to {448 dilated, 768} rather than {224, 448, 768}: the 224 arm has already been read (outputs/runs/E5-inputres-224.json) and re-running it buys confirmation, not attribution.
+
+### S-02 · The four scenarios that arithmetically cap the mean at 0.604 have essentially zero measured defect contrast, and no queue item is targeted at them
+
+**MAJOR · experimental-design · design-gaps** — `HANDOFF.md:771`
+
+Reaching the 0.764 target is arithmetically impossible without a large gain on can/fabric/rice/wallplugs, and both remaining GPU items (E5 resolution, E7 representation) are global sweeps with no per-scenario diagnosis for those four. outputs/ad2_shift_check.json already measured, per scenario, the contrast between defective and defect-free test images in units of the normal-score spread — and on those four it is -0.034 to 0.220 sigma, i.e. none. On `can` the defective images score *lower* than the good ones. That measured contrast correlates with final AU-PRO@5% at r = 0.829 (and with image AUROC at r = 0.871), stronger than the region-scale correlation of r = +0.788 that M-07 built the whole size hypothesis on. Resolution and better features both act by sharpening existing contrast; on these four there is no contrast to sharpen, and nothing in the queue measures whether any is recoverable before spending the GPU-hours.
+
+**Evidence.** Recomputed from outputs/ad2_shift_check.json against outputs/runs/E4-evalside-512.json: can signal -0.034s / AU-PRO 0.1385, rice 0.072s / 0.2263, fabric 0.123s / 0.1888, wallplugs 0.220s / 0.2762, versus fruit_jelly 1.153s / 0.4758, walnuts 1.811s / 0.4777, sheet_metal 1.933s / 0.2529, vial 2.738s / 0.7191. Pearson r(signal_sigmas, au_pro@0.05) = 0.829 over the 8 scenarios. Hard bound: the four weak scenarios sum to 0.8298, so even a *perfect* detector on the other four gives a macro mean of (4 + 0.8298)/8 = 0.604 — below 0.764. To hit 0.764 with the other four perfect, can/fabric/rice/wallplugs must each average 0.528, against 0.207 today. Separately, ad2_shift_check.py builds its extractor with the bare timm transform (line 56, no geometry branch anywhere in the file), so this artifact is in the crop frame — the same defect REVIEW flagged for ad2_feature_fusion.py but did not flag here.
+
+**Impact.** The queue's expected value has never been decomposed per scenario, so ~2 GPU-h of E5 plus ~1-2 GPU-h of E7 are budgeted against a target that is unreachable unless the four zero-contrast scenarios move, and neither item is designed to tell you whether they can. AU-PRO's false-positive axis is pooled globally across every normal pixel of every image (aupro.py:59-83, h_norm accumulates over maps_good and the non-mask pixels of maps_bad, then one global threshold sweep), so between-image score-scale variance spends the 5% FPR budget on nuisance before any threshold reaches a defect region — the exact failure mode a train->test appearance shift produces, and can measures 2.74 sigma of it. Per-image map normalisation, the direct remedy, has never been tried and is not in the queue.
+
+**Fix.** Two cheap steps, both free riders on the next arm rather than new runs. (1) Extend ad2_shift_check.py with `--geometry aspect` and change what it reports: per-*patch* contrast (mean distance inside the GT mask vs outside, in sigma of the normal-patch distribution) instead of image-max contrast — the per-patch quantity is what AU-PRO depends on and it has never been measured. ~0.1 GPU-h, and it says which of the four has any recoverable signal before either GPU item runs. (2) In ad2_pixel_eval.py, add `--map-norm {none,median}` that subtracts each map's own median (or divides by its own IQR) before the histogram, and emit both AU-PRO values from the same forward pass — a second `evaluate()` call on maps already in memory, zero extra GPU. If median normalisation lifts can materially, the fix for the near-chance scenarios is a post-process, not a backbone.
+
+### S-03 · E7 selects on a validation split that is measured to be off-distribution from the split it reports on, worst exactly where the headroom is
+
+**MINOR · experimental-design · design-gaps** — `HANDOFF.md:1184`
+
+E7's protocol is 'Re-select on the `validation` split under the winning geometry, then report the held-out `test_public` score once'. That is only sound if validation is an unbiased proxy for test_public. The repo has already measured that it is not: outputs/ad2_shift_check.json records validation-good to test-good drift of +2.735 sigma on `can`, +0.547 on `fabric`, -0.661 on `sheet_metal`, -0.326 on `fruit_jelly`. REVIEW's R-13 established that validation is loaded (ad2_pixel_eval.py:82) and never used; it did not establish that when E7 finally does use it, the selection signal is biased by up to 2.7 sigma per scenario — and the largest bias falls on `can`, the worst-scoring scenario and therefore the one whose routing choice matters most.
+
+**Evidence.** outputs/ad2_shift_check.json: can val_good_mean 55.316, test_good_mean 62.576, val_good_std 2.654 -> shift_sigmas 2.7355. Per-scenario shift_sigmas across the suite: can +2.735, fabric +0.547, walnuts +0.275, wallplugs +0.106, rice +0.008, vial -0.116, fruit_jelly -0.326, sheet_metal -0.661. A per-scenario backbone routing chosen to minimise error on validation is being chosen on a distribution that sits 2.7 sigma away from the reporting distribution on the scenario with the most headroom.
+
+**Impact.** E7 is one of two remaining GPU items and is described as load-bearing for closing the gap. As specified, a null or negative E7 result is uninterpretable — it cannot be separated from validation simply not predicting test_public — and a positive one is unverifiable for the same reason. Worse, it also rules out the obvious remedy for can's shift: adding validation images to the memory bank would not help, because validation sits on train's side of the shift, not test's.
+
+**Fix.** Make the selection-transfer gap a reported quantity rather than an assumption: for each candidate representation, record both the validation score and the test_public score, and report the rank correlation between them across the 8 scenarios alongside the headline. If validation does not rank candidates the same way test_public does, say so and treat E7's routing as unselectable rather than reporting a routing chosen on a proxy that demonstrably disagrees. Also re-run ad2_shift_check.py under `--geometry aspect` first — its current numbers are in the crop frame and the shift magnitudes E7 would be reasoning about have never been measured in the frame the project now uses.
+
+### S-04 · The ceiling refutation tests a step that was never run — D-04 prediction 2 was registered on 448→768, and the ge_16x bucket is not "already resolved" at 224 by construction
+
+**CRITICAL · over-claimed correction · documentation-integrity** — `REVIEW.md:54`
+
+REVIEW.md §1 declares D-04 prediction 2 "falsified" and the resolution ceiling "gone" using the 224→448 step. D-04 registered prediction 2 on the 448→768 step (BRIDGE.md:82-83: "1. The sub-cell bucket gains more than 0.10 AU-PRO@5% from 448 to 768. 2. The ge_16x bucket moves less than 0.03 over the same step."). The 768 arm has never been run. Worse, the bucket edges are pinned to the 448 cell area (BRIDGE.md:401, M6), so at img=224 the ge_16x bucket floor is only ~4 cells in area — about 2 cells across — not the "sixteen or more patch cells across" that the ceiling argument's premise requires. Those regions were under-resolved at 224, so their +0.097 rise to 448 is exactly what the ceiling argument predicts, not a refutation of it.
+
+**Evidence.** Recomputed from outputs/runs/E5-inputres-224.json: cell_area_nominal / cell_area_448 = 3.78 (can), 4.06 (fabric), 4.00 (fruit_jelly), 4.06 (rice), 3.50 (sheet_metal), 4.00 (vial). The ge_16x floor of 16 x cell_area_448 therefore equals 4.23 / 3.94 / 4.00 / 3.94 / 4.57 / 4.00 cells at 224 — i.e. ~2.0-2.1 cells across, never 16. Grids at 224 are [20,40], [24,32], [24,32], [24,32], [16,56], [32,24]. The 448→768 comparison the prediction names does not exist in outputs/runs/ (only 224 and 448 arms are present).
+
+**Impact.** This is the single claim that re-prioritized the entire experiment queue. It has been propagated as settled fact into HANDOFF.md:612-620 (a VOID banner asserting the section is "empirically false"), HANDOFF.md:189-195 ("Immediate next step"), BRIDGE.md:475-478 and BRIDGE.md:488, and REVIEW.md:243. Meanwhile HANDOFF.md:1148 — the E5 queue item itself — still correctly states the discriminating test is "lifts the sub-cell bucket sharply from 448 to 768 while leaving ge_16x flat", so HANDOFF now contradicts itself in two places about what was tested. The correct conclusion from the 224 arm is narrower and still valuable (resolution is a strong lever below 448); the ceiling claim about resolutions above 448 remains untested in either direction.
+
+**Fix.** Restate the finding as "224→448 gains +0.154 on 6/6 scenarios; every bucket rises, but at 224 no bucket is spatially resolved so this cannot test the ceiling". Move D-04 predictions 1 and 2 back to open, pending the 768 arm. Replace the HANDOFF §6 VOID banner with "untested" rather than "empirically false", and reconcile it with HANDOFF.md:1148.
+
+### S-05 · README's headline cost table is arm E (ResNet50@224), not arm A — every number comes from arms_comparison/E_resnet50_224/costs_per_10k_macro
+
+**MAJOR · wrong-arm attribution · documentation-integrity** — `README.md:246`
+
+README §1 presents a 6-row cost table with no arm named, immediately after a sweep table that ranks E fourth of six. All 24 of its numbers reproduce exactly from arm E's macro frame. The JSON's own dedicated headline block, arm_A_fine_grid, disagrees on the optimum at three of six priors.
+
+**Evidence.** Recomputed from outputs/exp_realistic_cost.json. arms_comparison/E_resnet50_224/costs_per_10k_macro/100.0 gives p=0.001 best p100 $681 / p50 $6011 / p99 $801 / 7.50x; p=0.005 p100 $1245 / $6018 / $1286 / 4.68x; p=0.01 p99 $1892 / $6027 / $1892 / 3.19x; p=0.02 p95 $2691 / $6045 / $3104 / 1.95x; p=0.05 p80 $4135 / $6100 / $6739; p=0.73 p20 $3694 / $7345 / $89138 — matching README rows 248-253 digit for digit. arm_A_fine_grid/costs_per_10k_micro/100.0 gives instead p=0.01 best p97 $1712 (not p99 $1808), p=0.02 best p93, p=0.05 best p93. Arm A macro: 3.51x at 1%, 8.57x at 0.1%.
+
+**Impact.** The project's one deployed-decision result is attributed to the wrong backbone, and it is the weaker one — README.md:125 lists E at mean AUROC 0.9717 and cost 17,870, fourth of six. HANDOFF.md:160 carries the same arm-E ratios ("3.18x cheaper than p50 at 1%; 7.5x at 0.1%") inside the "Done and trustworthy" table. The stronger claim "p99 vindicated" also does not survive on the intended arm: arm A's own fine percentile grid puts the optimum at p97 at 1%, p93 at 2% and p93 at 5%, so p99 is optimal at exactly one prior, not the range claimed at README.md:255.
+
+**Fix.** Label the table "arm E (ResNet50@224), macro frame" or regenerate it from arm_A_fine_grid, and correct HANDOFF.md:160 to the arm actually quoted. Soften README.md:255 to match the fine grid, which shows the optimum drifting from p100 to p93 as prevalence rises.
+
+### S-06 · The void fusion results are still the headline of README §2 and are listed under HANDOFF "Done and trustworthy" — REVIEW action item 4 is unapplied
+
+**MAJOR · stale-claim · documentation-integrity** — `README.md:273`
+
+REVIEW.md §5 and its action item 4 require marking outputs/ad2_feature_fusion.json void and striking the two "new project high" claims. Neither README nor HANDOFF §2/§6 carries any void marker; both still present the fusion table as the project's best result.
+
+**Evidence.** README.md:273 — "**All-time project records** for Image AUROC (0.691) and Pixel AUROC (0.770)". HANDOFF.md:165-166 — "**Mean Image AUROC:** **0.6914** (new project high...)", "**Mean Pixel AUROC:** **0.7700** (new project high...)", both inside the "### Done and trustworthy" heading at HANDOFF.md:145. HANDOFF.md:677 repeats "Dataset-wide AUROC records". Recomputed from outputs/runs/E5a-region-breakdown.json, plain arm A under aspect reaches mean image AUROC 0.7236 and pixel AUROC 0.8501 — both above the "record". HANDOFF.md:1202, in the same file, already says the fusion numbers are "a 13.5% regression ... even though the README calls them all-time project records" and that "Correcting the README is part of this item".
+
+**Impact.** The two most public documents assert as the project's best result a table the review found was measured in the broken crop frame, and they assert it under a heading that means the opposite. A reader following README §2 would adopt the adaptive routing table, the "four architectural lessons" (HANDOFF.md:679-694) and the per-scenario DINOv2/whitening/L123 assignments as established. HANDOFF is now self-contradictory: §2 lists these as trustworthy, §2's own next-step block (HANDOFF.md:199) says E7 is blocked and uninterpretable.
+
+**Fix.** Add the same struck-through VOID treatment used at HANDOFF.md:612 to HANDOFF.md:164-170, HANDOFF.md:668-694 and README.md:259-273, and delete the two "record" claims outright since arm A under aspect beats both.
+
+### S-07 · The AD2 implementation spec is anchored entirely to the void crop-frame baseline, so its acceptance criteria are already passed by geometry alone
+
+**MAJOR · stale-guidance · documentation-integrity** — `MVTEC_AD2_IMPLEMENTATION_SPEC.md:43`
+
+The spec's objective, baseline table and acceptance scoreboard all use the pre-E1 crop-frame numbers that outputs/LEDGER.md marks "void — coordinate-frame bug". Several of its per-scenario targets are already exceeded by the current aspect baseline with no architectural change at all, so a fusion run that regresses would be scored as passing.
+
+**Evidence.** Spec line 6 sets the objective as lifting "0.131 (13.1%)" to >0.60; line 43 and lines 127-137 list sheet_metal 0.034, can 0.011, fabric 0.005, vial 0.436, fruit_jelly 0.226. outputs/LEDGER.md row 1: "| (pre-E1 baseline) | crop | 448 | 0.1306 | 0.663 | — | void — coordinate-frame bug, see §6 |". Recomputed from outputs/runs/E5a-region-breakdown.json (aspect, img 448): sheet_metal 0.2529, can 0.1385, fabric 0.1888, vial 0.7191, fruit_jelly 0.4758, mean 0.3444. Spec line 105 sets "target: AU-PRO > 0.15 vs 0.034 baseline" for sheet_metal — already 0.2529. Spec line 129 sets vial "> 0.65" — already 0.7191. Spec line 102 sets fabric "> 0.20 vs 0.005" — the aspect baseline is 0.1888, so the whole claimed gain would be geometry.
+
+**Impact.** This is the document E7 is meant to be executed against. Its gates cannot distinguish a real representation gain from the coordinate-frame fix that already happened, which is precisely the confound the project spent E1-E4a eliminating. Two scenarios would be certified as passing by a run that did nothing.
+
+**Fix.** Rebase the spec's §2 table and §5 scoreboard on the E3R/E5a aspect numbers (mean 0.3444) and restate every target as a delta over that, with a note that the 0.131 figures are void.
+
+### S-08 · Spec Step 2's command cannot run, and the repaired version silently evaluates zero scenarios
+
+**MAJOR · broken-repro-command · documentation-integrity** — `MVTEC_AD2_IMPLEMENTATION_SPEC.md:114`
+
+`python ad2_feature_fusion.py --arm fusion --scenarios all --eval-side 512` uses a flag the script does not define, and passes a scenario name that does not exist. Dropping the bad flag does not fix it — the run completes successfully having evaluated nothing.
+
+**Evidence.** ad2_feature_fusion.py:316-325 defines only --arm, --scenarios, --limit, --bank-cap, --img, --whiten, --lcn, --no-closing, --closing-k. There is no --eval-side (EVAL_SIDE is a module constant, printed at line 349), so argparse exits 2 with "unrecognized arguments". Line 330: `scenarios = [s for s in args.scenarios.split(",") if s] or sorted(...)` — the literal string "all" becomes the one-element list ["all"] and suppresses the directory-listing default. load_paths (lines 42-49) globs /opt/ad2/all/train/**/*.png, returns empty lists, and line 362 prints "all: skipped" and continues, writing an empty summary to outputs/ad2_feature_fusion.json.
+
+**Impact.** The default (no --scenarios) is what actually runs all eight; the documented invocation is the one way to get a silently empty run, and it overwrites outputs/ad2_feature_fusion.json on the way out — the fixed-output-path failure HANDOFF.md:51 rule 3 exists to prevent. The spec is the execution plan for E7, which the review made load-bearing.
+
+**Fix.** Change line 114 to `python ad2_feature_fusion.py --arm fusion` and drop --eval-side, or add an --eval-side argument and make "all" an explicit alias for the full scenario list. Make an empty scenario set a hard error rather than a skip.
+
+### S-09 · Two different Triton latency figures in two docs, neither backed by any artifact, both quoted despite HANDOFF §7 E8 forbidding it
+
+**MAJOR · unbacked-number · documentation-integrity** — `README.md:283`
+
+README claims 6.34 ms / ~157.7 FPS; deployment/README.md claims 6.68 ms / ~150 FPS for the same measurement on the same hardware. No file in outputs/ or logs/ contains either number, or 23.78, or 157.7. README.md:16 nonetheless asserts "Every number below is from a run in `outputs/`".
+
+**Evidence.** README.md:283 "| **Direct Native Execution** | NVIDIA RTX 4000 Ada | 1 | 4,000 vectors | **6.34 ms** | **~157.7 FPS** | PASS (bit-identical) |" vs deployment/README.md:152-153 "| **Steady-state Inference Latency** | **6.68 ms** per frame | ... | **$\sim 150$ FPS** |". `grep -rn "6\.34\|6\.68\|23\.78\|157\.7" --include=*.json --include=*.log .` returns only unrelated dollar amounts inside exp_realistic_cost.json. HANDOFF.md:1213-1217 (E8): "The README's '6.34 ms / 157 FPS' was measured against this, so **that figure describes nothing** and must not be quoted until re-measured." HANDOFF.md:162 quotes it anyway, inside "Done and trustworthy". README.md:285 also presents "< 12.0 ms (est)" and "> 80 FPS" in a measured-results table with verification status "Operational".
+
+**Impact.** The bank those figures were measured against is the synthetic Gaussian one (HANDOFF.md:1209-1212), the 4,000-vector claim contradicts export_bank.py's CPU coreset_size of 500, and the two docs disagree by 5%. README.md:16's blanket provenance claim is false for the whole of §3, which undermines the credibility of the numbers in §1 and §2 that are backed.
+
+**Fix.** Delete README §3 and deployment/README.md §6 until E8 re-measures against a real bank, or mark both tables "synthetic bank, not a product measurement". Remove HANDOFF.md:162 from the trustworthy table. Narrow README.md:16 to the MVTec AD 1 sections it is actually true of.
+
+### S-10 · outputs/LEDGER.md has no row for E5-inputres-224 — the run the corrected conclusions now rest on
+
+**MINOR · missing-record · documentation-integrity** — `LEDGER.md:27`
+
+The ledger's contract is "One row per experiment run" (LEDGER.md:3) and "one row appended to `outputs/LEDGER.md`" is one of the three required artifacts per run (HANDOFF.md:70). E5-inputres-224 has a JSON and a log but its ledger row still reads `_pending_`, while E4-evalside-trend's row still records the verdict the run overturned.
+
+**Evidence.** outputs/runs/E5-inputres-224.json and logs/E5-inputres-224.log both exist. outputs/LEDGER.md:27: "| E5-inputres | | | | | | _pending_ |". Line 25 still reads "| E4-evalside-trend | ... | **refutes** — flat across eval resolutions (range 0.0002); input resolution ceiling binds |". The record is also the only one of eleven missing all four mean_* fields required by the contract at HANDOFF.md:88-89 (it covers 6 of 8 scenarios and died mid-run), yet carries `deviations: []`, against rule 8 at HANDOFF.md:63.
+
+**Impact.** The audit trail's index does not contain the single most consequential run in the project. A reader working from LEDGER.md alone would conclude the resolution question is untouched, and the E4 row's "ceiling binds" verdict is the last word.
+
+**Fix.** Append the E5-inputres-224 row with mean AU-PRO 0.1797 over the 6 completed scenarios, an explicit note that it is a partial run (6/8, killed), and its bank_cap of 1000 against the 448 arm's 4000 — the density-matched pairing specified at HANDOFF.md:1069, which no summary of the 224→448 delta currently mentions.
+
+### S-11 · POD_REBUILD's venv command points at a path where the freeze file does not exist
+
+**MINOR · broken-repro-command · documentation-integrity** — `POD_REBUILD.md:44`
+
+Step 2 says the freeze is "in this directory" (line 33) — deployment/ — then installs from /workspace/requirements-anomaly-freeze.txt, one directory up from where it lives.
+
+**Evidence.** deployment/POD_REBUILD.md:44: `/opt/venvs/anomaly/bin/pip install -r /workspace/requirements-anomaly-freeze.txt`. The file is at deployment/requirements-anomaly-freeze.txt (130 lines, 130 pinned packages, torch==2.14.0 at line 116, timm==1.0.29 at line 114) — i.e. /workspace/deployment/requirements-anomaly-freeze.txt on the pod. pip exits 1 with "Could not open requirements file".
+
+**Impact.** The rebuild is documented as "roughly 20 minutes and needs no decisions" (line 17); the one command that installs 128 of the 130 packages fails on a copy-paste, at the exact moment the operator has no working environment to debug with.
+
+**Fix.** Change the path to /workspace/deployment/requirements-anomaly-freeze.txt.

@@ -34,6 +34,10 @@ Python 3.12.3, torch 2.14.0+cu130, CUDA 13.0. `requirements-anomaly-freeze.txt` 
 directory is a `pip freeze` of the exact working environment (130 packages), captured before
 the stop.
 
+**The path below assumes the repo is synced to `/workspace/`** so the freeze file lands at
+`/workspace/deployment/requirements-anomaly-freeze.txt`. Check it is there before running —
+`/workspace` is not a git checkout, files arrive by `scp`, so nothing guarantees it.
+
 ```bash
 python3 -m venv /opt/venvs/anomaly
 /opt/venvs/anomaly/bin/pip install --upgrade pip
@@ -41,7 +45,7 @@ python3 -m venv /opt/venvs/anomaly
 # `pip install torch==2.14.0` resolves to a different CUDA build
 /opt/venvs/anomaly/bin/pip install torch==2.14.0 torchvision==0.29.0 \
     --index-url https://download.pytorch.org/whl/cu130
-/opt/venvs/anomaly/bin/pip install -r /workspace/requirements-anomaly-freeze.txt
+/opt/venvs/anomaly/bin/pip install -r /workspace/deployment/requirements-anomaly-freeze.txt
 ```
 
 Verify before running anything, because a silently-CPU torch wastes a whole run:

@@ -660,3 +660,30 @@ filed as a non-result is how the decisive 224 arm went unread for a day.
 **Also outstanding, unreviewed by anyone:** the `optimization` and `fusion-and-legacy` review
 dimensions. Pathway 4 overlaps the first; treat the second as open.
 
+### M-17 — planner — pod is up and staged; what survived and what you must rebuild
+Verified on the re-provisioned pod, 2026-09-05.
+
+| | state |
+|---|---|
+| GPU | NVIDIA RTX 4000 Ada, 20475 MiB — **same card** |
+| driver | **580.159.04** — see D-05's E4b requirement; no prior run recorded a driver at all |
+| `/workspace` | survived (code, `deployment/`, `datasets/mvtec_ad_2.tar.gz`) |
+| `/opt/ad2` | **gone** — re-extract, ~10 min |
+| `/opt/venvs/anomaly` | **gone** — rebuild, ~10 min |
+| container disk | 70 GB, 738 MB used — fresh |
+| host memory | 503 GB total, 431 GB available (cgroup ceiling is still 58 GiB) |
+
+**Already staged for you, no action needed:**
+- `ad2_pixel_eval.py` (sha `7f2bb8e2`), `aupro.py` (`9bd0d832`), `sweep_backbones.py`
+  (`0c2365c5`) synced to `/workspace`. The pixel-eval script is the **fixed** version:
+  `--geometry` is now **required**, `--resume` refuses a config mismatch and auto-records the
+  reuse in `deviations`, and `env` now captures `driver` and `cuda`.
+- `deployment/requirements-anomaly-freeze.txt` placed at the exact path `POD_REBUILD.md`
+  references, and `POD_REBUILD.md` itself.
+
+**Your first three actions:** rebuild per `deployment/POD_REBUILD.md` (~20 min, no decisions) ->
+run **E4b** (clean 448 `aspect` baseline on driver 580) -> then E9 and E5b per D-05.
+
+Note `--geometry` is now required, so any old command line that omitted it will now **fail loudly
+instead of silently running the broken `crop` frame**. That is intended.
+

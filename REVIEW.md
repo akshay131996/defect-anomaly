@@ -157,6 +157,55 @@ methods reaches **30.8%**, against >90% on the original MVTec AD. That is the di
 Better on **6 of 8**. Our two deficits, `rice` and `walnuts`, are the concrete targets — not a
 mythical 0.764.
 
+### Why we lead on 6 of 8 — it is resolution, and nothing else we can find
+
+The obvious candidate explanations do **not** survive. Correlating our per-scenario margin over
+the published PatchCore against our own properties gives weak, unusable relationships:
+crop area retained **r = -0.36**, median region size in cells **r = -0.20**, image AUROC
+**r = -0.31**. None of geometry, defect scale, or detection quality predicts where we win.
+
+The answer comes from running *our own* pipeline at two resolutions against their fixed number:
+
+| scenario | ours@224 | PatchCore | delta | ours@448 | delta |
+|---|---|---|---|---|---|
+| can | 1.9 | 4.7 | -2.8 | 13.8 | **+9.1** |
+| fabric | 4.3 | 11.0 | -6.7 | 18.9 | **+7.9** |
+| fruit_jelly | 35.0 | 46.7 | -11.7 | 47.6 | **+0.9** |
+| rice | 9.0 | 25.6 | -16.6 | 22.6 | -3.0 |
+| sheet_metal | 11.5 | 15.2 | -3.7 | 25.3 | **+10.1** |
+| vial | 46.1 | 62.2 | -16.1 | 71.9 | **+9.7** |
+| **mean** | **18.0** | **27.6** | **-9.6** | **33.4** | **+5.8** |
+
+**At 224 we lose to their PatchCore on 6 of 6, by a mean of 9.6 points. At 448 we beat it on 5 of
+6, by 5.8. The swing is +15.4 — exactly our independently measured 224 -> 448 gain of +15.4.**
+
+**The entire margin is resolution.** Not geometry, not the region-set fix, not any modelling
+choice. We run the same method at a higher effective resolution on a dataset built around defects
+too small to survive downscaling — 49.4% of AD 2's regions are smaller than one patch cell even
+at 448.
+
+### The uncomfortable corollary
+
+**At matched low resolution their configuration is better than ours by ~9.6 points.** Whatever
+their PatchCore does — backbone, coreset ratio, preprocessing, smoothing — it extracts more from
+224px than ours does. That is free improvement sitting on the table, and we do not know what it
+is.
+
+It also means our lead is a **configuration choice they did not make, not a methodological
+advantage**. A leaderboard legitimately compares methods as their authors configured them, so the
+result stands as a result — but it is not evidence our method is better, and **if the baseline
+were re-run at 448 it might well beat us.** Any external claim should say this plainly rather
+than let "beats PatchCore" imply something it does not.
+
+### What this makes worth doing
+
+1. **Find out what their PatchCore does better at low resolution.** Their per-scenario numbers are
+   published; our 224 arm is in the repo. A configuration diff is cheap and the payoff compounds
+   with everything else.
+2. **Push resolution further** — it is now measured as the dominant lever twice over, and E5's 768
+   arm is the direct continuation.
+3. **`rice` and `walnuts`** remain the two scenarios where resolution does not rescue us.
+
 ### The caveat that prevents this being a claim
 
 **The splits differ and cannot currently be reconciled.** Ours is `test_public`; the table is

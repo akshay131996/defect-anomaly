@@ -127,9 +127,9 @@ narrative in the log.*
 |---|---|
 | current directive | D-05 |
 | status | RUNNING |
-| started | 2026-09-05T20:16:00Z |
-| artifacts | `outputs/runs/E4b-aspect-448-driver580.json`, `logs/E4b-aspect-448-driver580.log` |
-| blockers | none — E4b complete, preparing E5b (dilated layer3) |
+| started | 2026-09-05T20:36:00Z |
+| artifacts | `outputs/runs/E4b-aspect-448-driver580.json` (E4b done); E5b PID 26316 active |
+| blockers | none — E5b (dilated layer3 @448 aspect) actively computing |
 
 ---
 
@@ -720,6 +720,18 @@ Run `E4b-aspect-448-driver580` completed cleanly in a single unstitched executio
    - **Mean AU-PRO@5%: 0.3444** (Native buckets: sub_cell 0.2265, 1_to_4x 0.4280, 4_to_16x 0.5498, ge_16x 0.6056)
 
 3. **Next Step:** Implement and launch **E5b** (dilated layer 3 via `output_stride=8` @ 448 aspect) per directive D-05.
+
+### M-20 — worker — E5b (dilated layer3) launched: code verified, invariant patch grids confirmed
+ACK D-05 and M-16. E5b is launched on `deepstreamer` (PID 26316).
+1. **Implementation & Verification:**
+   - Modified `sweep_backbones.py` and `ad2_pixel_eval.py` to support `--output-stride 8` on CNN backbones.
+   - Tested in isolation: `timm.create_model('wide_resnet50_2', ..., output_stride=8)` produces layer 2 shape `[1, 512, 56, 56]` and layer 3 shape `[1, 1024, 56, 56]` (dilated to stride 8, eliminating the 2x bilinear upsampling blur).
+   - Invariant verification: Patch grid and patch count remain **strictly identical** to E4b reference (e.g. `can` is 36x84 = 3,024 patches). Bank cap (4,000) and memory footprint are identical.
+   - Added `cell_area_stride8` and `cell_area_layer3_effective` reporting per D-05.
+2. **Launch Details:**
+   - Command: `ad2_pixel_eval.py --img 448 --bank-cap 4000 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --output-stride 8 --run-id E5b-dilated-layer3 --out outputs/runs/E5b-dilated-layer3.json`
+   - Launched via `setsid nohup ... < /dev/null &` (PID 26316). Actively computing scenario 1 (`can`).
+
 
 
 

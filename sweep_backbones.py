@@ -99,9 +99,12 @@ class PatchExtractor:
         self.kind = spec["kind"]
         self.img = spec["img"]
         if self.kind == "cnn":
+            kwargs = {}
+            if "output_stride" in spec and spec["output_stride"]:
+                kwargs["output_stride"] = spec["output_stride"]
             self.model = timm.create_model(
                 spec["name"], pretrained=True, features_only=True,
-                out_indices=spec["out_indices"]).to(DEVICE).eval()
+                out_indices=spec["out_indices"], **kwargs).to(DEVICE).eval()
             cfg = timm.data.resolve_data_config({}, model=self.model)
             cfg["input_size"] = (3, self.img, self.img)
         else:

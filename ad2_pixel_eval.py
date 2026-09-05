@@ -314,6 +314,8 @@ def main():
                     help="Disable native fixed region sets and use legacy post-resize connected components")
     ap.add_argument("--resume", action="store_true",
                     help="Resume evaluation by reusing scenarios already computed in output JSON")
+    ap.add_argument("--output-stride", type=int, default=None, choices=[8, 16],
+                    help="Output stride for CNN backbones (e.g. 8 to dilate layer 3, E5b)")
     args = ap.parse_args()
 
     if args.squash:
@@ -331,6 +333,9 @@ def main():
     if args.img:
         arm["img"] = args.img
         arm["tag"] = f"{ARM['name']}_{args.img}"
+    if args.output_stride:
+        arm["output_stride"] = args.output_stride
+        arm["tag"] = f"{arm['tag']}_os{args.output_stride}"
     ex = sb.PatchExtractor(arm)
 
     if args.geometry == "squash":
@@ -378,6 +383,7 @@ def main():
             "gauss_sigma": args.gauss_sigma,
             "coreset_ratio": CORESET_RATIO,
             "geometry": args.geometry,
+            "output_stride": args.output_stride,
             "fixed_regions": not args.no_fixed_regions,
             "native_min_region_px": args.native_min_region_px if not args.no_fixed_regions else None,
         },
@@ -605,6 +611,9 @@ def main():
                 buckets[b]["pro30_sum"] += p30
             res["cell_area_448"] = float(cell_area_448)
             res["cell_area_nominal"] = float((w_nat * h_nat) / n_patches)
+            res["cell_area_stride8"] = float((w_nat * h_nat) / n_patches)
+            layer3_factor = 1.0 if args.output_stride == 8 else 4.0
+            res["cell_area_layer3_effective"] = float(res["cell_area_stride8"] * layer3_factor)
             res["buckets"] = {
                 b: {
                     "count": buckets[b]["count"],

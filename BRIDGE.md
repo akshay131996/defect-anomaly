@@ -148,10 +148,10 @@ stated conclusion follows from the numbers — those are two different checks.*
   0.608, `rice` 0.638) and average 0.208 AU-PRO against 0.481 for the other four. Detection
   quality predicts AU-PRO better than defect scale does (R^2 0.744 vs 0.605). See M-09. If
   E5 confirms this, **E7 becomes the second load-bearing experiment**, not a tidy-up.
-- **OQ-3 — what closes the remaining 2.2x?** Evaluation protocol is closed (E4 refuted it).
-  The live hypothesis is the patch grid. Note that even 1024 input leaves cells at ~308
-  native px against a 77 px floor, so resolution alone is not obviously sufficient. If E5
-  disappoints, this is the question with no candidate behind it.
+- **OQ-3 — what closes the remaining 2.2x?** **Partly answered (M-10):** two independent
+  levers, not one. Resolution (E5) recovers the 49.4% of regions below one cell but is
+  bounded at ~0.61, because already-resolved regions score only 0.6056. Representation (E7)
+  must carry the rest. Still open: whether E7 can actually deliver ~0.16, and by what means.
 
 ---
 
@@ -326,4 +326,42 @@ scenarios. That is worth revisiting under correct geometry, and it is a differen
 resolution rather than a competing explanation for the same one.
 
 Recorded now, before E5 runs, so the predictions cannot be fitted after the fact.
+
+### M-10 — planner — resolution alone provably cannot close the gap
+Planner analysis from `outputs/runs/E5a-region-breakdown.json`. No pod time.
+
+**The largest-defect bucket is the ceiling on what resolution can buy.** Regions at
+`>= 16x` cell area are already spatially unconstrained — they span sixteen or more patch
+cells, so a finer grid has almost nothing to add. They score **0.6056** (n = 247).
+
+If resolution were perfect and every region scored as well as those already-resolved ones,
+the mean would be **~0.61 — still about 0.16 below the published 0.764.**
+
+**Resolution therefore cannot be the whole answer, and this is arithmetic rather than
+inference.** It follows from a bucket the current model already scores, not from a
+projection about a resolution we have not run.
+
+**What is and is not reliable here.** The global buckets are well populated (756 / 354 /
+173 / 247) and can be trusted. **The per-scenario breakdowns cannot** — `fabric` has exactly
+6 regions in each of its two largest buckets, giving a meaningless 0.9949 at `4-16x` and
+0.1108 at `>= 16x`; `rice`, `wallplugs` and `sheet_metal` have 12-18 regions in theirs. Any
+per-scenario large-bucket number in this file should be treated as noise, and the macro
+ceiling computed from them (0.625) inherits that noise. **Use the global 0.606.**
+
+**One condition attaches to the argument.** It assumes higher input resolution does not also
+lift the `>= 16x` bucket. That is exactly D-04's registered prediction 2 (`ge_16x` moves
+less than 0.03 from 448 to 768). **If `ge_16x` instead rises substantially, this ceiling
+argument weakens and resolution is helping through some mechanism other than resolving small
+defects** — which would itself be worth knowing, and would mean the "spatial ceiling" framing
+is wrong even though the numbers went the right way.
+
+**Consequence.** Two levers are needed, not one, and they are independent:
+
+1. **Resolution** (E5) — recovers the 49.4% of regions below one cell. Bounded at ~0.61.
+2. **Representation** (E7) — must lift the already-resolved regions from 0.606 toward 0.764.
+   Nothing spatial can do this; it needs features that separate defects better.
+
+This answers **OQ-3** ("what closes the remaining 2.2x?") with a decomposition rather than a
+single candidate, and it is the strongest reason yet that **E7 must run regardless of how E5
+turns out.** Even a total success on E5 leaves roughly 0.16 on the table.
 

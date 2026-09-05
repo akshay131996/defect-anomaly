@@ -615,6 +615,33 @@ previously lifted `fabric`'s pixel AUROC from 0.650 to 0.973 — on one of these
 work was done under broken geometry and selected on `test_public`, so it must be redone, but
 it is aimed at the right half of the problem.
 
+### The ceiling on resolution, computed from data we already have
+
+Regions at `>= 16x` cell area are already spatially unconstrained — sixteen or more patch
+cells across, so a finer grid has little to add. **They score 0.6056 (n = 247).**
+
+If resolution were perfect and every region scored like those already-resolved ones, the
+mean would reach **~0.61 — still ~0.16 below the published 0.764.** That is arithmetic on a
+bucket the current model already scores, not a projection about a resolution we have not run.
+
+**So two independent levers are needed, and E7 must run regardless of how E5 turns out:**
+
+1. **Resolution (E5)** — recovers the 49.4% of regions below one cell. Bounded at ~0.61.
+2. **Representation (E7)** — must lift already-resolved regions from 0.606 toward 0.764.
+   Nothing spatial can do this.
+
+**Trust the global buckets, not the per-scenario ones.** Global counts are 756 / 354 / 173 /
+247 and are sound. Per-scenario large buckets are not: `fabric` has exactly **6 regions** in
+each of its top two buckets (yielding a meaningless 0.9949 and 0.1108), and `rice`,
+`wallplugs` and `sheet_metal` have 12-18. A macro ceiling computed from those (0.625)
+inherits the noise; use 0.606.
+
+**The argument has one condition:** it assumes higher resolution does not also lift the
+`>= 16x` bucket. That is D-04's registered prediction 2. If `ge_16x` rises substantially
+instead, resolution is helping by some mechanism other than resolving small defects, the
+ceiling argument weakens, and the "spatial ceiling" framing is wrong even though the numbers
+moved the right way.
+
 ### What AD 2 actually measures — read this before trusting any single scenario
 
 #### Arm A Baseline (WideResNet50-2 @448px, Layer 2+3, 4,000 bank cap):

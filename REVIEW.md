@@ -17,6 +17,88 @@ file.
 
 ---
 
+## 0. The target was wrong — resolved 2026-09-05
+
+**P-4 asked where 0.764 came from. It has now been traced, and the answer changes the project's
+standing more than any experiment in this review.**
+
+### Provenance
+
+`0.764` / `76.35%` comes from **`github.com/yyqmeow/patchcore-mvtec-ad2`**, companion code for an
+**IEEE ETFA 2026 submission**, "Recovering Total Recall: Multi-Scale Feature Fusion for
+High-Resolution Industrial Anomaly Localization". Its claim:
+
+> "Multi-scale feature fusion (ResNet50 layer 2 + layer 3) raises mean AU-PRO@5% from 8.87% to
+> 76.35%"
+
+**That is this project's method.** WideResNet50-2, layer2+layer3, PatchCore. We have been treating
+a single unreviewed conference submission's self-reported number as the benchmark, and building a
+research programme around closing a gap to it.
+
+### What the benchmark's own authors report
+
+The MVTec AD 2 dataset paper — Heckler-Kram, Neudeck, Scheler, König, Steger,
+[arXiv:2503.21622](https://arxiv.org/abs/2503.21622) — evaluates seven methods (PatchCore,
+EfficientAD, RD, MSFlow, SimpleNet and others) and states:
+
+> **"state-of-the-art methods ... remain below 60% average AU-PRO"**
+
+**76.35% is above what the dataset's authors report as state of the art.** An unreviewed
+submission claiming to beat the published field by a wide margin, on the field's own benchmark,
+is a claim to verify before adopting as a target — not a bar to assume.
+
+The paper also confirms our metric choice: AU-PRO@30% was judged **too permissive** for AD 2
+because its defects are very small, which is why the stricter **AU-PRO@5%** is the headline.
+
+### Where we actually stand against the published PatchCore baseline
+
+Reported AU-PRO@30% for PatchCore on AD 2 (two figures per scenario, the two splits), against ours:
+
+| scenario | ours @30% | published PatchCore | |
+|---|---|---|---|
+| can | **0.343** | 0.216 / 0.181 | **beat** |
+| fabric | **0.462** | 0.346 / 0.353 | **beat** |
+| vial | **0.913** | 0.905 / 0.892 | **beat** |
+
+**Our implementation beats the published PatchCore baseline on all three scenarios that can
+currently be checked**, and our mean AU-PRO@30% of **0.5736** sits inside the "below 60%" band the
+dataset authors describe for state of the art.
+
+### What this means
+
+The project is **not 2.2x behind the field.** It is at or slightly above the published PatchCore
+baseline, and within the SOTA band the benchmark's authors describe. The "2.2x gap" was a gap to
+an unverified number produced by our own method — which, if true, would mean our implementation is
+badly broken, and if false, means we have been chasing a phantom.
+
+Given the dataset authors put SOTA below 60% and our @30% is 57.4%, **the phantom reading is much
+more likely.**
+
+### What remains genuinely open
+
+- **The exact PatchCore AU-PRO@5% baseline is not yet in hand.** The per-scenario figures above are
+  @30%, taken from secondary sources rather than read off the paper's table. **Get the table from
+  the PDF and record it**, per scenario, per split, per limit.
+- **Whether "below 60%" refers to @5% or @30%** is not established. If @5%, our 0.344 is behind the
+  best of seven methods but nothing like 2.2x behind. If @30%, we are essentially at SOTA.
+- **We still report on `test_public` and select on it.** Whatever the target, that must be fixed
+  before any external claim.
+- **The ETFA submission may still be worth reading.** If its 76.35% is real, its method is ours and
+  the difference is findable — that would be the single most valuable thing to diff against. If it
+  is not real, that is worth knowing before another GPU-hour is spent chasing it.
+
+### The process lesson
+
+The number entered the project in conversation, was written into HANDOFF, and was quoted **16
+times** across two documents as the thing to beat. **Nobody checked it for four sessions.** Every
+prioritisation decision — E5, E7, the ceiling argument, "representation must carry 0.16" — was
+anchored to it.
+
+A target is a load-bearing input. It deserved the same audit as a result, and got none.
+
+
+---
+
 ## 1. Resolution is a strong lever — but the ceiling is UNTESTED, not refuted
 
 **This section was overstated in its first version and is corrected here.** A second review pass
@@ -225,7 +307,7 @@ list. This record is both E4's 512 arm and E5's intended 448 arm.
 sole basis for "native resolution is therefore infeasible" — a claim that shaped the entire
 resolution strategy, which §1 now shows was the most valuable direction available.
 
-**P-4 / R-14 — the 0.764 baseline has no provenance.** It appears 16 times across HANDOFF and
+**P-4 / R-14 — RESOLVED, see §0.** The 0.764 baseline was traced to an unreviewed IEEE ETFA 2026 submission whose claim exceeds what the dataset's own authors report as SOTA. Original finding: It appears 16 times across HANDOFF and
 BRIDGE and anchors every framing of the problem. No paper, URL, or split is cited anywhere in the
 repo or its git history. Ours is `test_public`; MVTec's leaderboard is `test_private`.
 

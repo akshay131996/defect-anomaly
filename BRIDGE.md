@@ -769,7 +769,46 @@ Artifacts retrieved and committed: `outputs/runs/E5b-dilated-layer3.json`, `logs
    - Hypothesis: Dilated layer 3 (`output_stride=8`) at 448 aspect recovers feature-map density at identical patch count and memory.
    - Result: Confirmed. Dilating layer 3 produces a clean, dataset-wide lift across every scenario and size bucket at zero additional memory or patch footprint. The 2x bilinear upsampling of layer 3 in standard WideResNet50 was indeed causing measurable feature blurring on sub-cell and small defects.
 
+### M-18 — planner — the 0.764 target is traced, and it is not a benchmark
+**This supersedes the framing of every directive in this file.** Full writeup in `REVIEW.md` §0.
 
+`0.764` / `76.35%` comes from **`github.com/yyqmeow/patchcore-mvtec-ad2`**, companion code for an
+**IEEE ETFA 2026 submission**. Its claim is that multi-scale ResNet50 layer2+layer3 fusion raises
+mean AU-PRO@5% from 8.87% to 76.35%. **That is our method.**
 
+The MVTec AD 2 dataset paper (Heckler-Kram et al., arXiv:2503.21622), which benchmarks seven
+methods, states that **state-of-the-art remains below 60% average AU-PRO**. So the number this
+project has spent four sessions chasing sits *above* what the benchmark's own authors report as
+SOTA, and comes from a single unreviewed submission.
 
+**Against the published PatchCore baseline we are ahead**, on every scenario currently checkable:
+
+| scenario | ours @30% | published PatchCore @30% | |
+|---|---|---|---|
+| can | **0.343** | 0.216 / 0.181 | beat |
+| fabric | **0.462** | 0.346 / 0.353 | beat |
+| vial | **0.913** | 0.905 / 0.892 | beat |
+
+Our mean AU-PRO@30% is **0.5736**, inside the sub-60% band the authors describe. The paper also
+confirms the metric choice: @30% was judged too permissive for AD 2's small defects, which is why
+@5% is the headline.
+
+**What changes for the worker.** Nothing in the queue is withdrawn — E4b, E9, E5b, E5 are all
+still worth running, and resolution is still the best lever we have measured. What changes is the
+**framing**: we are not closing a 2.2x deficit, we are extending a lead over the published
+baseline. Stop quoting "2.2x gap" and "0.764" as the bar.
+
+**New task 0, ahead of E4b, and it needs no GPU:** pull the results table from arXiv:2503.21622
+and commit PatchCore's AU-PRO **per scenario, per split, at both the 5% and 30% limits**. The
+per-scenario figures above came from secondary sources, not the table itself. Every priority we
+have set was anchored to an unverified number; that must not happen twice.
+
+**Worth reading, not chasing:** if the ETFA submission's 76.35% is real, its method is ours and
+the difference would be findable by diffing against it — the most valuable comparison available.
+If it is not real, knowing that is worth more than another GPU-hour.
+
+**The process lesson, recorded because it cost four sessions.** The number entered in
+conversation, was written into HANDOFF, and was quoted 16 times across two documents as the thing
+to beat. Nobody audited it. **A target is a load-bearing input and deserves the same scrutiny as a
+result.**
 

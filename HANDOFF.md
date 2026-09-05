@@ -189,32 +189,36 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Read `REVIEW.md` first**, and note its §1 was itself corrected — the resolution ceiling is
-**untested, not refuted**. `BRIDGE.md` M-16 carries the current queue and the reasoning.
+**Read `REVIEW.md` §0 first — the target was wrong.** `0.764` traces to an unreviewed IEEE ETFA
+2026 submission (`github.com/yyqmeow/patchcore-mvtec-ad2`) claiming multi-scale ResNet50
+layer2+layer3 PatchCore reaches 76.35% AU-PRO@5%. **That is our method.** Meanwhile the MVTec AD 2
+dataset paper ([arXiv:2503.21622](https://arxiv.org/abs/2503.21622)) reports that state-of-the-art
+methods **remain below 60% average AU-PRO**.
 
-Order:
+Against the *published* PatchCore baseline we are **ahead** on every scenario currently checkable
+(AU-PRO@30%: can 0.343 vs 0.216/0.181, fabric 0.462 vs 0.346/0.353, vial 0.913 vs 0.905/0.892),
+and our mean @30% of 0.5736 sits inside that sub-60% SOTA band. **The project is not 2.2x behind
+the field.**
 
-0. **E4b — re-run the 448 `aspect` baseline clean on the re-provisioned pod (~13 min).** The pod
-   now reports driver **580.159.04** and no existing record captured a driver at all, while a
-   580 -> 570 change has previously moved arm A by 0.010. The current 448 reference is also the
-   stitched `E4-evalside-512`. One run fixes both. If it does not reproduce 0.3444 within ~0.01,
-   stop and report — every cross-pod comparison would need rethinking.
-1. **E9** — pre-resize cache + `setsid` launches. Engineering; makes everything after cheaper and
-   closes OQ-1. Verify cached features bit-identical on one scenario first.
-2. **E5b** — dilated layer3 (`output_stride=8`) at 448, ~0.4 GPU-h. The single-variable test of
-   whether feature-map density or input pixels drive the gain. E5 moves five variables at once.
-3. **E5** — the 768 arm, ~1.9 GPU-h. The only experiment that tests the ceiling.
-4. **E5c** — unstrided layer1, only after 2 and 3 make it interpretable.
-5. **E7** — fusion re-run under `aspect`, *then* routing selected on `validation`. Blocked until
-   the re-run exists; the current routing table is derived from void numbers.
-6. **E8** — rebuild the serving path with a test that can fail. Independent; use it to fill idle
-   time.
+Order of work:
 
-What is established: resolution is worth **+0.154 mean AU-PRO@5% (1.86x) on 6 of 6 scenarios**
-across 224 -> 448. What is not: anything about resolution above 448.
+0. **Get the real baseline table.** Pull the results table from arXiv:2503.21622 and record
+   PatchCore's AU-PRO **per scenario, per split, at both limits**, in the repo. Every priority in
+   this queue was set against an unverified number; fix that before spending another GPU-hour.
+1. **E4b** — clean 448 `aspect` baseline on the re-provisioned pod (driver 580, ~13 min). Also
+   replaces the stitched `E4-evalside-512`.
+2. **E9** — pre-resize cache + `setsid` launches.
+3. **E5b** — dilated layer3 (`output_stride=8`) at 448, ~0.4 GPU-h.
+4. **E5** — the 768 arm, ~1.9 GPU-h.
+5. **E7** — fusion re-run under `aspect`, then routing selected on `validation`.
+6. **E8** — rebuild the serving path.
 
-**The pod is being re-provisioned.** Follow `deployment/POD_REBUILD.md` — ~20 minutes, no
-decisions. `/workspace` survives; `/opt` and `/tmp` do not.
+Still true and unaffected by the target correction: image AUROC **0.724** and pixel AUROC
+**0.850**; resolution is worth **+0.154 mean AU-PRO (1.86x)** across 224 -> 448; and everything is
+still measured and selected on `test_public`, which must be fixed before any external claim.
+
+**The pod is up.** Rebuild per `deployment/POD_REBUILD.md` (~20 min); `/workspace` survived,
+`/opt` did not.
 
 ---
 

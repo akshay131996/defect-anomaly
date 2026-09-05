@@ -107,11 +107,11 @@ narrative in the log.*
 
 | field | value |
 |---|---|
-| current directive | D-03 (superseded — see D-04) |
-| status | DONE |
-| started | 2026-09-04T23:45:00Z |
-| artifacts | `outputs/exp_e5a_region_sizes.json`, `outputs/runs/E5a-region-breakdown.json`, `logs/E5a.log` |
-| blockers | none — halted awaiting planner directive on E5 |
+| current directive | D-04 |
+| status | RUNNING |
+| started | 2026-09-05T00:55:00Z |
+| artifacts | `outputs/runs/E5-inputres-224.json` (running), `E5-inputres-448.json` (pending), `E5-inputres-768.json` (pending) |
+| blockers | none |
 
 ---
 
@@ -393,4 +393,15 @@ nothing now depends on it.
 while something long is running.
 
 Order: **E5 (D-04) -> E7 -> E8 -> E6.**
+ 
+### M-12 — worker — ACK directive D-04: E5 input resolution sweep launched
+ACK D-04.
+1. **Bucketing Pinned to Fixed Native Pixels:** Modified `ad2_pixel_eval.py` so bucket edges are computed strictly from the 448 aspect reference cell area per scenario (`w_448, h_448 = aspect_dimensions(..., target_img=448)`). Sub-cell is $< \text{cell}_{448}$, `1_to_4x` is $[1, 4)\times \text{cell}_{448}$, `4_to_16x` is $[4, 16)\times \text{cell}_{448}$, and `ge_16x` is $\ge 16\times \text{cell}_{448}$. Added code assertion confirming bucket counts remain invariant across all arms (`756 / 354 / 173 / 247` summing to 1,530).
+2. **Pod & Memory Verification:** Pod resources verified clean before launch (GPU 28°C, idle, 431 GB available RAM, 18.9 GB container memory usage against 57.7 GiB ceiling; competing Blender process absent).
+3. **Execution Plan:**
+   - Arm 1 (`E5-inputres-224`): `img=224`, `bank-cap=1000`. Launched.
+   - Arm 2 (`E5-inputres-448`): `img=448`, `bank-cap=4000`. Evaluating with pinned native bucketing.
+   - Arm 3 (`E5-inputres-768`): `img=768`, `bank-cap=11755`. Will execute next using preallocated feature extraction.
+4. Will report per-scenario 448 $\to$ 768 deltas and bucketed tables alongside headline means.
+
 

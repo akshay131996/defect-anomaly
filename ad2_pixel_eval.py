@@ -511,25 +511,31 @@ def main():
             assert res["n_regions"] == total_native_regions, \
                 f"Region count mismatch: {res['n_regions']} vs {total_native_regions}"
 
-        cell_area = (w_nat * h_nat) / n_patches
+        # Fixed native pixel bucket edges pinned to 448 aspect geometry (D-04)
+        # Prevents population migration across arms when input resolution changes
+        w_448, h_448 = aspect_dimensions(w_nat, h_nat, target_img=448, stride=32)
+        n_patches_448 = (h_448 // 8) * (w_448 // 8)
+        cell_area_448 = (w_nat * h_nat) / n_patches_448
+
         if "per_region_pro" in res and res["per_region_pro"].get(0.05) and len(scenario_region_sizes) == len(res["per_region_pro"][0.05]):
             p5s = res["per_region_pro"][0.05]
             p30s = res["per_region_pro"][0.3]
             buckets = {b: {"count": 0, "pro5_sum": 0.0, "pro30_sum": 0.0}
                        for b in ["sub_cell", "1_to_4x", "4_to_16x", "ge_16x"]}
             for sz, p5, p30 in zip(scenario_region_sizes, p5s, p30s):
-                if sz < cell_area:
+                if sz < cell_area_448:
                     b = "sub_cell"
-                elif sz < 4 * cell_area:
+                elif sz < 4 * cell_area_448:
                     b = "1_to_4x"
-                elif sz < 16 * cell_area:
+                elif sz < 16 * cell_area_448:
                     b = "4_to_16x"
                 else:
                     b = "ge_16x"
                 buckets[b]["count"] += 1
                 buckets[b]["pro5_sum"] += p5
                 buckets[b]["pro30_sum"] += p30
-            res["cell_area"] = float(cell_area)
+            res["cell_area_448"] = float(cell_area_448)
+            res["cell_area_nominal"] = float((w_nat * h_nat) / n_patches)
             res["buckets"] = {
                 b: {
                     "count": buckets[b]["count"],
@@ -616,6 +622,11 @@ def main():
                         total_bucket_p5_sums[b] += data["buckets"][b]["mean_au_pro@0.05"] * cnt
         if has_buckets:
             tot_b_regs = sum(total_bucket_counts.values())
+            if not args.no_fixed_regions and len(done) == 8:
+                assert total_bucket_counts["sub_cell"] == 756, f"sub_cell bucket count mismatch: {total_bucket_counts['sub_cell']} vs 756"
+                assert total_bucket_counts["1_to_4x"] == 354, f"1_to_4x bucket count mismatch: {total_bucket_counts['1_to_4x']} vs 354"
+                assert total_bucket_counts["4_to_16x"] == 173, f"4_to_16x bucket count mismatch: {total_bucket_counts['4_to_16x']} vs 173"
+                assert total_bucket_counts["ge_16x"] == 247, f"ge_16x bucket count mismatch: {total_bucket_counts['ge_16x']} vs 247"
             summary["buckets"] = {
                 b: {
                     "count": total_bucket_counts[b],

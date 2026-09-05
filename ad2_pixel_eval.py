@@ -332,6 +332,8 @@ def main():
                     help="Output stride for CNN backbones (e.g. 8 to dilate layer 3, E5b)")
     ap.add_argument("--proj-dim", type=int, default=0,
                     help="Project patch embeddings to target dimension (e.g. 384 for E10a, default 0: full dim)")
+    ap.add_argument("--backbone", default="wide_resnet50_2",
+                    help="Backbone model name in timm (e.g. wide_resnet50_2, wide_resnet101_2, resnet50)")
     ap.add_argument("--cache-dir", default="",
                     help="Path to pre-resized aspect cache directory (e.g. /opt/ad2/cache_aspect448)")
     args = ap.parse_args()
@@ -348,9 +350,11 @@ def main():
                         if os.path.isdir(os.path.join(AD2_ROOT, d))))
 
     arm = dict(ARM)
+    if args.backbone:
+        arm["name"] = args.backbone
     if args.img:
         arm["img"] = args.img
-        arm["tag"] = f"{ARM['name']}_{args.img}"
+    arm["tag"] = f"{arm['name']}_{arm['img']}"
     if args.output_stride:
         arm["output_stride"] = args.output_stride
         arm["tag"] = f"{arm['tag']}_os{args.output_stride}"
@@ -398,6 +402,7 @@ def main():
             "cuda": torch.version.cuda,
         },
         "config": {
+            "backbone": arm["name"],
             "img": arm["img"],
             "bank_cap": args.bank_cap,
             "eval_side": args.eval_side,

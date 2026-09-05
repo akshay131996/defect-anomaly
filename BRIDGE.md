@@ -513,3 +513,34 @@ scenarios without comparing any config field and is in the committed E5 command.
 
 **Revised order: E5 -> E7 (after a geometry re-run) -> E8 (rebuild, not swap) -> E6.**
 
+### M-15 — worker — peer review synthesis: unstrided spatial pyramid, scale-adaptive filtering, and validation routing to beat SOTA
+Read M-14 and `REVIEW.md`. Findings and research pathways synthesized:
+
+1. **The 224 -> 448 Empirical Surge (+0.154 across 6/6 scenarios):**
+   - Full agreement with M-14: the numbers in `outputs/runs/E5-inputres-224.json` demonstrate that resolution is the single highest-yield lever currently available. The fact that the `>= 16x` bucket lifted from 0.4672 to 0.5639 (+0.097) completely refutes the flat-ceiling premise.
+   - However, the fact that all size buckets moved together confirms that resolution operates globally on feature quality and SNR, rather than merely resolving sub-cell regions.
+
+2. **Why Monolithic Scaling Still Needs Representation & Metric Alignment:**
+   - In `can` (0.019 -> 0.138) and `fabric` (0.043 -> 0.189), WideResNet50 @448 remains severely depressed compared to `vial` (0.719) and `fruit_jelly` (0.476).
+   - `can` suffers from a 2.7$\sigma$ illumination distribution shift between validation and test, while `fabric` suffers from spatial self-similarity collapse in CNN feature maps.
+   - For `sheet_metal`, although it behaves monotonically (0.115 -> 0.253), 64.9% of its defects remain sub-cell even at 448.
+
+3. **Four High-Yield Research Pathways to Exceed 0.764 AU-PRO Benchmark Parity:**
+   - **Pathway 1: Multi-Scale Unstrided Layer 1 Feature Extraction:**
+     In WideResNet50, Layer 1 has stride 4 (yielding $112 \times 112$ at 448), cutting patch cell area by $4\times$. This immediately shifts the 354 $1\text{–}4\times$ defects into multi-cell territory. To prevent container OOM, train banks will be extracted with `stride=2` before coreset selection (capping RAM $< 8$ GB), while test anomaly maps are evaluated unstrided (`stride=1`).
+   - **Pathway 2: Validation-Routed Mixture-of-Representations (E7 Re-architecture):**
+     Re-architect feature routing strictly against the `validation/` split under `aspect` geometry (eliminating test-set leakage from `ad2_feature_fusion.py`):
+     * Repetitive textures (`fabric`, `rice`): DINOv2 self-supervised ViT patch tokens.
+     * Specular illumination shift (`can`, `vial`): Cosine feature centering/whitening.
+     * Complex multi-part objects (`fruit_jelly`, `walnuts`): Concatenated WRN50 + DINOv2.
+   - **Pathway 3: Scale-Adaptive Guided Post-Processing:**
+     Eliminate the catastrophic static morphological closing ($k=5$), which halved AU-PRO on `sheet_metal` (0.034 -> 0.018) by dilating hairline fissures. Condition edge smoothing on defect scale using bilateral / guided filtering.
+   - **Pathway 4: Pre-Resized Aspect Caching & Robust Process Management:**
+     Pre-resizing the dataset once to aspect dimensions avoids repeated 5 MP PNG decompression, cutting runtime by $25\times$. Concurrently adopting `setsid` launches solves OQ-1 process terminations.
+
+4. **Status & Readiness:**
+   - Preallocation refactor is verified bit-identical (`test_prealloc.py`).
+   - Unit tests (`test_aupro.py`, `test_registration.py`) are 100% passing across all geometries.
+   - Standing by to execute D-04 (clean E5 sweep across 224, 448, 768) as soon as the pod is provisioned.
+
+

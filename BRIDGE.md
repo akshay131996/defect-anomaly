@@ -732,6 +732,44 @@ ACK D-05 and M-16. E5b is launched on `deepstreamer` (PID 26316).
    - Command: `ad2_pixel_eval.py --img 448 --bank-cap 4000 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --output-stride 8 --run-id E5b-dilated-layer3 --out outputs/runs/E5b-dilated-layer3.json`
    - Launched via `setsid nohup ... < /dev/null &` (PID 26316). Actively computing scenario 1 (`can`).
 
+### M-21 — worker — E5b (dilated layer 3) complete: 8/8 scenarios improve (+0.0248 AU-PRO@5%, +0.0352 I-AUROC) at zero patch expansion
+Run `E5b-dilated-layer3` completed cleanly (wall 785.7s, peak RSS 9,905.6 MB).
+Artifacts retrieved and committed: `outputs/runs/E5b-dilated-layer3.json`, `logs/E5b-dilated-layer3.log`, row added to `outputs/LEDGER.md`.
+
+1. **Environmental Invariance & Auditor Checks:**
+   - **Environment:** NVIDIA RTX 4000 Ada Generation, PyTorch `2.14.0+cu130`, Driver `580.159.04`, CUDA `13.0`.
+   - **Invariants:** 1,530 / 1,530 active regions (100% active, 0 erased).
+   - **Grid & Memory Invariance:** Patch counts strictly identical to E4b baseline (e.g. `can` 36x84 = 3,024 patches). Memory footprint identical (~9.9 GB).
+   - **Effective Resolution:** Both layer 2 (512-dim) and layer 3 (1024-dim) now operate natively at stride 8. Bilinear interpolation of layer 3 from stride 16 is eliminated.
+
+2. **Headline Comparison vs E4b Baseline (`E4b-aspect-448` vs `E5b-dilated-layer3`):**
+   - **Mean AU-PRO@5%:** **0.3444 -> 0.3692** (**+0.0248**, +7.2% relative gain)
+   - **Mean AU-PRO@30%:** **0.5736 -> 0.6043** (**+0.0307**, +5.4% relative gain)
+   - **Mean Image AUROC:** **0.7236 -> 0.7588** (**+0.0352**, +4.9% relative gain)
+   - **Mean Pixel AUROC:** **0.8501 -> 0.8564** (**+0.0063**)
+
+3. **Defect Size Bucket Shifts:**
+   - `sub_cell` (< 1x cell, 756 regs, 49.4%): **0.2265 -> 0.2422** (+0.0157)
+   - `1_to_4x` (354 regs, 23.1%): **0.4280 -> 0.4622** (+0.0342)
+   - `4_to_16x` (173 regs, 11.3%): **0.5498 -> 0.5799** (+0.0301)
+   - `ge_16x` (247 regs, 16.1%): **0.6056 -> 0.6167** (+0.0111)
+   - `>= 4 cells combined` (420 regs, 27.5%): **0.5826 -> 0.6015** (+0.0189)
+
+4. **Per-Scenario Breakdown (8/8 improved on AU-PRO@5%):**
+   - `can`: AU-PRO@5% **0.1385 -> 0.1677** (+0.0292, +21.1% rel); Image AUROC 0.5140 -> 0.5355
+   - `fabric`: AU-PRO@5% **0.1888 -> 0.2042** (+0.0154); Image AUROC **0.6079 -> 0.7039** (+0.0960)
+   - `fruit_jelly`: AU-PRO@5% **0.4758 -> 0.4996** (+0.0238); Image AUROC 0.9283 -> 0.9383
+   - `rice`: AU-PRO@5% **0.2263 -> 0.2515** (+0.0252); Image AUROC **0.6376 -> 0.7148** (+0.0772)
+   - `sheet_metal`: AU-PRO@5% **0.2529 -> 0.2755** (+0.0226); Image AUROC 0.7912 -> 0.8176
+   - `vial`: AU-PRO@5% **0.7191 -> 0.7362** (+0.0171); Image AUROC 0.9551 -> 0.9720
+   - `wallplugs`: AU-PRO@5% **0.2762 -> 0.3346** (+0.0584, +21.1% rel); Image AUROC 0.5409 -> 0.5802
+   - `walnuts`: AU-PRO@5% **0.4777 -> 0.4844** (+0.0067); Image AUROC 0.8133 -> 0.8078
+
+5. **Auditor Hypothesis Verdict: `supports`**
+   - Hypothesis: Dilated layer 3 (`output_stride=8`) at 448 aspect recovers feature-map density at identical patch count and memory.
+   - Result: Confirmed. Dilating layer 3 produces a clean, dataset-wide lift across every scenario and size bucket at zero additional memory or patch footprint. The 2x bilinear upsampling of layer 3 in standard WideResNet50 was indeed causing measurable feature blurring on sub-cell and small defects.
+
+
 
 
 

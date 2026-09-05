@@ -16,6 +16,10 @@ https://claude.ai/code/artifact/9fd97b0d-e64f-4f71-9ec9-e8586be6e6d4
 
 ## 0. Working agreement — planner/auditor and worker
 
+**`THINKING_PROCESS.md` explains how the planner reasons** — the judgement calls between the rules
+below, each tied to the episode in this project that produced it. Read it once; it is what lets you
+predict what will be accepted, and argue with it on the same terms.
+
 **Day-to-day coordination happens in `BRIDGE.md`, not here.** That file is the mailbox:
 the current directive, worker status, audit verdicts, open questions, and an append-only
 log. **This file is the specification** — what the experiments are and why. Read BRIDGE

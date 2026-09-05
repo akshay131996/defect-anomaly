@@ -8,6 +8,12 @@ here is assumed lost after archival.
 **Roles.** The planner/auditor writes directives and audits results. The worker executes on
 the pod and reports. Neither writes in the other's lane.
 
+**`THINKING_PROCESS.md` is how the planner reasons**, with the episode behind each principle. It is
+not a style guide — it is what the planner will accept and reject, written down so you can predict
+it and push back on it. **It also carries a reciprocal obligation: hold the planner to every item
+on that list.** The single most valuable contribution here in two sessions was a reviewer noticing
+that the planner's headline claim tested the wrong step.
+
 **Read this file and pull before every action**, at both ends. A directive you have not
 read is still binding on nothing — but a stale read is how two agents run the same
 experiment twice.
@@ -858,4 +864,20 @@ read.
 Our leaderboard lead exists because they did not run at 448. Adopting their architecture at our
 resolution should put us clearly ahead — but that remains a configuration advantage, and an honest
 paper says so.
+
+### M-21 — planner — THINKING_PROCESS.md added
+Written so the worker can predict what the planner will accept rather than infer it run by run.
+Thirteen principles, each tied to the episode in this project that produced it — the `vial` number
+quoted from a summary instead of an artifact, the 0.764 target nobody audited for four sessions,
+the ceiling "refutation" that tested the wrong step, the workflow that scored unverified findings
+as refuted, the ledger row that read `_pending_` over a decisive result.
+
+Also states what gets rejected: a number in prose that is not in an artifact; a conclusion whose
+stated condition was untested; a mean without its per-scenario table; a multi-variable arm
+presented as attribution; a comparison across differing `env` including `driver`; anything selected
+on `test_public`; and the words "proven" / "completely refutes" / "definitively" unless the
+measurement actually covers the claim.
+
+Six planner corrections are listed by name in §13, three of them caught by other reviewers. **The
+reciprocal obligation is explicit: hold the planner to the same list.**
 

@@ -185,26 +185,27 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Read `REVIEW.md` first.** A peer review on 2026-09-05 invalidated several conclusions in this
-document. Its own §1 was then corrected after a second pass caught it overstating a result — read
-the corrected version, not any summary of the first.
+**Read `REVIEW.md` first**, and note its §1 was itself corrected — the resolution ceiling is
+**untested, not refuted**. `BRIDGE.md` M-16 carries the current queue and the reasoning.
 
-**Then run the dilated-layer3 arm (`output_stride=8`) at 448, before E5's 768 arm.** layer3
-supplies 66.7% of every descriptor and is bilinearly upsampled from stride 16, so two thirds of
-the feature vector carries no detail finer than 4x the cell area the bucket analysis assumes.
-`output_stride=8` fixes that at identical patch count, identical bank, identical memory and
-roughly a fifth of the 768 arm's cost — and it is the only single-variable test of whether
-feature-map density or input pixels drive the gain. E5 moves five variables at once.
+Order:
 
-**Then E5's 768 arm.** Resolution is a strong lever (+0.154 per doubling, 6/6 scenarios), and 768
-is the only thing that tests the resolution ceiling, which is **untested — not refuted**.
+1. **E9** — pre-resize cache + `setsid` launches. Engineering; makes everything after cheaper and
+   closes OQ-1. Verify cached features bit-identical on one scenario first.
+2. **E5b** — dilated layer3 (`output_stride=8`) at 448, ~0.4 GPU-h. The single-variable test of
+   whether feature-map density or input pixels drive the gain. E5 moves five variables at once.
+3. **E5** — the 768 arm, ~1.9 GPU-h. The only experiment that tests the ceiling.
+4. **E5c** — unstrided layer1, only after 2 and 3 make it interpretable.
+5. **E7** — fusion re-run under `aspect`, *then* routing selected on `validation`. Blocked until
+   the re-run exists; the current routing table is derived from void numbers.
+6. **E8** — rebuild the serving path with a test that can fail. Independent; use it to fill idle
+   time.
 
-Before launching either: use `setsid` (three runs have died silently to `nohup` alone) — the code
-now requires `--geometry` explicitly and `--resume` refuses a config mismatch, but the HANDOFF
-text that teaches the broken launch pattern still needs fixing.
+What is established: resolution is worth **+0.154 mean AU-PRO@5% (1.86x) on 6 of 6 scenarios**
+across 224 -> 448. What is not: anything about resolution above 448.
 
-**E7 is blocked on a re-run** — `ad2_feature_fusion.py` has no geometry support and its entire
-evidence base was measured in the broken crop frame (REVIEW.md §5).
+**The pod is being re-provisioned.** Follow `deployment/POD_REBUILD.md` — ~20 minutes, no
+decisions. `/workspace` survives; `/opt` and `/tmp` do not.
 
 ---
 
@@ -785,8 +786,10 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E4a~~ | fix region set, re-score E1/E2/E3 | — | — | **done, supports** |
 | ~~E4~~ | eval protocol: `EVAL_SIDE`, sigma | — | — | **done, refutes** |
 | ~~E5a~~ | region size vs patch cell size | — | — | **done, supports (narrowed)** |
+| **E9** | pre-resize cache + `setsid` launches | — | no | ~0.3 h eng |
 | **E5b** | dilated layer3 `output_stride=8` @448 | — | yes | **~0.4 GPU-h** |
 | E5 | input resolution 768 arm | E5b | yes | ~1.9 GPU-h |
+| E5c | unstrided layer1 pyramid (stride 4) | E5, E5b | yes | ~2 GPU-h |
 | E6 | coreset density, re-checked | — | yes | ~1 h, deprioritised to last |
 | **E7** | backbone/fusion on `validation` — **2nd load-bearing** | — | yes | ~1-2 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
@@ -1076,7 +1079,47 @@ in the list.
 
 ---
 
-### E5b — dilated layer3 (`output_stride=8`) at 448  **<- NEXT, cheaper than E5**
+### E9 — pre-resize cache and `setsid` launches  **(do first; engineering, not an experiment)**
+
+Two changes that make everything after them cheaper and safer.
+
+**Pre-resize the dataset once** to each scenario's aspect dimensions and cache it. AD 2 source
+images are ~5 MP and every run decompresses them only to discard ~96% of the pixels; PNG decode
+was measured as the historical bottleneck (GPU idle in 12 of 14 samples). Cache to the
+**container disk**, not `/workspace` — MooseFS is slow with many small files.
+
+**Verify before trusting it:** run one scenario from cache and one live-decode and require the
+extracted features to be **bit-identical**. A silent resize difference would corrupt every
+downstream experiment and would present as a real effect. This is the same class of check that
+`test_prealloc.py` applies to the preallocation refactor.
+
+**Switch every launch to `setsid nohup <cmd> > /tmp/<run>.log 2>&1 < /dev/null &`.** Three runs
+(E1 at 5/8, E4-evalside-512 at 3/8, E5-inputres-224 at 6/8) died silently to `nohup` alone;
+memory was never the cause — E5-224 died at 3.5 GB while completed runs used 18-19 GB. This
+closes OQ-1. **The instructions at §3 still teach the broken pattern — fix them.**
+
+---
+
+### E5c — unstrided layer1 pyramid  **(after E5b and E5, not before)**
+
+Layer 1 of WideResNet50-2 is stride 4, giving a 112x112 grid at 448 and cutting cell area 4x.
+That would move the 354 regions currently in the 1-4x bucket into multi-cell territory.
+
+**Why it is not first.** It quadruples patches (12,544 vs 3,136) — the configuration that already
+triggered a container OOM above 37 GB — and it changes patch count, feature dimensionality and
+cell area simultaneously. E5b buys most of the same spatial benefit for a fifth of the cost while
+moving exactly one variable, and E5 establishes what input resolution alone is worth. Run those
+two first and E5c becomes interpretable; run it now and it is another five-variable arm.
+
+The memory mitigation proposed by the worker is sound and should be kept: extract training banks
+with `stride=2` (3,136 patches, <9 GB) and evaluate test maps unstrided at `stride=1` to retain
+sub-patch fidelity. **Note this makes the train and test grids differ**, which needs its own
+verification that bank and query remain comparable — that mismatch is exactly the defect found in
+the Triton serving path (§7 of REVIEW.md).
+
+---
+
+### E5b — dilated layer3 (`output_stride=8`) at 448  **<- NEXT experiment, cheaper than E5**
 
 **The single-variable test E5 does not provide.** `sweep_backbones.py:130-134` upsamples layer3
 bilinearly 2x onto the layer2 grid. layer3 is **1024 of 1536 dims (66.7%)** and natively stride

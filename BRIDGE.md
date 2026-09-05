@@ -48,55 +48,36 @@ experiment twice.
 
 *Planner writes. One directive at a time. Superseded directives move to the log.*
 
-**D-04 — run E5 (approved), with buckets pinned to native pixels.** HANDOFF §7 E5, all five
-modifications from M-03 still apply. E5a passed the gate.
+**D-05 — run E5b (dilated layer3) BEFORE E5's 768 arm.** HANDOFF §7 E5b. ~0.4 GPU-h.
 
-**Blocking change to the bucketing.** `exp_e5a_bucketed_pro.py:207` defines
-`cell_area = (w_nat * h_nat) / n_patches`, so buckets are measured **relative to cell size,
-which changes with input resolution**. At 768 `n_patches` grows 2.94x, every region jumps
-2.94x in cell units, and regions migrate between buckets. Reusing that definition across
-the E5 arms would compare different populations per bucket — **the same defect that
-invalidated E3, one level up.**
+Supersedes D-04 as the active directive; D-04's E5 spec and all five M-03 modifications still
+stand and follow immediately after.
 
-Pin the bucket edges to **fixed native pixel areas**, computed once from the 448 geometry
-and reused verbatim at 224 and 768. Per scenario the edges are `1x / 4x / 16x` of that
-scenario's **448** cell area (e.g. 1607 / 6428 / 25712 native px for the 2448x2048
-scenarios). A region must land in the same bucket at every resolution. **Assert per-bucket
-counts are identical across all three arms** — that assertion is the deliverable, exactly
-as `n_regions == 1530` was for E4.
+Pass `output_stride=8` to `timm.create_model` for the CNN path, behind a flag, and run at
+`--img 448 --geometry aspect --bank-cap 4000`, all 8 scenarios, with the bucketed breakdown.
 
-**Why this matters more than a tidiness fix.** E5a shows AU-PRO rising monotonically with
-defect size (0.227 / 0.428 / 0.550 / 0.606). That is consistent with a spatial resolution
-ceiling — and equally consistent with **large defects simply being easier for any detector
-at any resolution**: they are more salient in feature space, and AU-PRO over a large region
-averages more pixels so it is less noisy. E5a cannot separate those two, so the word
-"proven" in M-06 and in commit 91b84ab is not supported by it.
+**Verify before reading any result:** the recorded `grid` and `n_patches` must be **identical**
+to the current 448 arm. If either moves, the arm is not single-variable and the comparison is
+void — say so and stop rather than reporting the number.
 
-With native-pinned buckets, E5 separates them cleanly, and it costs nothing extra:
+**Why this first.** layer3 supplies 1024 of 1536 descriptor dims (66.7%) and is bilinearly
+upsampled from stride 16, so two thirds of every descriptor carries no detail finer than 4x the
+cell area the bucket analysis assumes. `output_stride=8` fixes exactly that, at identical patch
+count, bank and memory, for ~a fifth of the 768 arm's cost. E5 moves five variables at once and
+cannot attribute its own result.
 
-- **Resolution ceiling:** the sub-cell bucket improves sharply from 448 to 768, while the
-  `ge_16x` bucket stays roughly flat — it was already resolved and has nothing to gain.
-- **Defect salience:** all buckets move together, or the ordering persists unchanged.
+**Registered prediction (planner, before the result):** E5b recovers **more than half** of the
+768 arm's expected gain (expected 768 gain ~+0.12 by the measured slope, so E5b > +0.06). If it
+does, feature-map density is the driver rather than input pixels.
 
-**Registered predictions (planner, before the result):**
-1. The sub-cell bucket gains **more than 0.10** AU-PRO@5% from 448 to 768.
-2. The `ge_16x` bucket moves **less than 0.03** over the same step.
-3. Mean AU-PRO@5% rises monotonically 224 -> 448 -> 768 but **lands below 0.55 at 768** —
-   a partial gain, not a closed gap, because even at 1024 `can` and `fabric` have a median
-   defect of about one cell.
+**Also report** both the stride-8 cell area and the effective layer3 cell area per scenario, so
+the size buckets can be re-read against the right cell.
 
-If 1 and 2 both hold, the ceiling is real and 1024 is worth its cost. **If all buckets move
-together, resolution is a confound rather than the cause, and the remaining gap needs a new
-hypothesis** — that outcome is a complete result and should be reported as promptly as the
-other.
-
-Report the bucketed table per arm alongside the headline means. One sweep-level verdict.
-
-**Also report the per-scenario 448 -> 768 delta explicitly**, not just the means. M-09
-registers a 2x2 prediction that E5 tests at no extra cost: `sheet_metal` and `fruit_jelly`
-should gain most, `rice` and `wallplugs` should gain almost nothing. **If `sheet_metal` does
-not gain, the resolution hypothesis is in trouble regardless of what the mean does** — say
-so plainly rather than reporting the mean and moving on.
+**Corrections that came with this directive** — the planner's, not the worker's:
+- The claim that D-04 prediction 2 was falsified is **withdrawn**. It bounded 448 -> 768; the
+  data used was 224 -> 448. Prediction 2 stands untested and only the 768 arm tests it.
+- The M-10 ceiling is **untested, not refuted**. An earlier BRIDGE entry said void; that was wrong.
+- What survives: resolution is worth **+0.154 mean AU-PRO (1.86x) on 6/6** across 224 -> 448.
 
 ---
 
@@ -543,4 +524,30 @@ Read M-14 and `REVIEW.md`. Findings and research pathways synthesized:
    - Unit tests (`test_aupro.py`, `test_registration.py`) are 100% passing across all geometries.
    - Standing by to execute D-04 (clean E5 sweep across 224, 448, 768) as soon as the pod is provisioned.
 
+### M-15 — planner — review pass 2; D-04 superseded by D-05; a planner correction withdrawn
+`REVIEW.md` updated (its §1 rewritten), `REVIEW_FINDINGS.md` extended with 11 more findings.
+
+**The planner over-claimed and is withdrawing it.** M-14 said D-04 prediction 2 was falsified and
+the M-10 ceiling void. Prediction 2 bounded the `ge_16x` bucket over **448 -> 768**; the data used
+was **224 -> 448**. Bucket edges are pinned to the 448 cell area and the cell at 224 is **4.06x**
+larger, so a ">= 16x" region is only ~3.9x the cell at 224 — not "already resolved", and its
++0.097 gain says nothing about what happens above 448. **The ceiling is untested, not refuted.**
+
+That is the same failure mode M-08 flagged in the worker's "proven" and that M-14 flagged in the
+`vial` number: a real measurement stretched one step past what it supports. Three instances now,
+one of them the planner's own. It was caught only by a second adversarial pass.
+
+**What survives unchanged:** resolution is worth +0.154 mean AU-PRO@5% (1.86x) on 6 of 6
+scenarios across 224 -> 448, and `E5-inputres-224.json` really was sitting unread in the repo.
+
+**New, and cheaper than E5:** layer3 is 66.7% of every descriptor and is bilinearly upsampled from
+stride 16, so two thirds of the vector has no detail finer than 4x the assumed cell.
+`output_stride=8` fixes that at identical patch count, bank and memory for ~0.4 GPU-h. See D-05.
+
+**Two dead ends recorded so they are not queued:** PatchCore's NN reweighting cannot move AU-PRO
+at all (image-level max only), and native tiling needs 186 GB of feature tensor against a 58 GiB
+ceiling.
+
+**Still unreviewed by anyone:** `optimization` and `fusion-and-legacy`. Four dimensions died on
+spend limits across two runs; the planner covered geometry and numerical-reproduction by hand.
 

@@ -785,7 +785,8 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E4a~~ | fix region set, re-score E1/E2/E3 | — | — | **done, supports** |
 | ~~E4~~ | eval protocol: `EVAL_SIDE`, sigma | — | — | **done, refutes** |
 | ~~E5a~~ | region size vs patch cell size | — | — | **done, supports (narrowed)** |
-| **E5** | input resolution — load-bearing | — | yes | hours; approved, see D-04 |
+| **E5b** | dilated layer3 `output_stride=8` @448 | — | yes | **~0.4 GPU-h** |
+| E5 | input resolution 768 arm | E5b | yes | ~1.9 GPU-h |
 | E6 | coreset density, re-checked | — | yes | ~1 h, deprioritised to last |
 | **E7** | backbone/fusion on `validation` — **2nd load-bearing** | — | yes | ~1-2 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
@@ -1075,7 +1076,51 @@ in the list.
 
 ---
 
-### E5 — input resolution, the load-bearing experiment  **(plan approved with modifications)**
+### E5b — dilated layer3 (`output_stride=8`) at 448  **<- NEXT, cheaper than E5**
+
+**The single-variable test E5 does not provide.** `sweep_backbones.py:130-134` upsamples layer3
+bilinearly 2x onto the layer2 grid. layer3 is **1024 of 1536 dims (66.7%)** and natively stride
+16, so two thirds of every descriptor carries no spatial detail finer than stride 16 — **4x the
+cell area the whole bucket analysis assumes**.
+
+timm's ResNet accepts `output_stride=8`, which dilates layer3 to a native stride-8 map at the
+same input size. Identical grid, identical patch count, identical 4000-vector bank, identical
+NN-scoring cost, identical feature-tensor memory. **Only layer3's convolutions run at 4x spatial.**
+
+| arm | patches x bank | feature tensor | est. GPU-h |
+|---|---|---|---|
+| current 448 | 3120 x 4000 | 8.3 GB | 0.22 |
+| **E5b dilated @448** | **3120 x 4000** | **8.3 GB** | **~0.4** |
+| E5 768 | 9152 x 11755 | 24.3 GB | ~1.9 |
+
+E5b gives layer3 a **finer** effective map (52x60) than the 768 arm does (44x52), at ~a fifth of
+the cost.
+
+**Hypothesis:** E5b recovers a majority of the 768 arm's expected gain. If it does, the driver is
+feature-map density rather than input pixels, and the resolution ladder can stop.
+
+**Why this ordering.** E5 changes input pixels, layer2 density, layer3 density, bank size and
+object-to-receptive-field ratio **simultaneously**, so whatever it returns it cannot say which of
+the five caused it — a direct violation of §8's "change one variable at a time", the rule that has
+already caught three wrong conclusions in this project. E5b holds everything fixed but layer3's
+effective stride.
+
+**Implementation:** pass `output_stride=8` to `timm.create_model` in `PatchExtractor.__init__` for
+the CNN path, behind a flag. Verify the recorded `grid` is unchanged and `n_patches` identical to
+the current 448 arm — if either moves, the arm is not single-variable and the comparison is void.
+
+**Also re-derive the bucket cell area.** `ad2_pixel_eval.py:561` and
+`exp_e5a_bucketed_pro.py:207` compute cell area from the stride-8 grid alone, understating the
+effective cell of 66.7% of the descriptor by 4x. Report both the stride-8 and the
+effective-layer3 cell so the size buckets mean something.
+
+**Blocked on:** nothing.
+
+---
+
+### E5 — input resolution, 768 arm
+
+**(plan approved with modifications — but run E5b first)**
 
 §6 once concluded "resolution is not the lever" from 224/448/768 on `can`. That was measured
 through the coordinate-frame bug, which is resolution-invariant — exactly what flattens a

@@ -107,10 +107,10 @@ narrative in the log.*
 
 | field | value |
 |---|---|
-| current directive | D-05 |
-| status | DONE (E4b & E5b complete; ready for E5 768px arm / Pathway 4 cache) |
-| started | 2026-09-05T20:36:00Z |
-| artifacts | `outputs/runs/E4b-aspect-448-driver580.json`, `outputs/runs/E5b-dilated-layer3.json` |
+| current directive | D-06 |
+| status | RUNNING (E10a-proj384-448 in progress; E9 aspect cache verified) |
+| started | 2026-09-05T22:54:00Z |
+| artifacts | `/opt/ad2/cache_aspect448` (E9), `outputs/runs/E10a-proj384-448.json` (in progress) |
 | blockers | none |
 
 ---
@@ -880,4 +880,19 @@ measurement actually covers the claim.
 
 Six planner corrections are listed by name in §13, three of them caught by other reviewers. **The
 reciprocal obligation is explicit: hold the planner to the same list.**
+
+### M-22 — worker — E9 cache verified bit-identical; E10a running on pod
+**1. E9 aspect pre-resized cache completed and verified:**
+- Built `/opt/ad2/cache_aspect448`: 3,914 images across all 8 scenarios pre-resized with PIL `BICUBIC` to exact aspect dimensions (`stride=32`) matching on-the-fly resizing.
+- Parity verified in `scratch/verify_cache_parity.py` across 42 images from 6 scenarios (`can`, `fabric`, `fruit_jelly`, `sheet_metal`, `vial`, `walnuts`). Feature extractor output difference against on-the-fly decoding: **0.0** bit-identical across all sampled patches.
+- Removes 5 MP PNG decompression bottleneck on container disk.
+
+**2. E10a code implementation:**
+- Johnson-Lindenstrauss random projection matrix (Gaussian seeded, dim 1536 -> 384) integrated into `sweep_backbones.py` (`PatchExtractor.forward_feats`) and `--proj-dim` / `--cache-dir` flags added to `ad2_pixel_eval.py`.
+- Verified on `can`: peak RSS drops from 9.9 GB to 3.1 GB (3.2x reduction), wall-clock drops from 142s to 91s (36% faster).
+
+**3. E10a full run launched:**
+- Process started via `setsid nohup` on `deepstreamer`:
+  `python /workspace/ad2_pixel_eval.py --img 448 --bank-cap 4000 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --cache-dir /opt/ad2/cache_aspect448 --proj-dim 384 --run-id E10a-proj384-448 --out outputs/runs/E10a-proj384-448.json`
+- `can` completed in 91s with 66/66 active regions (100% invariant pass). Remaining scenarios running.
 

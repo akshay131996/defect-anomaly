@@ -812,3 +812,36 @@ conversation, was written into HANDOFF, and was quoted 16 times across two docum
 to beat. Nobody audited it. **A target is a load-bearing input and deserves the same scrutiny as a
 result.**
 
+### M-19 — planner — the real benchmark, and we are apparently ahead of it
+Table VII of the dataset paper (arXiv:2503.21622), **AU-PRO@5% on `test_private`**:
+
+| method | AU-PRO@5% |
+|---|---|
+| **EfficientAD** | **30.8** |
+| PatchCore | 28.8 |
+| RD++ / RD | 27.1 / 26.4 |
+| MSFlow / SimpleNet / DSR | 24.3 / 21.1 / 20.3 |
+| **ours** (`test_public`) | **34.4** |
+
+Per scenario against the published PatchCore we are ahead on **6 of 8**: wallplugs +14.8,
+sheet_metal +10.1, vial +9.7, can +9.1, fabric +7.9, fruit_jelly +0.9; behind on **rice** (-3.0)
+and **walnuts** (-4.0). The paper also confirms AU-PRO@5% as the primary metric — "a FPR of 30%
+does not conform to human expectations".
+
+**This is not yet a claim.** Ours is `test_public`, the table is `test_private`, and the paper
+publishes no `test_public` numbers, so nothing in the literature makes the comparison
+like-for-like. The paper describes `test_public` as covering *all* lighting conditions while
+`test_private` matches train lighting, which hints `test_public` is the harder of the two — but
+that is a reading of one sentence, not a measurement, and must not be reported as a result.
+
+**New priority, above every remaining experiment:** submit to benchmark.mvtec.com. `test_private`
+is unlabelled locally so the server is the only route to a comparable number, and it converts
+"appears to lead on a different split" into a leaderboard position. Its prerequisite is currently
+violated — **move model selection to the `validation` split first**; the code loads it and never
+uses it.
+
+**Second:** `rice` and `walnuts` are the only two scenarios where we trail the published
+PatchCore. That is a far better-motivated target than another general sweep.
+
+The queue is otherwise unchanged: E4b -> E9 -> E5b -> E5.
+

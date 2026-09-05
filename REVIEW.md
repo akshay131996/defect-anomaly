@@ -119,6 +119,75 @@ implementation would have to be badly broken, and the correct response would be 
 It is not, so the correct response is to stop treating it as the bar. Those are opposite research
 programmes, and the project has been running the wrong one.
 
+## The real MVTec AD 2 benchmark
+
+From the dataset paper's Table VII (Heckler-Kram et al., [arXiv:2503.21622](https://arxiv.org/abs/2503.21622)).
+**AU-PRO@5%, `test_private`, mean over the 8 scenarios:**
+
+| method | AU-PRO@5% |
+|---|---|
+| **EfficientAD** | **30.8** |
+| PatchCore | 28.8 |
+| RD++ | 27.1 |
+| RD | 26.4 |
+| MSFlow | 24.3 |
+| SimpleNet | 21.1 |
+| DSR | 20.3 |
+| | |
+| **ours** (`test_public`) | **34.4** |
+
+The paper is explicit that AU-PRO@5% is the primary metric — "a FPR of 30% does not conform to
+human expectations" for industrial QA — which confirms our metric choice. The best of seven
+methods reaches **30.8%**, against >90% on the original MVTec AD. That is the difficulty of AD 2.
+
+### Per scenario, ours against the published PatchCore
+
+| scenario | ours (public) | PatchCore (private) | delta |
+|---|---|---|---|
+| wallplugs | 27.6 | 12.8 | **+14.8** |
+| sheet_metal | 25.3 | 15.2 | **+10.1** |
+| vial | 71.9 | 62.2 | **+9.7** |
+| can | 13.8 | 4.7 | **+9.1** |
+| fabric | 18.9 | 11.0 | **+7.9** |
+| fruit_jelly | 47.6 | 46.7 | +0.9 |
+| rice | 22.6 | 25.6 | **-3.0** |
+| walnuts | 47.8 | 51.8 | **-4.0** |
+| **mean** | **34.4** | **28.8** | **+5.7** |
+
+Better on **6 of 8**. Our two deficits, `rice` and `walnuts`, are the concrete targets — not a
+mythical 0.764.
+
+### The caveat that prevents this being a claim
+
+**The splits differ and cannot currently be reconciled.** Ours is `test_public`; the table is
+`test_private`. **The paper publishes no `test_public` table**, so there is no like-for-like
+comparison available from the literature.
+
+What the paper does say about the splits:
+
+- `test_public` — "pixel-precise ground truth available for **all lighting conditions**"
+- `test_private` — "same lighting as in the train set"
+- `test_private_mix` — "seen and unseen lighting conditions", for robustness
+
+`test_public` spanning all lighting while `test_private` matches train lighting suggests
+`test_public` may be the **harder** of the two, which would mean our margin is understated rather
+than flattered. **That is a reading of one sentence, not a measurement, and it must not be
+reported as a result.**
+
+### The only way to turn this into a real claim
+
+**Submit to the evaluation server at benchmark.mvtec.com.** `test_private` is unlabelled locally;
+the server is the sole route to a comparable number. `docs/MVTEC_AD2_IMPLEMENTATION_SPEC.md`
+already describes the submission path (2,045 images, anomaly maps in their format).
+
+That single action is now worth more than any remaining experiment in the queue. It converts
+"appears to lead on a different split" into a leaderboard position, and it is the only thing that
+can confirm or kill the result.
+
+**It also has a prerequisite that is currently violated:** we select on `test_public` and report
+on `test_public`. Before submitting, model selection must move to the `validation` split — which
+the code loads and never uses.
+
 ### What remains genuinely open
 
 - **The exact PatchCore AU-PRO@5% baseline is not yet in hand.** The per-scenario figures above are

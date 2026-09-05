@@ -189,36 +189,34 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**Read `REVIEW.md` §0 first — the target was wrong.** `0.764` traces to an unreviewed IEEE ETFA
-2026 submission (`github.com/yyqmeow/patchcore-mvtec-ad2`) claiming multi-scale ResNet50
-layer2+layer3 PatchCore reaches 76.35% AU-PRO@5%. **That is our method.** Meanwhile the MVTec AD 2
-dataset paper ([arXiv:2503.21622](https://arxiv.org/abs/2503.21622)) reports that state-of-the-art
-methods **remain below 60% average AU-PRO**.
+**The real benchmark is known.** MVTec AD 2 dataset paper, Table VII, AU-PRO@5% on
+`test_private`: **EfficientAD 30.8** (best of seven), PatchCore 28.8, RD++ 27.1, RD 26.4,
+MSFlow 24.3, SimpleNet 21.1, DSR 20.3. **Ours is 34.4 on `test_public`.**
 
-Against the *published* PatchCore baseline we are **ahead** on every scenario currently checkable
-(AU-PRO@30%: can 0.343 vs 0.216/0.181, fabric 0.462 vs 0.346/0.353, vial 0.913 vs 0.905/0.892),
-and our mean @30% of 0.5736 sits inside that sub-60% SOTA band. **The project is not 2.2x behind
-the field.**
+Per scenario we beat the published PatchCore on **6 of 8**, and our two deficits — `rice`
+(22.6 vs 25.6) and `walnuts` (47.8 vs 51.8) — are the concrete targets. The 0.764 figure was an
+unreviewed submission's claim and is retired; see REVIEW.md §0.
 
-Order of work:
+**The splits differ and the paper publishes no `test_public` table**, so this is not yet a claim.
+Turning it into one has a single route:
 
-0. **Get the real baseline table.** Pull the results table from arXiv:2503.21622 and record
-   PatchCore's AU-PRO **per scenario, per split, at both limits**, in the repo. Every priority in
-   this queue was set against an unverified number; fix that before spending another GPU-hour.
-1. **E4b** — clean 448 `aspect` baseline on the re-provisioned pod (driver 580, ~13 min). Also
-   replaces the stitched `E4-evalside-512`.
-2. **E9** — pre-resize cache + `setsid` launches.
-3. **E5b** — dilated layer3 (`output_stride=8`) at 448, ~0.4 GPU-h.
-4. **E5** — the 768 arm, ~1.9 GPU-h.
-5. **E7** — fusion re-run under `aspect`, then routing selected on `validation`.
-6. **E8** — rebuild the serving path.
+0. **Move model selection to the `validation` split.** `ad2_pixel_eval.py` loads it and never uses
+   it; everything is currently selected and reported on `test_public`, violating §0 rule 5. This
+   blocks any external claim.
+1. **Submit to benchmark.mvtec.com.** `test_private` is unlabelled locally, so the server is the
+   only route to a comparable number. See `docs/MVTEC_AD2_IMPLEMENTATION_SPEC.md` §6. **This is
+   now worth more than any remaining experiment**, because it converts "appears to lead on a
+   different split" into a leaderboard position.
+2. **E4b** — clean 448 `aspect` baseline on the re-provisioned pod (driver 580, ~13 min), also
+   replacing the stitched `E4-evalside-512`.
+3. **E9** (pre-resize cache + `setsid`), then **E5b** (dilated layer3), then **E5** (768).
+4. **`rice` and `walnuts`** are where we trail the published PatchCore — a targeted look at those
+   two is now better motivated than a general sweep.
 
-Still true and unaffected by the target correction: image AUROC **0.724** and pixel AUROC
-**0.850**; resolution is worth **+0.154 mean AU-PRO (1.86x)** across 224 -> 448; and everything is
-still measured and selected on `test_public`, which must be fixed before any external claim.
+Also still true: image AUROC **0.724**, pixel AUROC **0.850**, and resolution is worth **+0.154
+mean AU-PRO (1.86x)** across 224 -> 448.
 
-**The pod is up.** Rebuild per `deployment/POD_REBUILD.md` (~20 min); `/workspace` survived,
-`/opt` did not.
+**The pod is up.** Rebuild per `deployment/POD_REBUILD.md` (~20 min).
 
 ---
 

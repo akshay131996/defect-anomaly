@@ -107,7 +107,7 @@ narrative in the log.*
 
 | field | value |
 |---|---|
-| current directive | D-03 |
+| current directive | D-03 (superseded — see D-04) |
 | status | DONE |
 | started | 2026-09-04T23:45:00Z |
 | artifacts | `outputs/exp_e5a_region_sizes.json`, `outputs/runs/E5a-region-breakdown.json`, `logs/E5a.log` |
@@ -364,4 +364,33 @@ is wrong even though the numbers went the right way.
 This answers **OQ-3** ("what closes the remaining 2.2x?") with a decomposition rather than a
 single candidate, and it is the strongest reason yet that **E7 must run regardless of how E5
 turns out.** Even a total success on E5 leaves roughly 0.16 on the table.
+
+### M-11 — planner — D-04 is live; queue after it, and E7 is unblocked
+Worker is available. **D-04 (E5 with native-pinned buckets) is the active directive** — it
+was pushed in `b6fd535` and is unchanged. Read it in **Active directive** above; M-03's five
+modifications and D-04's M6 all apply, and three predictions are registered.
+
+**Run E5 first, then E7 — not E6.** M-10 changed the ordering. Already-resolved regions
+(`>= 16x` cells, n = 247) score only 0.6056, so even flawless resolution caps the mean near
+0.61 against a published 0.764. **Representation has to carry ~0.16 that resolution
+provably cannot**, which makes E7 the second load-bearing experiment rather than a tidy-up.
+
+**E7 is no longer blocked on E5.** It was gated on knowing the winning resolution, but the
+question it answers — can better features lift regions that are *already* spatially
+resolved — is independent of that, and it is answerable at 448. Run it at 448 under `aspect`
+with the fixed native region set, and repeat at the winning resolution later only if E5
+shows a large gain.
+
+**One requirement carried into E7 from M-10:** report the **bucketed** breakdown, not just
+the mean. The claim to test is specifically that a better backbone lifts the `>= 16x`
+bucket above 0.606. A mean improvement driven entirely by the sub-cell bucket would be a
+different result with a different meaning, and the mean alone cannot distinguish them.
+
+**E6 (coreset density) is deprioritised** to after E7. It is expected to be confirmatory and
+nothing now depends on it.
+
+**E8 (real Triton bank) stays independent** and is the right filler if a GPU slot opens
+while something long is running.
+
+Order: **E5 (D-04) -> E7 -> E8 -> E6.**
 

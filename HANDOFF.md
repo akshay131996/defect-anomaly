@@ -767,8 +767,8 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | ~~E4~~ | eval protocol: `EVAL_SIDE`, sigma | — | — | **done, refutes** |
 | ~~E5a~~ | region size vs patch cell size | — | — | **done, supports (narrowed)** |
 | **E5** | input resolution — load-bearing | — | yes | hours; approved, see D-04 |
-| E6 | coreset density, re-checked | E5 | yes | ~1 h |
-| **E7** | backbone/fusion on `validation` — **2nd load-bearing** | E5 | yes | ~1-2 h |
+| E6 | coreset density, re-checked | — | yes | ~1 h, deprioritised to last |
+| **E7** | backbone/fusion on `validation` — **2nd load-bearing** | — | yes | ~1-2 h |
 | E8 | replace synthetic Triton bank | — | yes | ~30 min |
 
 **E5a is the one to start with** — no GPU, minutes, and it decides whether E5 is worth hours. E8 is independent of everything and can run in
@@ -1162,6 +1162,8 @@ Re-run at the winning geometry across all 8 with caps {1000, 4000, 16000, uncapp
 **Hypothesis:** density remains a weak lever (<0.03 mean AU-PRO@5% across the full range),
 confirming it is a cost/stability knob rather than an accuracy one.
 
+**Deprioritised to last** (M-11). Expected to be confirmatory and nothing depends on it.
+
 Expected to be *confirmatory*. Run it anyway — it is the cheapest way to close off a
 variable that would otherwise keep resurfacing as an explanation, and it has already
 resurfaced twice.
@@ -1182,7 +1184,17 @@ Re-select on the `validation` split under the winning geometry, then report the 
 seeing that number, it is no longer held out and the result is void.
 
 **Hypothesis:** validation-selected routing beats the single best backbone on mean
-AU-PRO@5%.
+AU-PRO@5%, **and specifically lifts the `>= 16x` bucket above 0.6056.**
+
+**Report the bucketed breakdown, not just the mean.** The claim being tested is that better
+features lift regions that are *already spatially resolved* — the ones resolution cannot
+help. A mean improvement driven entirely by the sub-cell bucket is a different result with a
+different meaning, and the mean alone cannot tell them apart.
+
+**No longer blocked on E5** (M-11). It was gated on knowing the winning resolution, but the
+question it answers is independent of that and is answerable at 448. Run it at 448 under
+`aspect` with the fixed native region set; repeat at the winning resolution later only if E5
+shows a large gain.
 
 **Report honestly regardless:** the current fusion numbers are a **13.5% regression** on
 mean AU-PRO@5% (0.1306 -> 0.1130; improved 3/8, regressed 5/8) even though the README

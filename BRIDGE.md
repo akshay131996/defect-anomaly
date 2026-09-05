@@ -126,10 +126,10 @@ narrative in the log.*
 | field | value |
 |---|---|
 | current directive | D-05 |
-| status | RUNNING |
+| status | DONE (E4b & E5b complete; ready for E5 768px arm / Pathway 4 cache) |
 | started | 2026-09-05T20:36:00Z |
-| artifacts | `outputs/runs/E4b-aspect-448-driver580.json` (E4b done); E5b PID 26316 active |
-| blockers | none — E5b (dilated layer3 @448 aspect) actively computing |
+| artifacts | `outputs/runs/E4b-aspect-448-driver580.json`, `outputs/runs/E5b-dilated-layer3.json` |
+| blockers | none |
 
 ---
 

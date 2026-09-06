@@ -181,6 +181,7 @@ stated conclusion follows from the numbers — those are two different checks.*
 | E5b-dilated-layer3 | pass | yes | **accepted** — +0.0248, real gain; planner's >+0.06 prediction **refuted** |
 | E10a-proj384-448 | pass | yes | **accepted** — -0.0175; planner's "within 0.01" **refuted** |
 | E10b-wrn101-448 | pass | yes | **accepted** — +0.0008 vs its control; planner's ">half the deficit" **decisively refuted** |
+| E5-inputres-768 | pass | yes | **accepted** — 0.4239, 8/8 improved; **D-04 prediction 2 CONFIRMED** (`ge_16x` +0.0123 vs a <0.03 bound) |
 
 ---
 
@@ -1230,5 +1231,138 @@ one structural difference nobody has tested.
 - Our 768 arm (0.4239) with ~9,216 patches only reaches parity with their 512 arm (~4,096 patches).
 - We acknowledge D-09: prioritize isolating and closing the implementation gap at 256 before further resolution scaling.
 - Proceeding immediately with **T1** (run official PatchCore on `test_public` with our native region evaluator to isolate split effect) and **T2** (`E11-ours-256-squash` uncapped 1%).
+### M-30 — planner — E5-768 accepted; D-04 prediction 2 CONFIRMED; T2 launched
+*2026-09-06T04:05:00+02:00*
 
+**`E5-inputres-768` is accepted.** 8/8 scenarios, all invariants pass (n_regions 1530, wall/sum
+1.00, peak RSS 7.6 GB, driver 580). **Mean AU-PRO@5% = 0.4239**, up from 0.3444 at 448. Every
+scenario improved.
+
+**D-04 prediction 2 is CONFIRMED — and this is the first valid test of it.**
+
+| bucket | n | 448 | 768 | delta |
+|---|---|---|---|---|
+| sub-cell | 756 | 0.2265 | 0.3144 | **+0.088** |
+| 1-4x | 354 | 0.4280 | 0.5700 | **+0.142** |
+| 4-16x | 173 | 0.5498 | 0.6216 | +0.072 |
+| **>= 16x** | 247 | 0.6056 | 0.6179 | **+0.012** |
+
+The bound was **< 0.03 over 448 -> 768**. It moved **+0.0123**. Already-resolved regions are at
+their ceiling while small and medium regions gain hard — exactly the mechanism D-04 registered.
+
+**This also vindicates the withdrawal in M-15b.** The earlier "refutation" used 224 -> 448, where
+those regions sat at ~3.9x cell and were not resolved at all. The correction was right, and the
+real test now says the ceiling exists.
+
+Prediction 3 (768 lands below 0.55) also holds: 0.4239.
+
+**Where that puts us:** 0.4239 at 768 against their published 41.9 at 512 and **62.3 at half
+native**. We are marginally above their 512 arm while spending more resolution to get there, and
+well short of their best. The implementation gap stands.
+
+**T2 launched** (`E11-ours-256-squash`): our pipeline at the paper's exact setting — `--img 256
+--geometry squash --bank-cap 0` (uncapped 1%). Short run; it establishes our true number at their
+setting, which the 224 aspect arm is not.
+
+Worker: the rest of D-09 is yours, tasks listed in M-31.
+
+### M-31 — planner — worker task list for D-09
+*2026-09-06T04:05:00+02:00*
+
+**Objective: parity with the published PatchCore at its own 256 setting (28.8 on `test_private`),
+then beat it.** Resolution work is paused — 768 is done and banked at 0.4239; the gap now is
+implementation, not pixels.
+
+**Priority order. Anything below the line only runs when nothing above it is runnable.**
+
+---
+
+**P1 — T1: the official implementation on our split.** The highest-value run in the queue.
+
+Clone `github.com/amazon-science/patchcore-inspection`, run the ensemble command exactly as
+published but with the centre crop disabled (`--resize 256 --imagesize 256`), on all 8 AD 2
+scenarios, `test_public`:
+
+```
+-b wideresnet101 -b resnext101 -b densenet201
+-le 0.layer2 -le 0.layer3 -le 1.layer2 -le 1.layer3
+-le 2.features.denseblock2 -le 2.features.denseblock3
+--pretrain_embed_dimension 1024 --target_embed_dimension 384
+--anomaly_scorer_num_nn 1 --patchsize 3
+sampler -p 0.01 approx_greedy_coreset
+dataset --resize 256 --imagesize 256
+```
+
+**Export its raw anomaly maps and score them with OUR `aupro.evaluate`** under the fixed native
+region set. Do not use their evaluator — the whole point is one metric across both. Record as
+`REF-official-256`.
+
+Two numbers come out of this, and nothing else in the queue can produce either:
+- `REF-official-256` vs their published 28.8 = **the split effect** (`test_public` vs `test_private`).
+- `REF-official-256` vs `E11-ours-256-squash` = **the implementation gap, split-free.**
+
+If the repo will not run (dependency rot is likely on a 2022 codebase), **say so early** rather
+than burning hours — a partial port of just their feature-fusion path would still answer most of
+the question.
+
+---
+
+**P2 — T3a: their layer-fusion method.** The leading suspect and the one structural difference
+nobody has tested.
+
+They pool **each layer to 1024, stack, then pool to 384**. We concatenate 512+1024 -> 1536 and
+score in full dimension. E10a tested a *random projection of our concat*, which is a different
+operation and came back -0.0175.
+
+Implement their scheme as a flag on `ad2_pixel_eval.py`, run at 256 squash against
+`E11-ours-256-squash`. Single variable.
+
+**Prediction (planner, registered):** this closes more than half the gap to `REF-official-256`.
+If it closes almost none, the gap is in the backbones or their preprocessing and P4 moves up.
+
+---
+
+**P3 — T3b: smoothing at their scale.** Their sigma 4 sits on a 256 map; ours sits on a 512 eval
+map, so theirs is 2x larger relative to the image. Post-processing only — no re-extraction, so
+this is minutes. Test sigma 8 on our 512 frame at 256 input.
+
+---
+
+**P4 — T3d: the 3-backbone ensemble**, official style, at 256. Expensive, so it runs after P2 and
+P3 have had their say. E10b showed backbone *size* is worth nothing; this tests whether
+*diversity* is the active ingredient, which is a different claim.
+
+---
+
+### Below the line — backfill, only when P1-P4 are blocked
+
+Per the user: **run the paper's 256 setting through our older experiments wherever a run costs
+under ~10 minutes**, so the comparison set is complete at their setting. Lower priority than
+everything above; do not let these displace P1.
+
+- **E5b at 256** (`--output-stride 8 --img 256 --geometry squash`) — dilated layer3 gave +0.0248
+  at 448; does it hold at their setting?
+- **E10a at 256** (`--proj-dim 384`) — the 384 projection cost -0.0175 at 448; re-check at 256,
+  where their target dimension actually lives.
+- **E10b at 256** (`--backbone wide_resnet101_2 --proj-dim 384`) — WRN-101 was null at 448.
+- **Geometry at 256**: aspect vs squash. E3R showed aspect beats squash by +0.029 at 448, but the
+  paper squashes. Worth one arm to know whether our geometry advantage survives at their setting.
+
+Each is a single variable against `E11-ours-256-squash`. Record and ledger them like any other run.
+
+---
+
+### Standing requirements
+
+- `setsid nohup ... < /dev/null &`, log to `/tmp`, `--geometry` explicit.
+- **Bucketed table in every report** — 768 showed the buckets carry the mechanism, not the mean.
+- Ledger row the moment an artifact exists, **even for a partial or failed run**.
+- `test_public` only, and **no selection on it** — these are diagnostics, not claims.
+
+### Your lane
+
+P2's ordering is my guess. You will be reading their code for P1; **if the diff shows a difference
+I have not listed, that goes to the front and you should say so.** Two candidates I would not be
+surprised by: how they handle the 3x3 patch neighbourhood at feature-map borders, and whether
+their bilinear upsample of the score map differs from ours in alignment.
 

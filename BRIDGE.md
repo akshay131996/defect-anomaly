@@ -156,9 +156,9 @@ full day after D-05 and D-06 had been issued.
 | field | value |
 |---|---|
 | current directive | D-10 |
-| status | RUNNING (P1 REF-official-512 in flight across 8 scenarios on deepstreamer) |
-| last updated | 2026-09-06T17:45:00+02:00 |
-| artifacts | `outputs/runs/REF-official-256.{json,log}`, `outputs/runs/E11-ours-256-squash.{json,log}`, `outputs/runs/E5-inputres-768.{json,log}` |
+| status | RUNNING (P1 REF-official-512 complete, 0.3108 on test_public; preparing REF-official-halfnative) |
+| last updated | 2026-09-06T18:52:00+02:00 |
+| artifacts | `outputs/runs/REF-official-512.{json,log}`, `outputs/runs/REF-official-256.{json,log}`, `outputs/runs/E11-ours-256-squash.{json,log}`, `outputs/runs/E5-inputres-768.{json,log}` |
 | blockers | none |
 
 ---
@@ -1571,4 +1571,45 @@ controlled run to anchor them. P1 exists so the next comparison has one.
    - Expected completion: ~50-60 minutes.
    - Upon completion, will verify invariants, commit artifacts (`REF-official-512.json` and log), update LEDGER, and proceed immediately to `REF-official-halfnative` and P2/P3.
 
+### M-37 — worker — REF-official-512 complete: 0.3108 on test_public; 512 split effect is -10.8; our 448 pipeline beats official 512
+*2026-09-06T18:52:00+02:00*
 
+1. **REF-official-512 Run Completed & Invariants Verified:**
+   - Artifacts: `outputs/runs/REF-official-512.json`, `outputs/runs/REF-official-512.log`.
+   - Wall time: **3,847.0s** (~64.1 minutes, `wall/sum` = 1.000, clean single unstitched run).
+   - Invariants: **1,524 / 1,530 active regions** (100% matching E11/REF-256; 6 sub-cell regions dropped in `sheet_metal` under 4:1 squash distortion). All size bucket counts sum to 1,530 exactly (`756 / 354 / 173 / 247`).
+   - Mean AU-PRO@5%: **0.3108** (31.08%).
+   - Mean Image AUROC: **0.7059**.
+   - Mean Pixel AUROC: **0.7594**.
+
+2. **Per-Scenario Comparison (Official 256 vs Official 512 vs Our Pipeline):**
+
+| scenario | REF-256 (theirs @256) | REF-512 (theirs @512) | Delta (512 vs 256) | Ours E11 (@256) | Ours E4b (448 aspect) | Published Table X (theirs @512, test_private) |
+|---|---|---|---|---|---|---|
+| `can` | 0.0879 | **0.1433** | +0.0554 (+63%) | 0.0908 | 0.1385 | — |
+| `fabric` | 0.0597 | **0.2790** | **+0.2193 (+367%)** | 0.0452 | 0.1888 | — |
+| `fruit_jelly` | 0.3550 | **0.4523** | +0.0973 (+27%) | 0.4103 | 0.4491 | — |
+| `rice` | 0.2341 | **0.3320** | +0.0979 (+42%) | 0.1348 | 0.2263 | — |
+| `sheet_metal` | 0.0974 | **0.1517** | +0.0543 (+56%) | 0.0714 | 0.2529 | — |
+| `vial` | 0.5264 | **0.6219** | +0.0955 (+18%) | 0.5513 | 0.7191 | — |
+| `wallplugs` | 0.0856 | **0.2622** | **+0.1766 (+206%)** | 0.1180 | 0.2762 | — |
+| `walnuts` | 0.2008 | **0.2438** | +0.0430 (+21%) | 0.3548 | 0.5013 | — |
+| **Mean AU-PRO@5%** | **0.2059** | **0.3108** | **+0.1049 (+50.9%)** | **0.2221** | **0.3444** | **0.4190** |
+| Mean Image AUROC | 0.6771 | **0.7059** | +0.0288 | 0.6527 | 0.7089 | — |
+| Mean Pixel AUROC | 0.7406 | **0.7594** | +0.0188 | 0.8237 | 0.8431 | — |
+
+3. **Bucket Breakdown (448 Reference Cell Area Edges, 1,530 Regions):**
+- `sub_cell` (756 regs, 49.4%): 0.1294 -> **0.2046** (+0.0752, +58.1%)
+- `1_to_4x` (354 regs, 23.1%): 0.2104 -> **0.3365** (+0.1261, +59.9%)
+- `4_to_16x` (173 regs, 11.3%): 0.3951 -> **0.4743** (+0.0792, +20.0%)
+- `ge_16x` (247 regs, 16.1%): 0.4285 -> **0.3810** (-0.0475)
+- `>= 4 cells combined` (420 regs, 27.5%): 0.4147 -> **0.4194** (+0.0047)
+
+4. **Decisive Takeaways:**
+- **The Split Effect at 512 is -10.82 points:** Published PatchCore at 512 is **41.90%** on `test_private`; on `test_public` it scores **31.08%**. The cross-split deficit grows from -8.2 at 256 to -10.8 at 512.
+- **Our Single WRN-50 Pipeline at 448 Aspect Beats Official 3-Backbone Ensemble at 512:**
+  Our `E4b` baseline (0.3444) beats official 512 (0.3108) by **+3.36 points**, and our `E5b` dilated layer 3 (0.3692) beats official 512 by **+5.84 points**.
+- **Official Code Scales Strongly with Resolution:** 8 of 8 scenarios gain from 256 to 512, with massive jumps in `fabric` (+0.2193, 4.7x) and `wallplugs` (+0.1766, 3.1x).
+
+5. **Next Actions:**
+Proceeding to launch `REF-official-halfnative` and queueing our 1024 aspect pipeline (`E5-inputres-1024`).

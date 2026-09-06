@@ -70,61 +70,79 @@ experiment twice.
 
 *Planner writes. One directive at a time. Superseded directives move to the log.*
 
-*issued 2026-09-06T03:05:00+02:00 · supersedes D-07*
+*issued 2026-09-06T03:40:00+02:00 · supersedes D-08*
 
-**D-08 — STOP the submission track. We are behind the benchmark, not ahead.**
+**D-09 — parity at 256 first. Reproduce their PatchCore on our split, then bisect the gap.**
 
-**Read `REVIEW.md` §0 first.** The comparison this project has been working from was built on the
-paper's headline table and missed its supplementary tables. PatchCore's published AU-PRO@5% on
-`test_private`:
+Goal restated: **match the published PatchCore at its own low-resolution setting (256, full
+frame) before spending anything on resolution.** Their 256 number is 28.8 on `test_private`. Our
+nearest arm (224 aspect, 6 scenarios) is 18.0; adjusting for 224 -> 256 leaves roughly a
+**6.6-point implementation gap** that resolution does not explain.
 
-| input size | AU-PRO@5% | source |
-|---|---|---|
-| 256x256 | 28.8 | Table VII |
-| 512x512 | **41.9** | Table X |
-| half native | **62.3** | Table XI |
+### What the paper and the official repo say they ran
 
-Ours: **34.4 at 448**, **40.6 at 768** (6 of 8), on `test_public`. **Our 768 arm is below their
-512 arm.**
+Official Amazon implementation, ensemble config, with the centre crop disabled for AD 2:
 
-**This is not only a resolution gap.** Their 512x512 at stride 8 is ~4,096 patches; our 768 aspect
-arm is ~9,216. **We use ~2.25x their patch count and score lower.**
+| | theirs | ours (arm A) | already tested? |
+|---|---|---|---|
+| backbones | **WRN-101 + ResNeXt-101 + DenseNet-201** (torchvision) | WRN50-2 (timm) | size: E10b, null. **diversity: no** |
+| layers | layer2 + layer3 per backbone | layer2 + layer3 | same |
+| layer fusion | **each layer pooled to 1024, stacked, pooled to 384** | **concat 512+1024 = 1536** | **no** — E10a random-projected the concat, which is a different operation |
+| patch aggregation | patchsize 3 (unfold + mean) | 3x3 avg_pool | equivalent in intent; border handling uncertain both sides |
+| coreset | approx greedy, **1%, uncapped** | 1%, **capped 4000** (0.3-0.9% effective) | density sweep only under broken geometry |
+| geometry at 256 | resize 256x256, no crop = **squash** | aspect | E1R vs E3R: aspect beats squash by +0.029 |
+| smoothing | Gaussian **sigma 4 on the 256 map** | sigma 4 on the 512 eval map | **no** — theirs is 2x larger relative to the image |
+| image score | max pixel | max patch | same |
+| kNN | 1-NN, no reweighting | 1-NN | same |
+| eval split | `test_private` (server) | `test_public` | cannot match locally |
 
-**What changes:**
+Note the paper's "0.01%" coreset is a typo — the official flag is `-p 0.01` = 1%. E10c is struck.
 
-- **D-07 item 4 (prepare the submission) is cancelled.** We would be submitting a result below the
-  published baseline.
-- **D-07 item 3 (validation split) drops from gating to ordinary.** It gates a claim we are not
-  ready to make.
-- **Stop treating `rice` and `walnuts` as the targets.** Every scenario is behind.
-- **The resolution finding is theirs.** Tables X and XI report that scaling input roughly doubles
-  PatchCore's AU-PRO@5%. Our +0.154 per doubling replicates a published result — a correct
-  replication, independently arrived at, and **not a discovery**. Do not write it up as one.
+### Tasks, in order — each is single-variable against the one before it
 
-**What to do, in order:**
+**T0 — audit `E5-inputres-768` when it lands** (bucketed table first; it is still the only test of
+D-04 prediction 2). Unchanged from D-07.
 
-**1. Finish and audit `E5-inputres-768`** including the bucketed table. It is still the only test
-of D-04 prediction 2, and that is still worth knowing.
+**T1 — run the official PatchCore on our split.** `pip install` the Amazon repo, run the exact
+ensemble command with `--resize 256 --imagesize 256` (crop disabled, as the paper did), all 8
+scenarios, `test_public`. **Feed its anomaly maps into our `aupro.evaluate` with the fixed native
+region set.** Record as `REF-official-256`.
 
-**2. Close the implementation gap before buying more resolution.** This is the real work now.
-Every resolution gain we buy is applied to a weaker detector than theirs. Their config is
-published: **ensemble of WideResNet-101 + ResNeXt-101 + DenseNet-201**, embedding reduced to
-**384**, centre crop disabled.
+This is the most valuable run in the queue. It gives *their* model on *our* split under *our*
+metric, so:
+- `REF-official-256` vs their published 28.8 = **the split effect** (test_public vs test_private).
+- `REF-official-256` vs our own 256 arm (T2) = **the implementation gap, uncontaminated by split.**
 
-E10a (384 projection) and E10b (WRN-101) each tested one piece in isolation and both came back
-flat or negative. **The piece neither tested is the ensembling itself** — three *diverse*
-architectures averaged, which is a different mechanism from one larger backbone. M-26b told you to
-re-cost the ensemble downward on E10b's null; **that was wrong and I withdraw it.** E10b showed a
-bigger backbone is worth nothing, which is evidence *for* diversity being the active ingredient,
-not against it.
+Until this exists every comparison we make is across two variables at once.
 
-**3. Then resolution**, with their 512 (41.9) and half-native (62.3) as concrete waypoints rather
-than an open-ended ladder.
+**T2 — our pipeline at their setting.** `--img 256 --geometry squash --bank-cap 0` (uncapped 1%),
+8 scenarios. Record as `E11-ours-256-squash`. This is our true number at their setting; the 224
+aspect arm is not it. Gap to T1 is the number to close.
 
-**Your call, and it matters more than usual now:** is the ensemble worth ~1.5 GPU-h given E10b's
-null, or is there something in their preprocessing we have still not identified? You have run more
-of their configuration than anyone. If you think the gap is elsewhere, say where and chase that
-instead.
+**T3 — bisect, one change per arm, each against T2:**
+- **T3a** — layer fusion done their way: pool each layer to 1024, stack, pool to 384. *Not* random
+  projection. Prediction: this is the largest single contributor, because it is the one structural
+  difference nobody has tested.
+- **T3b** — smoothing sigma scaled to the image as they do it (sigma 4 at 256 ~ sigma 8 at our
+  512 eval frame). Cheap; post-processing only, no re-extraction.
+- **T3c** — torchvision weights instead of timm for WRN50-2. Cheap; isolates the weight source.
+- **T3d** — 3-backbone ensemble, official style. Expensive; run last, and only if T3a-c have not
+  closed the gap, because E10b already showed backbone *size* is worth nothing.
+
+**T4 — after parity at 256:** re-run T2's winning config at 512 and compare to their 41.9. Only
+then does resolution go back on the table.
+
+### Two things to carry in every report
+
+- **Report the bucketed table for every arm.** Resolution helped all buckets last time; we want to
+  know whether the implementation fixes do the same or concentrate somewhere.
+- **`test_public` only, no selection on it.** These are diagnostics, not claims. The `validation`
+  split question returns once we have something worth claiming.
+
+### Your lane
+
+T3's ordering is the planner's guess. You have run more of their configuration than anyone; if the
+code diff against the official repo shows a difference not listed above, that goes to the front.
 
 ---
 
@@ -1155,4 +1173,21 @@ high-resolution analysis anyway. Nothing was hidden — we read Table VII and st
 supplement reverse it. This is `THINKING_PROCESS.md` §2 failing a **second** time on the **same
 number**, after being written down specifically to prevent it. The rule is now narrowed: **read
 the whole table, including the supplement, before building a programme on one row of it.**
+
+### M-29 — planner — D-09: parity at 256, via the official implementation on our split
+*2026-09-06T03:40:00+02:00*
+
+Course correction per the user. Before any further resolution work, match the published PatchCore
+at its own setting. Read the official Amazon repo's ensemble command: 3 torchvision backbones,
+layer2+3 each, **each layer pooled to 1024 then stacked and pooled to 384** (not a random
+projection of a concat — E10a tested a different operation), patchsize 3, 1-NN, **coreset 1%
+uncapped** (the paper's "0.01%" is a typo), resize 256 with the crop disabled for AD 2.
+
+The single most valuable run is **T1: the official code on `test_public`, scored with our
+evaluator.** It separates the split effect from the implementation gap, which every comparison so
+far has confounded. T2 is our pipeline at exactly their setting (256 squash, uncapped). T3 bisects
+the gap one change at a time, with the layer-fusion method as the leading candidate — it is the
+one structural difference nobody has tested.
+
+**Planner role from here:** analyse results and write tasks; the worker runs them. E10c is struck.
 

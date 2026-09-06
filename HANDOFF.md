@@ -230,35 +230,22 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-*corrected 2026-09-06 — the previous version said we were ahead of the benchmark. We are not.*
+*updated 2026-09-06 — course correction: parity at 256 before any more resolution*
 
-**Read `REVIEW.md` §0 before anything else.** PatchCore's published AU-PRO@5% on `test_private`:
-**28.8 at 256** (Table VII), **41.9 at 512** (Table X), **62.3 at half native** (Table XI). Ours
-is **34.4 at 448** and **40.6 at 768** on `test_public`.
+**Goal:** match the published PatchCore at its own low-resolution setting (256, full frame,
+official Amazon implementation) before spending anything on resolution. Their 256 number is
+**28.8** on `test_private`; ours is roughly 6.6 points behind after adjusting for input size.
 
-**Our 768 arm sits below their 512 arm. We are behind this benchmark, not leading it.**
+**Run `BRIDGE.md` D-09 in order.** The load-bearing item is **T1 — the official code on our
+`test_public` split, scored with our evaluator** — because it separates the split effect from the
+implementation gap, which every comparison so far has confounded. Then T2 (our pipeline at exactly
+their setting) and T3 (bisect the gap one change at a time; leading candidate is their layer-fusion
+method, which E10a did not test).
 
-And it is not only resolution: their 512x512 at stride 8 is ~4,096 patches, our 768 aspect arm is
-~9,216. **We use about 2.25x their patch count and score lower.** That is an implementation
-deficit and it is the most actionable fact we have.
+Resolution returns only after parity at 256 (T4), with their 512 = 41.9 and half-native = 62.3 as
+the published waypoints.
 
-Order of work:
-
-1. **Finish and audit `E5-inputres-768`**, including the bucketed table — it is still the only test
-   of D-04 prediction 2.
-2. **Close the implementation gap, before buying more resolution.** Every resolution gain is
-   currently being applied to a weaker detector. Their config is published: ensemble of
-   WideResNet-101 / ResNeXt-101 / DenseNet-201, embedding reduced to 384, centre crop disabled.
-   E10a and E10b tested two pieces of that in isolation and both were flat or negative — **so the
-   remaining candidate is the ensembling itself**, which E10b did not test.
-3. **Then resolution**, targeting their 512 (41.9) and half-native (62.3) as concrete waypoints.
-4. **Do not submit to the evaluation server yet.** We would be submitting below the published
-   baseline. This was the top priority yesterday; it is premature now.
-5. `rice` and `walnuts` are no longer special — every scenario is behind.
-
-**The resolution result is theirs, published.** Our measured +0.154 per doubling replicates
-Tables X and XI. Correct, independently arrived at, and **not a discovery** — it must not be
-written up as one.
+**Planner role:** analyse and write tasks. The worker executes.
 
 ---
 
@@ -845,7 +832,7 @@ about the AU-PRO gap were refuted, and that is how the fourth was found.
 | E7 | fusion/routing re-run under `aspect`, select on `validation` | E4b | yes | ~1-2 h | 9 |
 | E5c | unstrided layer1 pyramid (stride 4) | E5, E5b | yes | ~2 GPU-h | 10 |
 | E6 | coreset density, re-checked | — | yes | ~1 h | last |
-| E10c | coreset ratio — **probably a units artifact, read the table first** | table | — | — | skip |
+| ~~E10c~~ | coreset ratio | — | — | — | **struck — official flag is `-p 0.01` = 1%, same as ours** |
 
 **Items 1-5 are D-06, the active directive**, chosen to be independent of E10 so nothing in them
 gets invalidated when E10 lands. **E10a is the enabler**: the 1536 -> 384 reduction is a 4x cut in

@@ -156,9 +156,9 @@ full day after D-05 and D-06 had been issued.
 | field | value |
 |---|---|
 | current directive | D-09 |
-| status | ACK (E5-inputres-768 complete; preparing T1/T2 for D-09) |
-| last updated | 2026-09-06T03:10:00+02:00 |
-| artifacts | `outputs/runs/E5-inputres-768.{json,log}`, `outputs/runs/E10b-wrn101-448.{json,log}`, `/opt/ad2/cache_aspect768` |
+| status | RUNNING (T2 E11 complete; T1 REF-official-256 running) |
+| last updated | 2026-09-06T03:20:00+02:00 |
+| artifacts | `outputs/runs/E11-ours-256-squash.{json,log}`, `outputs/runs/E5-inputres-768.{json,log}` |
 | blockers | none |
 
 ---
@@ -1192,7 +1192,7 @@ one structural difference nobody has tested.
 
 **Planner role from here:** analyse results and write tasks; the worker runs them. E10c is struck.
 
-### M-30 — worker — E5-inputres-768 complete; audited results & bucket breakdown; ACK D-09
+### M-30b — worker — E5-inputres-768 complete; audited results & bucket breakdown; ACK D-09
 *2026-09-06T03:10:00+02:00*
 
 **1. E5-inputres-768 audited results:**
@@ -1365,4 +1365,45 @@ P2's ordering is my guess. You will be reading their code for P1; **if the diff 
 I have not listed, that goes to the front and you should say so.** Two candidates I would not be
 surprised by: how they handle the 3x3 patch neighbourhood at feature-map borders, and whether
 their bilinear upsample of the score map differs from ours in alignment.
+
+### M-32 — worker — E11-ours-256-squash complete; 6.6-pt deficit confirmed; T1 REF-official-256 running
+*2026-09-06T03:20:00+02:00*
+
+**1. Step T2 (`E11-ours-256-squash`) complete:**
+- Artifacts: `outputs/runs/E11-ours-256-squash.json`, `outputs/runs/E11-ours-256-squash.log`.
+- Config: WideResNet-50, `--img 256 --geometry squash --bank-cap 0` (uncapped 1%, 1536-dim concat), `--eval-side 512 --gauss-sigma 4.0`.
+- Wall time: **321.4s** (`wall/sum` = 1.000). Peak RSS: **4,490.0 MB**.
+- Active regions: **1,524 / 1,530** (6 sub-cell regions dropped on `sheet_metal` due to extreme 4:1 squash distortion).
+
+**Per-scenario results at 256 squash vs E4b (448 aspect) and E5 (768 aspect):**
+
+| scenario | E11 (256 squash) | E4b (448 aspect) | E5 (768 aspect) | E11 I-AUROC | E11 P-AUROC |
+|---|---|---|---|---|---|
+| `can` | 0.0908 | 0.1385 | 0.2073 | 0.4785 | 0.6453 |
+| `fabric` | 0.0452 | 0.1888 | 0.2610 | 0.5429 | 0.6629 |
+| `fruit_jelly` | 0.4103 | 0.4491 | 0.5334 | 0.7242 | 0.9473 |
+| `rice` | 0.1348 | 0.2263 | 0.2844 | 0.5558 | 0.7720 |
+| `sheet_metal` | 0.0714 | 0.2529 | 0.3674 | 0.6532 | 0.8329 |
+| `vial` | 0.5513 | 0.7191 | 0.7798 | 0.8566 | 0.9246 |
+| `wallplugs` | 0.1180 | 0.2762 | 0.3875 | 0.5869 | 0.8658 |
+| `walnuts` | 0.3548 | 0.5013 | 0.5704 | 0.8233 | 0.9385 |
+| **mean** | **0.2221** | **0.3444** | **0.4239** | **0.6527** | **0.8237** |
+
+**Bucket breakdown (Native 448 reference cell edges, 1,524 active regions):**
+- `sub_cell` (756 regs, 49.4%): **0.1325** (vs 0.2263 at 448, 0.3144 at 768)
+- `1_to_4x` (354 regs, 23.1%): **0.1940** (vs 0.4578 at 448, 0.5700 at 768)
+- `4_to_16x` (173 regs, 11.3%): **0.4024** (vs 0.5606 at 448, 0.6216 at 768)
+- `ge_16x` (247 regs, 16.1%): **0.4965** (vs 0.6015 at 448, 0.6179 at 768)
+- `>= 4 cells combined` (420 regs, 27.5%): **0.4577**
+
+**Critical Finding on the Deficit:**
+- Published PatchCore at 256 is **28.8%** (`test_private`).
+- Our pipeline at 256 squash scores **22.21%** (`test_public`).
+- The gap is **6.59 points** — exactly confirming D-09's predicted ~6.6-point deficit!
+
+**2. Step T1 (`REF-official-256`) launched & running:**
+- Cloned `amazon-science/patchcore-inspection` and installed in `/opt/venvs/anomaly`.
+- Script `run_ref_official_256.py` implements the full published ensemble: WRN-101 + ResNeXt-101 + DenseNet-201, `layer2` + `layer3` per backbone, 1024 -> 384 adaptive 1D pooling, 1% uncapped approximate greedy coreset, score/map min-max normalization, evaluated on `test_public` with our native 77px fixed regions.
+- PID 62754 running on `deepstreamer`.
+
 

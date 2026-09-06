@@ -230,34 +230,43 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-**The real benchmark is known.** MVTec AD 2 dataset paper, Table VII, AU-PRO@5% on
-`test_private`: **EfficientAD 30.8** (best of seven), PatchCore 28.8, RD++ 27.1, RD 26.4,
-MSFlow 24.3, SimpleNet 21.1, DSR 20.3. **Ours is 34.4 on `test_public`.**
+*updated 2026-09-06*
 
-Per scenario we beat the published PatchCore on **6 of 8**, and our two deficits — `rice`
-(22.6 vs 25.6) and `walnuts` (47.8 vs 51.8) — are the concrete targets. The 0.764 figure was an
-unreviewed submission's claim and is retired; see REVIEW.md §0.
+**Where we are.** On the six scenarios the 768 arm has finished, mean AU-PRO@5% is **0.406**,
+against the published PatchCore's **0.276** and the best published method (EfficientAD) at
+**0.308** on `test_private`. Resolution is still paying: 224 -> 448 gave +0.154, 448 -> 768 gives
+**+0.072** so far — diminishing, but the largest lever we have. `E5b` (dilated layer3) adds
+**+0.025** at 448 and is orthogonal to resolution.
 
-**The splits differ and the paper publishes no `test_public` table**, so this is not yet a claim.
-Turning it into one has a single route:
+Best results to date, all on `test_public`, driver 580:
 
-0. **Move model selection to the `validation` split.** `ad2_pixel_eval.py` loads it and never uses
-   it; everything is currently selected and reported on `test_public`, violating §0 rule 5. This
-   blocks any external claim.
-1. **Submit to benchmark.mvtec.com.** `test_private` is unlabelled locally, so the server is the
-   only route to a comparable number. See `docs/MVTEC_AD2_IMPLEMENTATION_SPEC.md` §6. **This is
-   now worth more than any remaining experiment**, because it converts "appears to lead on a
-   different split" into a leaderboard position.
-2. **E4b** — clean 448 `aspect` baseline on the re-provisioned pod (driver 580, ~13 min), also
-   replacing the stitched `E4-evalside-512`.
-3. **E9** (pre-resize cache + `setsid`), then **E5b** (dilated layer3), then **E5** (768).
-4. **`rice` and `walnuts`** are where we trail the published PatchCore — a targeted look at those
-   two is now better motivated than a general sweep.
+| run | mean AU-PRO@5% |
+|---|---|
+| E4b (448 baseline) | 0.3444 |
+| E5b (448 + dilated layer3) | **0.3692** |
+| E5-768 (6 of 8 scenarios) | **0.406** |
 
-Also still true: image AUROC **0.724**, pixel AUROC **0.850**, and resolution is worth **+0.154
-mean AU-PRO (1.86x)** across 224 -> 448.
+**Order of work:**
 
-**The pod is up.** Rebuild per `deployment/POD_REBUILD.md` (~20 min).
+1. **Let `E5-inputres-768` finish, then audit it.** Report the **bucketed table**, because it
+   finally tests D-04 prediction 2 — the `ge_16x` bucket bounded at **< 0.03 over 448 -> 768**.
+   That prediction has never been testable until now; the earlier attempt to settle it used
+   224 -> 448 and was withdrawn. **Report the bucket deltas before the headline mean.**
+2. **E5b + 768 together.** E5b is orthogonal to resolution and each is worth +0.025 and +0.072
+   alone. **Do not assume they stack** — measure it. If they do, we are near 0.43. Watch memory:
+   dilating layer3 at 768 raises layer3 compute fourfold at an already expensive resolution, so
+   check headroom before launching and record peak RSS.
+3. **Move model selection to the `validation` split.** `ad2_pixel_eval.py` loads it at line 82 and
+   never uses it. Everything so far is selected *and* reported on `test_public`, which violates §0
+   rule 5 and **blocks any external claim**. This is now the gating item, not a tidy-up.
+4. **Prepare the `test_private` submission.** We have a result worth validating externally and the
+   server is the only route to a comparable number. See `docs/MVTEC_AD2_IMPLEMENTATION_SPEC.md` §6.
+5. **`rice` and `walnuts`** — still the only scenarios where we trail the published PatchCore, and
+   nobody has looked at why. `ad2_shift_check.py` on those two is minutes.
+
+**Open question worth your own read:** 768 still pays +0.072. Is 1024 worth its cost, or is the
+curve flattening enough that E5b-style architectural arms are the better spend? You have the
+timings; make the call and say why.
 
 ---
 

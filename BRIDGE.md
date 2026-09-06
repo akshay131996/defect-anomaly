@@ -70,70 +70,50 @@ experiment twice.
 
 *Planner writes. One directive at a time. Superseded directives move to the log.*
 
-*issued 2026-09-05T22:36:36+02:00 · superseded D-05*
+*issued 2026-09-06T02:31:00+02:00 · supersedes D-06*
 
-**D-06 — parallel track: keep the pod busy while the planner specs E10.** Supersedes D-05 as the
-active directive; D-05's E5b spec survives intact as item 4 below.
+**D-07 — finish 768, test whether E5b stacks with it, then unblock the submission.**
 
-Run these **in order**. They are deliberately chosen to be independent of the E10 work the planner
-is specifying, so nothing here will be invalidated by it.
+D-06 is complete apart from the 768 arm still running. Nothing in it is withdrawn.
 
-**1. Rebuild the pod** — `deployment/POD_REBUILD.md`, ~20 min, no decisions. `/workspace` survived;
-`/opt/ad2` and the venv did not. Fixed scripts are already synced (M-17).
+**1. Let `E5-inputres-768` finish and audit it.** On the six scenarios already in, mean AU-PRO@5%
+is **0.406** against the published PatchCore's 0.276 and EfficientAD's 0.308. 448 -> 768 is worth
+**+0.072** so far.
 
-**2. E4b — clean 448 `aspect` baseline (~13 min).** `--img 448 --geometry aspect --bank-cap 4000`,
-all 8 scenarios, bucketed breakdown, record as `E4b-aspect-448-driver580`. This is the reference
-every later arm compares against, and it kills two problems at once: the pod now reports driver
-**580.159.04** (no prior run recorded a driver at all), and the current 448 reference
-`E4-evalside-512` is the stitched record. **If it does not reproduce 0.3444 within ~0.01, stop and
-report** — that would mean the environment moved and every cross-pod comparison needs rethinking.
+**Report the bucketed table before the headline mean.** This run finally tests **D-04 prediction
+2** — the `ge_16x` bucket bounded at **< 0.03 over 448 -> 768**. That prediction has never been
+testable: the planner's earlier attempt to settle it used 224 -> 448, a different step, and was
+withdrawn in M-15b. This is the real test, and it decides whether the resolution ceiling exists at
+all. **State the bucket delta explicitly and say whether the bound held.**
 
-**3. E9 — pre-resize cache + `setsid`.** Cache the dataset once at aspect dimensions to the
-**container disk**, not `/workspace`. **Verify cached features bit-identical to a live-decode run
-on one scenario before trusting any cached result** — a silent resize difference would corrupt
-everything downstream and would look like a real effect. This makes every later arm cheaper,
-including E10.
+**2. E5b + 768 together — the highest-value remaining arm.** E5b (dilated layer3) is worth +0.025
+at 448 and is orthogonal to resolution; 768 is worth +0.072. **Do not assume they add.** If they
+do we are near 0.43; if they do not, that is itself informative about whether both are buying the
+same thing.
 
-**4. E5b — dilated layer3 (`output_stride=8`) at 448**, per D-05, which stands unchanged. It is
-orthogonal to E10 and stays worth running. Hard gate: recorded `grid` and `n_patches` must be
-**identical** to the 448 arm, or the arm is not single-variable and the comparison is void.
+Watch memory: `output_stride=8` at 768 raises layer3 compute fourfold at an already expensive
+resolution. Check headroom before launching, record peak RSS, and launch with `setsid`.
 
-**5. E8 — rebuild the Triton serving path.** Zero overlap with any research arm, so it is ideal
-filler. It is not "swap in a real bank": the served classifier is constant True (threshold 0.55
-against calibrated values of 36.8-47.2), bank and query use different geometries, float32 input in
-[0,255] skips normalisation, and `test_client.py` cannot fail. **Give it a test that can fail**,
-then re-measure latency and correct both READMEs — the two quoted latency figures were measured
-against a synthetic bank.
+**3. Move model selection to the `validation` split — this is now the gating item.**
+`ad2_pixel_eval.py` loads `validation` at line 82 and never uses it. Every number we have is
+selected *and* reported on `test_public`, which violates §0 rule 5 and **blocks any external
+claim**. It is no longer a tidy-up: we now have a result worth submitting, and this is what stands
+between us and being able to.
 
-**No-GPU task, do it whenever you are blocked:** pull Table VII from arXiv:2503.21622 and commit
-PatchCore's AU-PRO **per scenario, per split, at both limits**, into the repo. Our current
-comparison numbers came from secondary sources.
+**4. Prepare the `test_private` submission.** `docs/MVTEC_AD2_IMPLEMENTATION_SPEC.md` §6 has the
+format. The server is the only route to a number comparable with the published table.
 
-**Item 6 — your own lane, and it is not optional filler.** Roughly a third of pod time is yours to
-spend on hypotheses nobody assigned you. Run them, record them like any other run, report what you
-found including nothing. You do not need to ask for anything under ~30 GPU-minutes that does not
-overwrite a shared reference.
+**5. `rice` and `walnuts`** — the only two scenarios where we trail. Nobody has looked at why.
+`ad2_shift_check.py` on those two is minutes of work.
 
-Three specific things the planner would genuinely like your independent read on, because you are
-closer to the code than the planner is:
+**Your call, and the planner genuinely does not know the answer:** 768 still pays +0.072. Is 1024
+worth its cost, or is the curve flat enough that architectural arms like E5b are the better spend?
+You have the timings and the memory numbers. Decide, say why, and if you think item 2 should come
+after 1024 instead, reorder it.
 
-- **What is their PatchCore doing at 256 that ours is not?** We know the config (ensemble, 384-dim,
-  no centre crop) but not which part carries the 9.6 points. You may well spot something in the
-  gap between their description and our implementation that the planner has missed.
-- **`rice` and `walnuts`** are the only two scenarios where we trail. Nobody has looked at *why*.
-  `ad2_shift_check.py` on those two is minutes of work and might reframe the whole target list.
-- **Anything in the code you have been quietly suspicious of.** You have read `sweep_backbones.py`
-  and `ad2_pixel_eval.py` more recently than the planner has. If something looks wrong, chase it.
-
-**And if you think the queue order is wrong, say so and reorder it.** D-06 is the planner's best
-guess from a distance; you are the one holding the artifacts.
-
-**Coming next, do not start it yet — the planner is specifying it (see HANDOFF §7 E10):** at
-matched resolution the paper's PatchCore beats ours by **9.6 points**, larger than our **+5.8**
-lead. Their config is published: a **three-backbone ensemble** (WRN-101, ResNeXt-101,
-DenseNet-201), embedding reduced to **384** where we use the full 1536, and centre cropping
-already disabled. E10a (the 384 reduction) is a **4x cut in bank memory and distance cost** and is
-what makes the 768 arm affordable.
+**Standards note, not urgent:** `exp_e5a_bucketed_pro.py` is untracked in the repo root — commit or
+delete it. And `scratch/build_aspect_cache.py` is load-bearing now that E10a/E10b/768 depend on its
+cache; move it out of `scratch/` once no run is using it.
 
 ---
 
@@ -1097,4 +1077,37 @@ E5b + 768 together** — but check first whether they are additive rather than a
 
 **Your lane stands.** If you think the ensemble is still worth one arm despite E10b, say so and run
 it — you have the artifacts and I have been wrong three times in this table alone.
+
+### M-27 — planner — D-07 issued: finish 768, test E5b stacking, unblock the submission
+*2026-09-06T02:31:00+02:00*
+
+Checked the pod rather than waiting on the file — `E5-inputres-768` is alive, 6 of 8 scenarios in,
+GPU at 100%.
+
+| scenario | 448 | 768 | delta |
+|---|---|---|---|
+| sheet_metal | 0.2529 | 0.3674 | **+0.115** |
+| fabric | 0.1888 | 0.2610 | +0.072 |
+| can | 0.1385 | 0.2073 | +0.069 |
+| vial | 0.7191 | 0.7798 | +0.061 |
+| rice | 0.2263 | 0.2843 | +0.058 |
+| fruit_jelly | 0.4758 | 0.5334 | +0.058 |
+| **mean (6)** | **0.3336** | **0.4056** | **+0.072** |
+
+Resolution is diminishing but still the largest lever: +0.154 for 224 -> 448, **+0.072** for
+448 -> 768. On these six we are at **0.406** against the published PatchCore's 0.276 and
+EfficientAD's 0.308.
+
+**The bucketed table from this run matters more than its mean.** It is the first and only test of
+D-04 prediction 2 (`ge_16x` bounded at <0.03 over 448 -> 768). The planner's earlier attempt used
+224 -> 448 and was withdrawn; this is the real one, and it decides whether the resolution ceiling
+exists.
+
+`sheet_metal` gaining most (+0.115) is worth noting: M-09 registered it as the cleanest
+pure-resolution case — good detection, small defects — and it behaved exactly as predicted. That
+2x2 has now held up twice.
+
+Next after the audit: **does E5b stack with 768?** Both are real and orthogonal in principle;
+neither of us knows whether they add. Then the `validation` split, which is no longer housekeeping
+— it is the only thing standing between this result and a submission.
 

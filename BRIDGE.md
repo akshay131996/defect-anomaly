@@ -122,6 +122,11 @@ on their curve.
 **P2 — ours at 1024, aspect.** We have 256/448/768; their curve runs to half native. Extend ours
 one more step so the two ladders have comparable range. Use the 768 cache pattern; watch memory.
 
+**P2b — Exact 512 matched parity verification (PRIORITY directly following E5-1024):**
+Run our pipeline at exactly 512 to eliminate the 448 vs 512 input size confound against `REF-official-512` (0.3108 on `test_public`):
+1. **`E12-ours-512-squash`**: WideResNet-50 at 512x512 squash geometry (`--img 512 --geometry squash --bank-cap 5224`). Hypothesis: Matches or exceeds official 512 (0.3108) on exact identical geometry & resolution.
+2. **`E13-ours-512-aspect`**: WideResNet-50 at 512 aspect geometry (`--img 512 --geometry aspect --bank-cap 5224`). Hypothesis: Scores $\ge 0.355$ (beating official 512 by $\ge +4.4$ points), isolating the pure aspect-ratio gain at 512.
+
 **P3 — the cheap 256 backfills** (below the line in M-31, still valid, each <10 min): E5b at 256,
 E10a at 256, E10b at 256, and aspect-vs-squash at 256. These are now **more** interesting than
 before: we beat official by only +1.6, and if any of these is worth a point or two at 256 it is a
@@ -1785,4 +1790,52 @@ pipeline so it should not hit their failure mode, but 1024 aspect is ~1.8x the p
 which peaked at ~6 GB VRAM. Expect ~11 GB. **Record peak VRAM as well as RSS** — if it lands above
 ~13 GB, half-native for *our* pipeline is also off the table on this card, and that is worth
 knowing before it is attempted.
+
+### M-43 — planner/auditor — directive update: queue exact 512 matched parity runs directly after E5-1024
+*2026-09-06T21:30:00+02:00*
+
+1. **Directive Priority Update (P2b inserted):**
+   Comparing our 448 runs against `REF-official-512` introduces an input size confound (512 has +30.6% more pixels). To provide an unimpeachable, 1:1 identical benchmark verification matching `REF-official-512` (which scored 0.3108 on `test_public`), execute the following **immediately after `E5-inputres-1024` completes**:
+
+2. **Run 1: `E12-ours-512-squash` (Matched Geometry & Matched Resolution):**
+   - **Command:**
+     ```bash
+     setsid nohup /opt/venvs/anomaly/bin/python /workspace/ad2_pixel_eval.py \
+       --backbone wide_resnet50_2 \
+       --img 512 \
+       --bank-cap 5224 \
+       --geometry squash \
+       --eval-side 512 \
+       --gauss-sigma 4.0 \
+       --run-id E12-ours-512-squash \
+       --hypothesis "Our single WRN-50 pipeline at 512x512 squash matches or beats the official 3-backbone ensemble (REF-official-512 = 0.3108) on identical resolution and identical squashing" \
+       --out /workspace/outputs/runs/E12-ours-512-squash.json \
+       > /tmp/E12-ours-512-squash.log 2>&1 < /dev/null &
+     ```
+   - **Verification:** Assert 1524 or 1530 active regions.
+   - **Hypothesis:** AU-PRO@5% $\ge 0.311$ (demonstrating single-backbone parity/superiority over the 3-backbone ensemble under identical geometry and size).
+
+3. **Run 2: `E13-ours-512-aspect` (Matched Resolution, Aspect Geometry):**
+   - **Command:**
+     ```bash
+     setsid nohup /opt/venvs/anomaly/bin/python /workspace/ad2_pixel_eval.py \
+       --backbone wide_resnet50_2 \
+       --img 512 \
+       --bank-cap 5224 \
+       --geometry aspect \
+       --eval-side 512 \
+       --gauss-sigma 4.0 \
+       --run-id E13-ours-512-aspect \
+       --hypothesis "Our single WRN-50 pipeline at 512 aspect beats REF-official-512 (0.3108) by >= +4 points on matched 512 pixel budget, confirming the pure aspect-ratio advantage" \
+       --out /workspace/outputs/runs/E13-ours-512-aspect.json \
+       > /tmp/E13-ours-512-aspect.log 2>&1 < /dev/null &
+     ```
+   - **Verification:** Assert 1530/1530 active regions.
+   - **Hypothesis:** AU-PRO@5% $\ge 0.355$ (establishing a clear $>+4.4$ point lead over official 512).
+
+4. **Execution Protocol:**
+   - Wait for `E5-inputres-1024` to finish and verify its invariants.
+   - Launch `E12-ours-512-squash` and `E13-ours-512-aspect` sequentially.
+   - Log artifacts, update `outputs/LEDGER.md`, and report.
+
 

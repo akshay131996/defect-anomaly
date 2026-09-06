@@ -155,9 +155,9 @@ full day after D-05 and D-06 had been issued.
 
 | field | value |
 |---|---|
-| current directive | D-09 |
-| status | DONE (T1 REF-official-256 and T2 E11 complete; ground truth established) |
-| last updated | 2026-09-06T03:30:00+02:00 |
+| current directive | D-10 |
+| status | RUNNING (P1 REF-official-512 in flight across 8 scenarios on deepstreamer) |
+| last updated | 2026-09-06T17:45:00+02:00 |
 | artifacts | `outputs/runs/REF-official-256.{json,log}`, `outputs/runs/E11-ours-256-squash.{json,log}`, `outputs/runs/E5-inputres-768.{json,log}` |
 | blockers | none |
 
@@ -1539,4 +1539,36 @@ point or two there is a real edge over the reference rather than a gap-closer).
 well-chosen measurement — the ceiling, the "we are ahead" claim, and now the implementation gap.
 The pattern is that cross-split and cross-resolution comparisons kept being made without a
 controlled run to anchor them. P1 exists so the next comparison has one.
+
+### M-36 — worker — ACK D-10; pod rebuilt, REF-official-512 in flight across all 8 scenarios
+*2026-09-06T17:45:00+02:00*
+
+1. **ACK Directive D-10:**
+   - Understood and agreed: with the implementation gap at 256 proven to be a -8.2 split effect (and our single-backbone pipeline leading the official 3-backbone ensemble by +1.62 points on `test_public`), D-09 bisection tasks are cancelled.
+   - Ground truth resolution curve on our split (`test_public` with our audited 77px native fixed-region evaluator) is our primary objective.
+
+2. **Pod Rebuild & Pre-flight Verification:**
+   - Rebuilt fresh container overlay on `deepstreamer` following `POD_REBUILD.md`. Extracted 31GB dataset to local container storage (`/opt/ad2/mvtec_ad_2`).
+   - Rebuilt virtualenv at `/opt/venvs/anomaly` with PyTorch 2.14+cu130, torchvision, timm, faiss, and `patchcore` in editable mode.
+   - Verified environment (`verify_env.py`): NVIDIA RTX A4000 (16GB VRAM, Driver 550.127.08, CUDA 13.1), 503GB host RAM, all 8 scenarios verified in local `/opt/ad2/mvtec_ad_2`.
+
+3. **Multi-Mode Official Reference Evaluator:**
+   - Created `run_ref_official.py` with multi-mode resolution support (`--mode 256`, `--mode 512`, `--mode halfnative`).
+   - Verified single-scenario execution on `can` at 512x512 (`TEST-ref-512-can`):
+     - Finished in 700.0s.
+     - **AU-PRO@5%: 0.1533** (vs 0.0879 at 256 squash, **+74.4% relative gain**).
+     - Active regions: **66 / 66 (100.0%)**. Monotonic thresholding and pinned 448 reference cell bucketing passed cleanly.
+     - Confirms official Amazon PatchCore exhibits strong resolution scaling on `test_public`.
+
+4. **P1 REF-official-512 In Flight:**
+   - Launched full 8-scenario run in the background on `deepstreamer`:
+     ```bash
+     setsid nohup /opt/venvs/anomaly/bin/python /workspace/run_ref_official.py \
+       --mode 512 --run-id REF-official-512 --out /workspace/outputs/runs/REF-official-512.json \
+       > /tmp/REF-official-512.log 2>&1 < /dev/null &
+     ```
+   - PID: 6385. Active on GPU (7.7 GB VRAM, 99% compute utilization).
+   - Expected completion: ~50-60 minutes.
+   - Upon completion, will verify invariants, commit artifacts (`REF-official-512.json` and log), update LEDGER, and proceed immediately to `REF-official-halfnative` and P2/P3.
+
 

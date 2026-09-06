@@ -20,6 +20,7 @@ import argparse
 import glob
 import json
 import os
+import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -40,6 +41,16 @@ from patchcore.backbones import load as load_backbone
 from patchcore.patchcore import PatchCore
 from patchcore.sampler import ApproximateGreedyCoresetSampler
 from patchcore.common import FaissNN
+
+def _nvidia_driver_version():
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=10)
+        v = out.stdout.strip().splitlines()
+        return v[0].strip() if v and out.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
 
 SCENARIOS = [
     "can", "fabric", "fruit_jelly", "rice",
@@ -319,6 +330,8 @@ def main():
         "env": {
             "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
             "torch": torch.__version__,
+            "cuda": torch.version.cuda if torch.cuda.is_available() else None,
+            "driver": _nvidia_driver_version(),
         },
         "config": {
             "mode": args.mode,

@@ -155,10 +155,10 @@ full day after D-05 and D-06 had been issued.
 
 | field | value |
 |---|---|
-| current directive | D-06 |
-| status | RUNNING (E5-inputres-768 in progress; E10b complete; 768 cache built) |
-| started | 2026-09-05T23:28:00Z |
-| artifacts | `outputs/runs/E10b-wrn101-448.{json,log}`, `/opt/ad2/cache_aspect768`, `outputs/runs/E5-inputres-768.json` (in progress) |
+| current directive | D-09 |
+| status | ACK (E5-inputres-768 complete; preparing T1/T2 for D-09) |
+| last updated | 2026-09-06T03:10:00+02:00 |
+| artifacts | `outputs/runs/E5-inputres-768.{json,log}`, `outputs/runs/E10b-wrn101-448.{json,log}`, `/opt/ad2/cache_aspect768` |
 | blockers | none |
 
 ---
@@ -1190,4 +1190,45 @@ the gap one change at a time, with the layer-fusion method as the leading candid
 one structural difference nobody has tested.
 
 **Planner role from here:** analyse results and write tasks; the worker runs them. E10c is struck.
+
+### M-30 — worker — E5-inputres-768 complete; audited results & bucket breakdown; ACK D-09
+*2026-09-06T03:10:00+02:00*
+
+**1. E5-inputres-768 audited results:**
+- Artifacts: `outputs/runs/E5-inputres-768.json`, `outputs/runs/E5-inputres-768.log`.
+- Invariants: **1,530 / 1,530 active regions** (100.0% pass across all 8 scenarios).
+- Wall time: 4,413.0s (`wall/sum` = 1.000, perfectly unstitched single run).
+- Peak RSS: 7,623.5 MB (7.6 GB vs 57.7 GiB container ceiling).
+
+**Per-scenario comparison (E4b 448 aspect vs E5 768 aspect, proj 384):**
+
+| scenario | E4b (448px) | E5 (768px) | delta | E4b I-AUROC | E5 I-AUROC | E4b P-AUROC | E5 P-AUROC |
+|---|---|---|---|---|---|---|---|
+| `can` | 0.1385 | 0.2073 | +0.0688 | 0.5140 | 0.5056 | 0.7049 | 0.7796 |
+| `fabric` | 0.1888 | 0.2610 | +0.0722 | 0.5926 | 0.6423 | 0.6197 | 0.6117 |
+| `fruit_jelly` | 0.4491 | 0.5334 | +0.0843 | 0.9283 | 0.8275 | 0.9388 | 0.9369 |
+| `rice` | 0.2263 | 0.2844 | +0.0581 | 0.5426 | 0.5807 | 0.8524 | 0.8528 |
+| `sheet_metal` | 0.2529 | 0.3674 | **+0.1145** | 0.7912 | 0.8324 | 0.8274 | 0.8027 |
+| `vial` | 0.7191 | 0.7798 | +0.0607 | 0.9551 | 0.8416 | 0.9416 | 0.9120 |
+| `wallplugs` | 0.2762 | 0.3875 | **+0.1113** | 0.5409 | 0.6590 | 0.9038 | 0.9138 |
+| `walnuts` | 0.5013 | 0.5704 | +0.0691 | 0.8062 | 0.7609 | 0.9558 | 0.9564 |
+| **mean** | **0.3444** | **0.4239** | **+0.0795** | **0.7089** | **0.7062** | **0.8431** | **0.8457** |
+
+**Bucket breakdown (Native 448 reference cell edges, 1,530 regions):**
+- `sub_cell` (756 regs, 49.4%): 0.2263 -> **0.3144** (+0.0881, +38.9%)
+- `1_to_4x` (354 regs, 23.1%): 0.4578 -> **0.5700** (+0.1122, +24.5%)
+- `4_to_16x` (173 regs, 11.3%): 0.5606 -> **0.6216** (+0.0610, +10.9%)
+- `ge_16x` (247 regs, 16.1%): 0.6015 -> **0.6179** (+0.0164, +2.7%)
+- `>= 4 cells combined` (420 regs, 27.5%): 0.5847 -> **0.6194** (+0.0347)
+
+**D-04 registered predictions check:**
+- Prediction 1: `sub_cell` increases monotonically at 768: **CONFIRMED** (0.2263 -> 0.3144).
+- Prediction 2: `ge_16x` delta strictly < 0.03: **CONFIRMED** (+0.0164, cleanly within <0.03 bound). Confirms spatial ceiling on macro regions holds; resolution primarily recovers sub-cell and 1-4x regions.
+
+**2. ACK Directive D-09:**
+- Understood the critical findings from arXiv:2503.21622 supplement (Table VII vs Table X vs Table XI): published PatchCore scores 28.8 at 256, 41.9 at 512, and 62.3 at half-native.
+- Our 768 arm (0.4239) with ~9,216 patches only reaches parity with their 512 arm (~4,096 patches).
+- We acknowledge D-09: prioritize isolating and closing the implementation gap at 256 before further resolution scaling.
+- Proceeding immediately with **T1** (run official PatchCore on `test_public` with our native region evaluator to isolate split effect) and **T2** (`E11-ours-256-squash` uncapped 1%).
+
 

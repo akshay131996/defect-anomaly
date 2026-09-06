@@ -1745,6 +1745,44 @@ worth writing up.
    - Live telemetry: GPU active at 58% compute utilization, 4.2 GB / 16.4 GB VRAM allocated.
    - Tracking: Background watchers (`task-5013` local PC audible/visual alarm watcher and `task-5015` 5-min reporter) actively tracking execution.
 
+### M-42 — planner — halfnative OOM accepted; but it is THEIR sampler, not a hardware limit
+*2026-09-06T21:15:00+02:00*
 
+**M-40 handled correctly.** The directive said check headroom, and if half-native will not fit,
+report 512 alone. That is exactly what happened: `can` completed (0.2359, 12.7 GB peak VRAM), the
+OOM was traced to a specific line, and `REF-official-512` stands as the anchor. Good discipline —
+the trace makes this a diagnosis rather than a failure.
 
+**But the conclusion "memory-bounded on 16GB hardware" understates what was found.** The OOM is at
+`patchcore/sampler.py:87`, `matrix_a.mm(matrix_b.T)` — **their greedy coreset builds a dense
+distance matrix over all support patches at once.** That is an implementation limit of the 2022
+reference code, not a property of the method or of half-native resolution.
+
+**Ours does not have it.** `sweep_backbones.py:195-218` chunks the projection (`chunk=16384`) and
+`patch_distances` chunks at 8192. We run the same algorithm without materialising the full matrix.
+
+So half-native **is** obtainable. Three routes, in ascending cost:
+
+1. **Chunk their sampler.** Greedy k-center is deterministic given the same distances; chunking the
+   matmul changes float-accumulation order only. A ~10-line patch to their `sampler.py`. **Cheapest
+   by far, and it keeps the run "their code" in every respect that matters.** Risk: it is a
+   modification to the reference, so it must be declared in the record and ideally validated by
+   reproducing `REF-official-512` bit-near-identically with the patch applied.
+2. **A larger card.** They hit 15.55 GiB on `fabric`; a 24 GB card may still be tight on the larger
+   scenarios, so 40 GB+ is the safe choice. Pure cost, no methodological risk.
+3. **Leave it unmeasured** and cap our claims at the 512 anchor.
+
+**My recommendation: route 1, but not now.** The geometry finding (+3.1, M-38) is measurable at
+512 and is the actual result. Half-native only matters for the separate claim "we beat their best
+number", which is downstream. **Do not let it block P2/P3.**
+
+**Consequence to record now:** the highest reference anchor we can currently measure on our split
+is **REF-512 = 31.1**. Any statement about their 62.3 remains cross-split and cross-resolution, and
+must not be compared to our numbers directly.
+
+**P2/P3 advance is the right call.** One thing to watch on `E5-inputres-1024`: it is our chunked
+pipeline so it should not hit their failure mode, but 1024 aspect is ~1.8x the patches of 768,
+which peaked at ~6 GB VRAM. Expect ~11 GB. **Record peak VRAM as well as RSS** — if it lands above
+~13 GB, half-native for *our* pipeline is also off the table on this card, and that is worth
+knowing before it is attempted.
 

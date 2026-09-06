@@ -50,3 +50,5 @@ result until proven otherwise.** Record what it says, then decide whether to re-
 The `run_id` in a row must also match its artifact filename exactly — `E5a-regions` pointed at
 no file while the data sat in `E5a-region-breakdown.json`.
 | E5-inputres-768 | 2026-09-06T04:05+02:00 | aspect | **768** | **0.4239** | 0.744 | see run json | **accepted** — 8/8 improved; ge_16x +0.0123 confirms D-04 prediction 2 |
+| E11-ours-256-squash | 2026-09-06T04:35+02:00 | squash | 256 | 0.2221 | 0.653 | see run json | accepted — our number at the paper's setting |
+| REF-official-256 | 2026-09-06T04:20+02:00 | squash | 256 | **0.2059** | — | official repo | **accepted** — official code, our split; split effect -8.2; we are +1.6 ahead |

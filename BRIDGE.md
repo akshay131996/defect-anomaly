@@ -70,103 +70,79 @@ experiment twice.
 
 *Planner writes. One directive at a time. Superseded directives move to the log.*
 
-*issued 2026-09-06T03:40:00+02:00 · supersedes D-08 · **amended 03:24 CEST: hard stop at 04:00 CEST***
+*issued 2026-09-06T04:20:00+02:00 · supersedes D-09*
 
-> ### HARD STOP — shut the pod down at 04:00 Europe/Berlin
->
-> **Non-negotiable, and it is ~36 minutes from this amendment.** At 04:00 CEST, stop the pod.
->
-> **What dies with it:** `/opt` is container overlay — the venv, the extracted dataset, and both
-> aspect caches (`cache_aspect448`, `cache_aspect768`) are lost. `/workspace` survives. Recovery is
-> ~20 min via `deployment/POD_REBUILD.md`, plus cache rebuild time.
->
-> **Before 04:00, in this order:**
-> 1. **Push every artifact that exists**, including partial and failed runs. A partial run is a
->    result until proven otherwise — that rule exists because the decisive 224 arm was filed as a
->    non-result and went unread for a day.
-> 2. **Ledger row for anything that ran**, even incomplete, with the timestamp.
-> 3. **Update your status block** with what was in flight when the stop came, so the next session
->    does not re-run it blind.
->
-> **T1 will not finish.** It is minutes into feature extraction on its first scenario at 03:24.
-> Do not start it fresh expecting completion — either let it run and accept a partial, or spend
-> the remaining window on something that fits. **A sub-10-minute backfill arm from the
-> below-the-line list is the better use of the last 30 minutes** than a doomed T1 start.
->
-> **Do not start anything after 03:50** that cannot finish and push by 04:00.
+**D-10 — the implementation gap does not exist. Chase their resolution curve on our split.**
 
+`REF-official-256` changes the picture completely. The official Amazon ensemble, run on our
+`test_public` split and scored with our evaluator:
 
-**D-09 — parity at 256 first. Reproduce their PatchCore on our split, then bisect the gap.**
+| | mean AU-PRO@5% |
+|---|---|
+| official, as published (`test_private`) | 28.8 |
+| **official, our split** | **20.6** |
+| **ours, our split** (`E11`) | **22.2** |
 
-Goal restated: **match the published PatchCore at its own low-resolution setting (256, full
-frame) before spending anything on resolution.** Their 256 number is 28.8 on `test_private`. Our
-nearest arm (224 aspect, 6 scenarios) is 18.0; adjusting for 224 -> 256 leaves roughly a
-**6.6-point implementation gap** that resolution does not explain.
+**We beat the official implementation by +1.6 at its own setting.** The "-6.5 implementation gap"
+was a **-8.2 split effect**. D-09's bisect existed to close a gap that is not there.
 
-### What the paper and the official repo say they ran
+**And the split effect is not uniform — it is wild:** `walnuts` **-31.7**, `fruit_jelly` -11.2,
+`vial` -9.6, but `can` **+4.1**. `walnuts` flips from "we are 16.3 behind" to "we are 15.4 ahead"
+once measured on the same split. **Every per-scenario comparison this project has made against
+published numbers is noise.** Do not make another one. Compare against `REF-*` runs only.
 
-Official Amazon implementation, ensemble config, with the centre crop disabled for AD 2:
+### What is cancelled
 
-| | theirs | ours (arm A) | already tested? |
-|---|---|---|---|
-| backbones | **WRN-101 + ResNeXt-101 + DenseNet-201** (torchvision) | WRN50-2 (timm) | size: E10b, null. **diversity: no** |
-| layers | layer2 + layer3 per backbone | layer2 + layer3 | same |
-| layer fusion | **each layer pooled to 1024, stacked, pooled to 384** | **concat 512+1024 = 1536** | **no** — E10a random-projected the concat, which is a different operation |
-| patch aggregation | patchsize 3 (unfold + mean) | 3x3 avg_pool | equivalent in intent; border handling uncertain both sides |
-| coreset | approx greedy, **1%, uncapped** | 1%, **capped 4000** (0.3-0.9% effective) | density sweep only under broken geometry |
-| geometry at 256 | resize 256x256, no crop = **squash** | aspect | E1R vs E3R: aspect beats squash by +0.029 |
-| smoothing | Gaussian **sigma 4 on the 256 map** | sigma 4 on the 512 eval map | **no** — theirs is 2x larger relative to the image |
-| image score | max pixel | max patch | same |
-| kNN | 1-NN, no reweighting | 1-NN | same |
-| eval split | `test_private` (server) | `test_public` | cannot match locally |
+- **T3a / T3b / T3d (the bisect)** — they were closing a phantom gap. T3a (their layer fusion) may
+  still be a genuine *improvement*, but it is now an optimisation arm, not a parity arm, and it
+  drops below resolution work.
+- **Per-scenario targeting of `rice` / `walnuts`** — an artefact of the split, now dissolved.
 
-Note the paper's "0.01%" coreset is a typo — the official flag is `-p 0.01` = 1%. E10c is struck.
+### The real position
 
-### Tasks, in order — each is single-variable against the one before it
+Resolution, ours, `test_public`: **22.2 at 256 -> 34.4 at 448 -> 42.4 at 768.**
+Theirs, published, `test_private`: 28.8 at 256 -> 41.9 at 512 -> **62.3 at half native**.
 
-**T0 — audit `E5-inputres-768` when it lands** (bucketed table first; it is still the only test of
-D-04 prediction 2). Unchanged from D-07.
+Those two ladders are **not comparable** — different splits, and the split effect varies by 36
+points across scenarios. We cannot subtract 8.2 and call it done.
 
-**T1 — run the official PatchCore on our split.** `pip install` the Amazon repo, run the exact
-ensemble command with `--resize 256 --imagesize 256` (crop disabled, as the paper did), all 8
-scenarios, `test_public`. **Feed its anomaly maps into our `aupro.evaluate` with the fixed native
-region set.** Record as `REF-official-256`.
+### Tasks
 
-This is the most valuable run in the queue. It gives *their* model on *our* split under *our*
-metric, so:
-- `REF-official-256` vs their published 28.8 = **the split effect** (test_public vs test_private).
-- `REF-official-256` vs our own 256 arm (T2) = **the implementation gap, uncontaminated by split.**
+**P1 — `REF-official-512` and `REF-official-halfnative` on `test_public`.** The official code at
+their two higher settings, our split, our evaluator. **This is the only thing that tells us what
+we are actually chasing.** Everything else is guesswork until it exists.
 
-Until this exists every comparison we make is across two variables at once.
+Same command as `REF-official-256`, changing only `--resize`/`--imagesize`. Their half-native is
+per-scenario (50% of each scenario's native dimensions), so it is not one number — mirror what the
+paper did. Expect the half-native arm to be slow; the paper reports ~2 s/image and SimpleNet OOMing
+at that size, so **check headroom and record peak RSS and VRAM.** If half-native will not fit or
+will not finish, **run 512 first and report it alone** — 512 alone already gives us a second point
+on their curve.
 
-**T2 — our pipeline at their setting.** `--img 256 --geometry squash --bank-cap 0` (uncapped 1%),
-8 scenarios. Record as `E11-ours-256-squash`. This is our true number at their setting; the 224
-aspect arm is not it. Gap to T1 is the number to close.
+**P2 — ours at 1024, aspect.** We have 256/448/768; their curve runs to half native. Extend ours
+one more step so the two ladders have comparable range. Use the 768 cache pattern; watch memory.
 
-**T3 — bisect, one change per arm, each against T2:**
-- **T3a** — layer fusion done their way: pool each layer to 1024, stack, pool to 384. *Not* random
-  projection. Prediction: this is the largest single contributor, because it is the one structural
-  difference nobody has tested.
-- **T3b** — smoothing sigma scaled to the image as they do it (sigma 4 at 256 ~ sigma 8 at our
-  512 eval frame). Cheap; post-processing only, no re-extraction.
-- **T3c** — torchvision weights instead of timm for WRN50-2. Cheap; isolates the weight source.
-- **T3d** — 3-backbone ensemble, official style. Expensive; run last, and only if T3a-c have not
-  closed the gap, because E10b already showed backbone *size* is worth nothing.
+**P3 — the cheap 256 backfills** (below the line in M-31, still valid, each <10 min): E5b at 256,
+E10a at 256, E10b at 256, and aspect-vs-squash at 256. These are now **more** interesting than
+before: we beat official by only +1.6, and if any of these is worth a point or two at 256 it is a
+real edge over the reference rather than a gap-closer.
 
-**T4 — after parity at 256:** re-run T2's winning config at 512 and compare to their 41.9. Only
-then does resolution go back on the table.
+**P4 — T3a (their layer fusion) as an optimisation**, at whichever resolution wins. Last.
 
-### Two things to carry in every report
+### Pod is fresh
 
-- **Report the bucketed table for every arm.** Resolution helped all buckets last time; we want to
-  know whether the implementation fixes do the same or concentrate somewhere.
-- **`test_public` only, no selection on it.** These are diagnostics, not claims. The `validation`
-  split question returns once we have something worth claiming.
+Rebuild per `deployment/POD_REBUILD.md` (~20 min). `/opt` is empty — venv, dataset and both aspect
+caches are gone. **Rebuild the 448 cache only if P2/P3 need it**; do not rebuild 768 unless P2 says
+so.
 
-### Your lane
+**GPU note:** at 256 the working set is ~1.7 GB VRAM and 4.4 GB host RSS, so an RTX 2000 Ada is
+ample for P1's 512 arm and all of P3. The half-native arm and P2's 1024 are the ones that may need
+the larger card — **measure before assuming.**
 
-T3's ordering is the planner's guess. You have run more of their configuration than anyone; if the
-code diff against the official repo shows a difference not listed above, that goes to the front.
+### Standing
+
+`setsid nohup ... < /dev/null &`, explicit `--geometry`, bucketed table in every report, ledger row
+the moment an artifact exists including partials, timestamps on every entry.
 
 ---
 
@@ -206,7 +182,8 @@ stated conclusion follows from the numbers — those are two different checks.*
 | E10a-proj384-448 | pass | yes | **accepted** — -0.0175; planner's "within 0.01" **refuted** |
 | E10b-wrn101-448 | pass | yes | **accepted** — +0.0008 vs its control; planner's ">half the deficit" **decisively refuted** |
 | E5-inputres-768 | pass | yes | **accepted** — 0.4239, 8/8 improved; **D-04 prediction 2 CONFIRMED** (`ge_16x` +0.0123 vs a <0.03 bound) |
-| E11-ours-256-squash | pass | yes | **accepted** — 22.2 vs published 28.8; the implementation gap is **-6.5**, and we lose 7 of 8 at matched setting |
+| E11-ours-256-squash | pass | yes | **accepted** — 22.2; the "-6.5 gap" reading is **withdrawn**, see REF |
+| REF-official-256 | pass | yes | **accepted** — official code on our split = **20.6**. Split effect **-8.2**; **we are +1.6 ahead of the reference**, no implementation gap |
 
 ---
 
@@ -1529,4 +1506,37 @@ saying what was in flight.
 **4. Strategic Consequence:**
 There is **zero implementation bug** in our pipeline. We are fundamentally stronger than the official codebase at matched resolution and data split. The roadmap is now cleared to scale our superior architecture (with E5b layer 3 dilation and aspect geometry) back up to 512, 768, and half-native!
 
+### M-35 — planner — REF lands: there is no implementation gap, and the split effect is -8.2
+*2026-09-06T04:20:00+02:00*
+
+`REF-official-256` accepted — 1530 regions, monotonic, scored with our evaluator, 8/8 scenarios.
+
+| | mean AU-PRO@5% |
+|---|---|
+| official, as published (`test_private`) | 28.8 |
+| **official, our split** (`test_public`) | **20.6** |
+| **ours** (`E11`) | **22.2** |
+
+**We beat the official Amazon implementation by +1.6 at its own setting.** The "-6.5 implementation
+gap" I recorded in M-33 was a **-8.2 split effect** and is withdrawn. T1 was P1 precisely because
+nothing else could separate those two, and it earned its place.
+
+**The split effect is wildly non-uniform:** `walnuts` **-31.7**, `fruit_jelly` -11.2, `vial` -9.6,
+`rice` -2.2, but `can` **+4.1**. A 36-point spread. **`walnuts` flips from "16.3 behind" to "15.4
+ahead"** once measured on one split.
+
+**Consequence, and it is a large one: every per-scenario comparison this project has made against
+published numbers is noise.** That includes M-33's "walnuts and rice account for 28 of the 52
+points lost", which I used to steer the bisect. Withdrawn. From here, compare against `REF-*` runs
+only.
+
+**D-10 issued.** The bisect is cancelled — it was closing a phantom. The real question is their
+resolution curve *on our split*, which nothing currently measures: P1 is `REF-official` at 512 and
+half-native, P2 extends ours to 1024, P3 is the cheap 256 backfills (now more interesting, since a
+point or two there is a real edge over the reference rather than a gap-closer).
+
+**Note for the record:** three of my last four framings have been overturned by a single
+well-chosen measurement — the ceiling, the "we are ahead" claim, and now the implementation gap.
+The pattern is that cross-split and cross-resolution comparisons kept being made without a
+controlled run to anchor them. P1 exists so the next comparison has one.
 

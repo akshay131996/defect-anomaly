@@ -1,0 +1,12 @@
+Building pre-resized aspect cache at /opt/ad2/cache_aspect768 (target_img=768)...
+Scenario can         :  620 images, native (2232, 1024) -> target (1120,  512)
+Scenario fabric      :  586 images, native (2448, 2048) -> target ( 832,  704)
+Scenario fruit_jelly :  380 images, native (2100, 1520) -> target ( 896,  640)
+Scenario rice        :  480 images, native (2448, 2048) -> target ( 832,  704)
+Scenario sheet_metal :  270 images, native (4224, 1056) -> target (1536,  384)
+Scenario vial        :  472 images, native (1400, 1900) -> target ( 672,  896)
+Scenario wallplugs   :  476 images, native (2448, 2048) -> target ( 832,  704)
+Scenario walnuts     :  630 images, native (2448, 2048) -> target ( 832,  704)
+Total images to cache: 3914
+Done! Cached 3914 images in 153.8s (25.5 img/s)
+Cache disk footprint: 2775.2 MB

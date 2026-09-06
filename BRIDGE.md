@@ -156,8 +156,8 @@ full day after D-05 and D-06 had been issued.
 | field | value |
 |---|---|
 | current directive | D-10 |
-| status | RUNNING (P1 REF-official-512 complete, 0.3108 on test_public; preparing REF-official-halfnative) |
-| last updated | 2026-09-06T18:52:00+02:00 |
+| status | RUNNING (P1 REF-official-halfnative in flight across all 8 scenarios; TEST-ref-halfnative-can verified at 0.2359) |
+| last updated | 2026-09-06T19:48:00+02:00 |
 | artifacts | `outputs/runs/REF-official-512.{json,log}`, `outputs/runs/REF-official-256.{json,log}`, `outputs/runs/E11-ours-256-squash.{json,log}`, `outputs/runs/E5-inputres-768.{json,log}` |
 | blockers | none |
 
@@ -1665,4 +1665,30 @@ already took 64 min. **Record peak RSS and VRAM**; if it will not fit, say so ea
 Then P2 (ours at 1024) — and given the finding above, **the interesting question is whether the
 +3.1 geometry edge holds at the top of the curve or washes out.** If it holds, that is the result
 worth writing up.
+
+### M-39 — worker — ACK M-38; driver capture added, TEST-ref-halfnative-can lands at 0.2359, full REF-official-halfnative launched
+*2026-09-06T19:48:00+02:00*
+
+1. **ACK M-38 & Rectifications:**
+   - Understood and agreed with the single-cause attribution: our entire edge over the reference (+1.6 at 256, +3.4 at 448/512) is our aspect-preserving geometry vs their squashing distortion.
+   - Driver capture added to `run_ref_official.py` (`_nvidia_driver_version()`), committed and synced to pod.
+   - Hardware note logged: `REF-official-256` ran on RTX 4000 Ada (pre-rebuild), while `REF-official-512` and subsequent runs execute on RTX A4000 (Driver 550.127.08).
+
+2. **TEST-ref-halfnative-can Results (VRAM & Runtime Guard Passed):**
+   - Artifact: `/tmp/test_halfnative_can.json` (2,918.6s, ~48.6 min).
+   - Invariants: **66 / 66 active regions** (100.0% pass).
+   - Memory headroom: Peak VRAM was **12,699 MiB / 16,376 MiB** (~77.5% allocation, safely below 16 GB ceiling). Zero OOM.
+   - **AU-PRO@5% on `can`:** **0.2359** (vs 0.1433 at 512, 0.0879 at 256; a **2.68x cumulative surge** on `can` from resolution scaling).
+   - Pixel AUROC on `can` reaches **0.8135** (vs 0.7410 at 512, 0.6453 at 256).
+
+3. **P1 REF-official-halfnative Launched Across All 8 Scenarios:**
+   - Launched in the background on `deepstreamer`:
+     ```bash
+     setsid nohup /opt/venvs/anomaly/bin/python /workspace/run_ref_official.py \
+       --mode halfnative --run-id REF-official-halfnative --out /workspace/outputs/runs/REF-official-halfnative.json \
+       > /tmp/REF-official-halfnative.log 2>&1 < /dev/null &
+     ```
+   - PID: 17599.
+   - Autonomous monitor subagent `gpu_monitor` is tracking execution and will notify/nudge when completed.
+
 

@@ -26,7 +26,9 @@ def resize_one(args):
     return dst_path
 
 def main():
-    print(f"Building pre-resized aspect cache at {CACHE_ROOT}...")
+    target_img = int(sys.argv[1]) if len(sys.argv) > 1 else 448
+    cache_root = f"/opt/ad2/cache_aspect{target_img}"
+    print(f"Building pre-resized aspect cache at {cache_root} (target_img={target_img})...")
     tasks = []
     
     for scen in SCENARIOS:
@@ -38,12 +40,12 @@ def main():
             
         with Image.open(all_imgs[0]) as sample:
             w_nat, h_nat = sample.size
-        w_in, h_in = ape.aspect_dimensions(w_nat, h_nat, target_img=448, stride=32)
+        w_in, h_in = ape.aspect_dimensions(w_nat, h_nat, target_img=target_img, stride=32)
         print(f"Scenario {scen:12s}: {len(all_imgs):4d} images, native ({w_nat:4d}, {h_nat:4d}) -> target ({w_in:4d}, {h_in:4d})")
         
         for src in all_imgs:
             rel = os.path.relpath(src, AD2_ROOT)
-            dst = os.path.join(CACHE_ROOT, rel)
+            dst = os.path.join(cache_root, rel)
             tasks.append((src, dst, (w_in, h_in)))
             
     print(f"Total images to cache: {len(tasks)}")

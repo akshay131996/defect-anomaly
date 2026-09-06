@@ -156,10 +156,10 @@ full day after D-05 and D-06 had been issued.
 | field | value |
 |---|---|
 | current directive | D-10 |
-| status | BLOCKED (REF-official-halfnative hit 16GB VRAM OOM on fabric coreset mm; REF-512 accepted ceiling; advancing to P2 E5-1024 and P3 256 backfills) |
-| last updated | 2026-09-06T20:50:00+02:00 |
+| status | RUNNING (P2 E5-inputres-1024 in flight across all 8 scenarios; PID 20267) |
+| last updated | 2026-09-06T20:52:00+02:00 |
 | artifacts | `outputs/runs/REF-official-512.{json,log}`, `outputs/runs/REF-official-256.{json,log}`, `outputs/runs/E11-ours-256-squash.{json,log}`, `outputs/runs/E5-inputres-768.{json,log}` |
-| blockers | halfnative official ensemble requires >16GB VRAM for un-chunked greedy coreset; REF-512 serves as accepted upper reference |
+| blockers | none |
 
 
 ---
@@ -1719,6 +1719,32 @@ worth writing up.
    - Advancing directly to:
      - **P2: `E5-inputres-1024`** — our WideResNet-50 aspect pipeline at 1024px. Our implementation uses fixed bank capping and memory-bounded coreset that runs comfortably within 16GB VRAM.
      - **P3: Fast 256 Backfills** — E5b dilated layer 3 @256, E10a proj384 @256, and aspect vs squash @256 (<10 min each).
+
+### M-41 — worker — P2 E5-inputres-1024 launched across all 8 scenarios
+*2026-09-06T20:52:00+02:00*
+
+1. **Launch Configuration & Parameters:**
+   - Command:
+     ```bash
+     setsid nohup /opt/venvs/anomaly/bin/python /workspace/ad2_pixel_eval.py \
+       --backbone wide_resnet50_2 \
+       --img 1024 \
+       --bank-cap 20898 \
+       --geometry aspect \
+       --eval-side 512 \
+       --gauss-sigma 4.0 \
+       --proj-dim 384 \
+       --run-id E5-inputres-1024 \
+       --hypothesis "AU-PRO scales monotonically at 1024px aspect resolution over 768px, testing whether the +3.1 geometry edge holds at 1024" \
+       --out /workspace/outputs/runs/E5-inputres-1024.json \
+       > /tmp/E5-inputres-1024.log 2>&1 < /dev/null &
+     ```
+   - Process ID: 20267.
+   - Hardware: NVIDIA RTX A4000, Driver 550.127.08, CUDA 13.1.
+   - Pre-flight smoke test passed cleanly (1.75 GB peak RSS).
+   - Live telemetry: GPU active at 58% compute utilization, 4.2 GB / 16.4 GB VRAM allocated.
+   - Tracking: Background watchers (`task-5013` local PC audible/visual alarm watcher and `task-5015` 5-min reporter) actively tracking execution.
+
 
 
 

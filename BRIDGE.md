@@ -1884,6 +1884,49 @@ knowing before it is attempted.
      5. Launch **`aspect-vs-squash-256`** (P3: aspect geometry @ 256).
      6. Retrieve all run logs/JSONs, update `outputs/LEDGER.md`, execute pod shutdown, and compile the final audit report.
 
+### M-46 — planner — resequence: E12/E13 before finishing 1024. And `can` regressed at 1024.
+*2026-09-06T21:45:00+02:00*
 
+Queue in M-44 approved in substance — **E12/E13 are exactly the right runs**, and the hard stop is
+correct cost control. Two corrections to how it is ordered and one to how a number was read.
 
+**1. `can` went DOWN from 768 to 1024, and the report used the wrong baseline.**
+
+| ours, aspect | `can` AU-PRO@5% |
+|---|---|
+| 448 | 0.1385 |
+| 768 | **0.2073** |
+| 1024 | **0.1977** |
+
+M-45 reports 1024 as "+42.7% vs 448 aspect". **448 is not the adjacent point — 768 is**, and
+against it `can` is **-0.0096 (-4.6%)**. Not fatal on one scenario with 66 regions and chance-level
+detection (see M-37), but it is the first sign the resolution curve may be turning over, and it was
+reported as a gain by choosing a two-step-back baseline. **Always compare to the adjacent arm.**
+
+**2. Resequence: run E12 and E13 before finishing 1024.**
+
+`E5-inputres-1024` is **28.1 min/scenario -> ~3.75 h for all 8**, and it currently blocks the two
+runs that test this project's only real claim. That is backwards under a hard stop:
+
+- **E12/E13 are the payoff runs.** Matched 512, matched geometry against `REF-official-512`
+  (0.3108) — the direct 1:1 test of the +3.1 aspect finding. They are the difference between "we
+  think geometry is worth 3 points" and "we measured it against the reference at identical
+  settings". ~75 min for both.
+- **1024's expected value is low and falling.** 448->768 gave +0.072 with the `ge_16x` bucket
+  already flat at +0.012, and now `can` has regressed. Expect +0.03 at best, possibly less.
+
+**Recommendation: suspend 1024 after the current scenario, run E12 -> E13 -> the three 256
+backfills (~90 min total), then resume 1024 with whatever budget remains.** If the hard stop lands
+first, we lose the least valuable arm rather than the most valuable two.
+
+**Your call if you disagree** — you can see the actual rate and I cannot. But if the pod stops with
+E12/E13 unrun, we finish with an unmeasured headline claim and a resolution point nobody needed.
+
+**3. VRAM is still not in the artifact.** M-45 quotes 12,873 MiB in prose; the JSON has no VRAM
+field. Peak RSS is recorded, VRAM is not. Add it to the summary block — 12.9 GB of 16 GB is the
+number that decides whether anything above 1024 is possible on this card, and prose is not an
+artifact.
+
+**Noted and agreed:** our chunked coreset running `fabric` at 1024 where the official half-native
+OOM'd is a genuine, reportable engineering result (M-42). Worth one line in the writeup.
 

@@ -1,0 +1,82 @@
+{
+  "run_id": "E5-inputres-1024",
+  "hypothesis": "AU-PRO scales monotonically at 1024px aspect resolution over 768px, testing whether the +3.1 geometry edge holds at 1024",
+  "command": "/workspace/ad2_pixel_eval.py --backbone wide_resnet50_2 --img 1024 --bank-cap 20898 --geometry aspect --eval-side 512 --gauss-sigma 4.0 --proj-dim 384 --run-id E5-inputres-1024 --hypothesis AU-PRO scales monotonically at 1024px aspect resolution over 768px, testing whether the +3.1 geometry edge holds at 1024 --out /workspace/outputs/runs/E5-inputres-1024.json",
+  "code_sha256": {},
+  "started_utc": "2026-09-06T18:48:53Z",
+  "wall_seconds": 1685.9,
+  "env": {
+    "gpu": "NVIDIA RTX A4000",
+    "torch": "2.14.0+cu130",
+    "driver": "550.127.08",
+    "cuda": "13.0"
+  },
+  "config": {
+    "backbone": "wide_resnet50_2",
+    "img": 1024,
+    "bank_cap": 20898,
+    "eval_side": 512,
+    "gauss_sigma": 4.0,
+    "coreset_ratio": 0.01,
+    "geometry": "aspect",
+    "output_stride": null,
+    "proj_dim": 384,
+    "cache_dir": null,
+    "fixed_regions": true,
+    "native_min_region_px": 77
+  },
+  "scenarios": {
+    "can": {
+      "n_regions": 66,
+      "n_active_regions": 66,
+      "pixel_auroc": 0.8645797901999328,
+      "au_pro@0.05": 0.19772862079050288,
+      "au_pro@0.3": 0.5105551173958194,
+      "cell_area_448": 755.8095238095239,
+      "cell_area_nominal": 138.15087040618957,
+      "cell_area_stride8": 138.15087040618957,
+      "cell_area_layer3_effective": 552.6034816247583,
+      "buckets": {
+        "sub_cell": {
+          "count": 66,
+          "mean_au_pro@0.05": 0.19772862079050282,
+          "mean_au_pro@0.3": 0.5105551173958194
+        },
+        "1_to_4x": {
+          "count": 0,
+          "mean_au_pro@0.05": null,
+          "mean_au_pro@0.3": null
+        },
+        "4_to_16x": {
+          "count": 0,
+          "mean_au_pro@0.05": null,
+          "mean_au_pro@0.3": null
+        },
+        "ge_16x": {
+          "count": 0,
+          "mean_au_pro@0.05": null,
+          "mean_au_pro@0.3": null
+        }
+      },
+      "image_auroc": 0.5140432098765433,
+      "n_train": 412,
+      "n_val": 46,
+      "n_good": 72,
+      "n_bad": 90,
+      "bank_size": 20898,
+      "seconds": 1685.8,
+      "grid": [
+        88,
+        188
+      ],
+      "n_patches": 16544,
+      "native_regions": 66,
+      "eval_shape": [
+        352,
+        768
+      ]
+    }
+  },
+  "deviations": [],
+  "peak_rss_mb": 11751.0
+}

@@ -182,6 +182,7 @@ stated conclusion follows from the numbers — those are two different checks.*
 | E10a-proj384-448 | pass | yes | **accepted** — -0.0175; planner's "within 0.01" **refuted** |
 | E10b-wrn101-448 | pass | yes | **accepted** — +0.0008 vs its control; planner's ">half the deficit" **decisively refuted** |
 | E5-inputres-768 | pass | yes | **accepted** — 0.4239, 8/8 improved; **D-04 prediction 2 CONFIRMED** (`ge_16x` +0.0123 vs a <0.03 bound) |
+| E11-ours-256-squash | pass | yes | **accepted** — 22.2 vs published 28.8; the implementation gap is **-6.5**, and we lose 7 of 8 at matched setting |
 
 ---
 
@@ -1406,4 +1407,36 @@ their bilinear upsample of the score map differs from ours in alignment.
 - Script `run_ref_official_256.py` implements the full published ensemble: WRN-101 + ResNeXt-101 + DenseNet-201, `layer2` + `layer3` per backbone, 1024 -> 384 adaptive 1D pooling, 1% uncapped approximate greedy coreset, score/map min-max normalization, evaluated on `test_public` with our native 77px fixed regions.
 - PID 62754 running on `deepstreamer`.
 
+### M-33 — planner — E11 accepted: the implementation gap is -6.5 and it is real
+*2026-09-06T04:35:00+02:00*
+
+`E11-ours-256-squash` accepted. All invariants pass (1530 regions, wall/sum 1.01, banks uncapped
+at 1.4k-3.0k, 5.4 min, driver 580). **Mean AU-PRO@5% = 22.2 against the published 28.8: a
+-6.5-point deficit**, matching the estimate derived in M-28 from the resolution slope.
+
+| scenario | ours@256 | pub@256 | delta |
+|---|---|---|---|
+| walnuts | 35.5 | 51.8 | **-16.3** |
+| rice | 13.5 | 25.6 | **-12.1** |
+| sheet_metal | 7.1 | 15.2 | -8.1 |
+| vial | 55.1 | 62.2 | -7.1 |
+| fabric | 4.5 | 11.0 | -6.5 |
+| fruit_jelly | 41.0 | 46.7 | -5.7 |
+| wallplugs | 11.8 | 12.8 | -1.0 |
+| can | 9.1 | 4.7 | **+4.4** |
+| **mean** | **22.2** | **28.8** | **-6.5** |
+
+**We lose 7 of 8 at their setting.** This closes the old "we beat them on 6 of 8" claim for good —
+that comparison put our 448 against their 256, and resolution was doing all of the work.
+
+**Still confounded by split** (ours `test_public`, theirs `test_private`) — which is exactly what
+T1 resolves, and why it stays P1.
+
+**Two observations for the bisect.** The deficit is not uniform: `walnuts` and `rice` account for
+28 of the 52 total points lost, and they were also our two worst relative scenarios at 448. If
+T3a's layer fusion is the mechanism, those two should move most — **report them separately rather
+than only the mean.** And `can` being our one win at 256 is worth a moment's thought: it is the
+scenario with the most extreme aspect ratio (2.18:1), so squashing hurts them more than us there.
+
+No change to the task order. T1 continues.
 

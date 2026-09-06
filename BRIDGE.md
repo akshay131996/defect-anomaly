@@ -70,7 +70,31 @@ experiment twice.
 
 *Planner writes. One directive at a time. Superseded directives move to the log.*
 
-*issued 2026-09-06T03:40:00+02:00 · supersedes D-08*
+*issued 2026-09-06T03:40:00+02:00 · supersedes D-08 · **amended 03:24 CEST: hard stop at 04:00 CEST***
+
+> ### HARD STOP — shut the pod down at 04:00 Europe/Berlin
+>
+> **Non-negotiable, and it is ~36 minutes from this amendment.** At 04:00 CEST, stop the pod.
+>
+> **What dies with it:** `/opt` is container overlay — the venv, the extracted dataset, and both
+> aspect caches (`cache_aspect448`, `cache_aspect768`) are lost. `/workspace` survives. Recovery is
+> ~20 min via `deployment/POD_REBUILD.md`, plus cache rebuild time.
+>
+> **Before 04:00, in this order:**
+> 1. **Push every artifact that exists**, including partial and failed runs. A partial run is a
+>    result until proven otherwise — that rule exists because the decisive 224 arm was filed as a
+>    non-result and went unread for a day.
+> 2. **Ledger row for anything that ran**, even incomplete, with the timestamp.
+> 3. **Update your status block** with what was in flight when the stop came, so the next session
+>    does not re-run it blind.
+>
+> **T1 will not finish.** It is minutes into feature extraction on its first scenario at 03:24.
+> Do not start it fresh expecting completion — either let it run and accept a partial, or spend
+> the remaining window on something that fits. **A sub-10-minute backfill arm from the
+> below-the-line list is the better use of the last 30 minutes** than a doomed T1 start.
+>
+> **Do not start anything after 03:50** that cannot finish and push by 04:00.
+
 
 **D-09 — parity at 256 first. Reproduce their PatchCore on our split, then bisect the gap.**
 
@@ -1439,4 +1463,29 @@ than only the mean.** And `can` being our one win at 256 is worth a moment's tho
 scenario with the most extreme aspect ratio (2.18:1), so squashing hurts them more than us there.
 
 No change to the task order. T1 continues.
+
+### M-34 — planner — hard stop at 04:00 CEST added to D-09
+*2026-09-06T03:26:00+02:00*
+
+User instruction: **shut the pod down at 04:00 Europe/Berlin.** It is 03:24 as this is written, so
+the window is ~36 minutes.
+
+**T1 will not complete** — at 03:24 it was partway through feature extraction on its first
+scenario, and it has 8 to do plus a 3-backbone ensemble. Options, in my order of preference:
+
+1. **Let T1 run and accept a partial.** Push whatever scenarios complete. Even 2-3 scenarios of
+   `REF-official-256` would give a first read on the split effect, which is the number nothing else
+   can produce.
+2. **Kill T1 and spend the window on one backfill arm** from the below-the-line list — E5b at 256
+   or aspect-vs-squash at 256 both fit comfortably in 30 minutes and would land complete.
+
+**Your call.** You can see the actual rate; I cannot. If T1 is going to yield fewer than two
+scenarios, option 2 is worth more.
+
+**What is lost at shutdown:** `/opt` — venv, dataset, `cache_aspect448`, `cache_aspect768`.
+`/workspace` survives. Rebuild is ~20 min via `POD_REBUILD.md`, plus cache rebuild. **Factor the
+cache rebuild into whether restarting the pod is worth it for a short session next time.**
+
+**Push everything before 04:00**, partial runs included, with ledger rows and a status-block update
+saying what was in flight.
 

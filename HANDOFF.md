@@ -67,11 +67,48 @@ Each of these is here because breaking it has already cost this project time.
    a flag, a default, a file — say so in the report. An unreported deviation makes every
    number in the run unusable, because the audit cannot tell what produced them.
 
+### Engineering standards
+
+The bar any organisation would expect, stated as checks rather than aspirations. Each one is here
+because it is either already violated or was nearly violated in this repo.
+
+**Every committed result must be reproducible from tracked code.** Verified 2026-09-06 and
+currently **true** — every `outputs/runs/*.json` names its generating script in `command`, and all
+of those (`ad2_pixel_eval.py`, `sweep_backbones.py`, `aupro.py`, `exp_e5a_region_sizes.py`) are
+tracked with their `code_sha256` recorded. Do not let this lapse: a result whose generator is not
+in the repo is not a result.
+
+**Tests pass before you commit.** `test_aupro.py`, `test_registration.py` and `test_prealloc.py`
+are cheap, run without a GPU, and cover the two metric bugs and one refactor that have already
+cost this project real time. Run them; both currently pass.
+
+**No code in limbo.** Anything in the repo root is either tracked or deleted — not left untracked
+indefinitely. `exp_e5a_bucketed_pro.py` sat untracked in the root while a superseded copy of its
+output sat beside it; that is how a reader ends up unable to tell which script produced which
+number.
+
+**Load-bearing code does not live in `scratch/`.** `scratch/build_aspect_cache.py` built the cache
+that E10a and E10b depend on. A directory named `scratch` tells the next reader its contents are
+disposable, and results now depend on it. **Move it to the root when no run is using it** — not
+mid-run, which is why this is a note rather than a completed change.
+
+**Docs match artifacts, or say they do not.** `README.md` still leads with the fusion results that
+REVIEW.md §5 shows were measured in the broken crop frame, and still carries an arm-E cost table
+while the project runs arm A. A README that contradicts the repo's own results is worse than no
+README, because it is the first thing an outside reader trusts.
+
+**Commit messages say what changed and why, with the evidence.** Not "update eval" — the reason
+and the number. The git log is the only place the reasoning behind a change survives after the
+bridge is archived.
+
 ### The output contract
 
 Per run, three artifacts, committed together:
 
-- `outputs/runs/<run_id>.json` — the record below.
+- `outputs/runs/<run_id>.json` — the record below. It already carries `started_utc`; **every
+  BRIDGE entry, worker-status update, active directive and LEDGER row now carries a timestamp
+  too** (BRIDGE protocol rule 9). Ids have collided nine times between the two agents — the id is
+  a label, the timestamp is the ordering key.
 - `logs/<run_id>.log` — complete unfiltered stdout+stderr.
 - one row appended to `outputs/LEDGER.md`.
 

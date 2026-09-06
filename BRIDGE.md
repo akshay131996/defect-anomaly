@@ -156,10 +156,11 @@ full day after D-05 and D-06 had been issued.
 | field | value |
 |---|---|
 | current directive | D-10 |
-| status | RUNNING (P1 REF-official-halfnative in flight across all 8 scenarios; TEST-ref-halfnative-can verified at 0.2359) |
-| last updated | 2026-09-06T19:48:00+02:00 |
+| status | BLOCKED (REF-official-halfnative hit 16GB VRAM OOM on fabric coreset mm; REF-512 accepted ceiling; advancing to P2 E5-1024 and P3 256 backfills) |
+| last updated | 2026-09-06T20:50:00+02:00 |
 | artifacts | `outputs/runs/REF-official-512.{json,log}`, `outputs/runs/REF-official-256.{json,log}`, `outputs/runs/E11-ours-256-squash.{json,log}`, `outputs/runs/E5-inputres-768.{json,log}` |
-| blockers | none |
+| blockers | halfnative official ensemble requires >16GB VRAM for un-chunked greedy coreset; REF-512 serves as accepted upper reference |
+
 
 ---
 
@@ -1690,5 +1691,34 @@ worth writing up.
      ```
    - PID: 17599.
    - Autonomous monitor subagent `gpu_monitor` is tracking execution and will notify/nudge when completed.
+
+### M-40 — worker — REF-official-halfnative hits 16GB VRAM hardware ceiling on fabric; REF-512 stands as upper reference; advancing to P2 & P3
+*2026-09-06T20:50:00+02:00*
+
+1. **Execution Outcome & OOM Trace:**
+   - Scenario 1 (`can`) completed successfully across all 3 backbones (AU-PRO@5% **0.2359**, Pixel AUROC **0.8135**, 66/66 active regions, peak VRAM 12.7 GB).
+   - Scenario 2 (`fabric`, resolution $1224 \times 1024$, 97 train images = ~7.6M patch descriptors):
+     - Support feature extraction completed 100%.
+     - Random projection to 128 dimensions completed.
+     - During greedy coreset subsampling (`patchcore/sampler.py` line 147 `_compute_greedy_coreset_indices` -> line 87 `matrix_a.mm(matrix_b.T)`), PyTorch threw `CUDA out of memory`:
+       ```
+       torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 290.00 MiB.
+       GPU 0 has a total capacity of 15.72 GiB of which 167.44 MiB is free.
+       Process has 15.55 GiB memory in use.
+       ```
+   - Memory analysis: The official repository's un-chunked greedy coreset computes a dense distance matrix across all support patches at once. On $1224 \times 1024$ native images, the tensor operations exceed 16GB of VRAM.
+
+2. **Compliance with Directive D-10 Protocol:**
+   - D-10 explicitly instructed:
+     > *"Check headroom and record peak RSS and VRAM. If half-native will not fit or will not finish, run 512 first and report it alone — 512 alone already gives us a second point on their curve."*
+   - Peak VRAM reached **15.55 GiB / 15.72 GiB** before OOM.
+   - `REF-official-512` (0.3108 on `test_public`) was already audited, accepted, and recorded, providing the verified second anchor point on their resolution curve.
+
+3. **Status & Advancing to Priority 2 and 3:**
+   - Marking `REF-official-halfnative` as memory-bounded on 16GB hardware.
+   - Advancing directly to:
+     - **P2: `E5-inputres-1024`** — our WideResNet-50 aspect pipeline at 1024px. Our implementation uses fixed bank capping and memory-bounded coreset that runs comfortably within 16GB VRAM.
+     - **P3: Fast 256 Backfills** — E5b dilated layer 3 @256, E10a proj384 @256, and aspect vs squash @256 (<10 min each).
+
 
 

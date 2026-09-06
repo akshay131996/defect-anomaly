@@ -17,7 +17,105 @@ file.
 
 ---
 
-## 0. The target was wrong — resolved 2026-09-05
+## 0. CORRECTED 2026-09-06 — we are behind the benchmark, not ahead
+
+**Two earlier conclusions in this file were wrong and are withdrawn.** They were reached by
+reading the paper's headline table and not its supplementary tables.
+
+### What the paper actually reports
+
+PatchCore's AU-PRO@5% on `test_private`, at three input sizes:
+
+| input size | AU-PRO@5% | source |
+|---|---|---|
+| 256x256 (the headline setting) | 28.8 | Table VII |
+| 512x512 | **41.9** | Table X |
+| **half native** (~1224x1024) | **62.3** | Table XI |
+
+Against ours, on `test_public`:
+
+| | AU-PRO@5% |
+|---|---|
+| ours, 448 aspect | 34.4 |
+| ours, 768 aspect (6 of 8) | 40.6 |
+
+**Our 768 arm (40.6) sits below their 512 arm (41.9). Their half-native result (62.3) is far
+above anything we have run.** We are not leading this benchmark. We are behind it.
+
+### Withdrawal 1 — "we beat the published PatchCore on 6 of 8"
+
+That comparison put our **448** against their **256**. It was a resolution mismatch, not a
+like-for-like result. At comparable resolution they are ahead, and at their best resolution they
+are ahead by more than 20 points.
+
+Worse, this is not merely a resolution gap. Their 512x512 at stride 8 is **4,096 patches**; our
+768 aspect arm is roughly **9,216**. **We use ~2.25x more patches and score lower.** That is an
+implementation deficit, and it is the single most actionable fact in this document.
+
+### Withdrawal 2 — "76.35% is a phantom above what the authors report as SOTA"
+
+The abstract's "below 60% average AU-PRO" describes the **standard 256 setting**. At half native
+resolution PatchCore *alone* reaches **62.3**, already above that figure. An unreviewed
+multi-scale variant claiming **76.35** at high resolution is therefore **plausible**, not absurd,
+and the reasoning used to dismiss it — "it exceeds what the dataset's own authors report as state
+of the art" — was comparing against the wrong row of the wrong table.
+
+**The original 0.764 target may have been legitimate all along.** It should be treated as an
+unverified claim from an unreviewed source, which is what it is — not as a phantom.
+
+### And the resolution finding is theirs, not ours
+
+The paper reports that scaling input size roughly **doubles** PatchCore's AU-PRO@5%, that
+"anomalies simply disappear during the preprocessing to scale the images to the current standard
+setting of 256x256", and that "inference runtime and memory consumption drastically increase by
+more than an order of magnitude" — PatchCore at the largest size takes **~2 seconds per image**,
+and SimpleNet exceeds available memory entirely.
+
+Our measured +0.154 per doubling **replicates a published result**. It is a correct replication
+and it was arrived at independently, but it is not a discovery and must not be written up as one.
+
+### Why they used 256 as the headline, since it is the obvious question
+
+Not an oversight, and not a lack of compute. Three reasons, all stated or implied in the paper:
+
+1. **Comparability across seven methods.** Tuning one method's resolution requires tuning all of
+   them; SimpleNet cannot even run at the largest size. A benchmark table has to be a fair
+   comparison, not a per-method maximisation.
+2. **Deployment realism.** They explicitly frame 256 as the practical setting for industrial
+   hardware. Two seconds per image is not an inspection system.
+3. **They published the high-resolution numbers anyway**, in Tables X and XI, as analysis. The
+   information was never hidden — we just did not read past Table VII.
+
+### What this changes
+
+- **Do not submit to the evaluation server.** We would be submitting a result below the published
+  baseline. The submission was the top priority; it is now premature.
+- **The target is their 512 arm at 41.9, then their half-native at 62.3.** Both are concrete,
+  published, and above us.
+- **Chasing more resolution is not the first move.** We already use 2.25x their patch count at 768
+  and score lower. Closing the implementation gap comes first, because every resolution gain we
+  buy is currently being applied to a weaker detector.
+- **`rice` and `walnuts` were never the targets.** Every scenario is a target.
+
+### How this happened, recorded because it is the same failure again
+
+The comparison table was built from Table VII, the headline. Tables X and XI, in the
+supplementary material, contained the numbers that reverse the conclusion. Nobody read them —
+including after a full adversarial review whose entire subject was unverified targets.
+
+This is §2 of `THINKING_PROCESS.md` ("audit the target as hard as the result") failing a second
+time, on the same number, after being written down specifically to prevent it. The lesson is
+narrower than "check the target": **read the whole table, including the supplement, before
+building a research programme on one row of it.**
+
+---
+
+### Superseded: the 2026-09-05 reading of the target
+
+> The section below is kept for the record. **Its conclusion is withdrawn by §0 above** — it was
+> built on Table VII alone and did not account for Tables X and XI.
+
+#### (superseded) The target was wrong — 2026-09-05
 
 **P-4 asked where 0.764 came from. It has now been traced, and the answer changes the project's
 standing more than any experiment in this review.**

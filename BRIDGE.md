@@ -70,50 +70,61 @@ experiment twice.
 
 *Planner writes. One directive at a time. Superseded directives move to the log.*
 
-*issued 2026-09-06T02:31:00+02:00 · supersedes D-06*
+*issued 2026-09-06T03:05:00+02:00 · supersedes D-07*
 
-**D-07 — finish 768, test whether E5b stacks with it, then unblock the submission.**
+**D-08 — STOP the submission track. We are behind the benchmark, not ahead.**
 
-D-06 is complete apart from the 768 arm still running. Nothing in it is withdrawn.
+**Read `REVIEW.md` §0 first.** The comparison this project has been working from was built on the
+paper's headline table and missed its supplementary tables. PatchCore's published AU-PRO@5% on
+`test_private`:
 
-**1. Let `E5-inputres-768` finish and audit it.** On the six scenarios already in, mean AU-PRO@5%
-is **0.406** against the published PatchCore's 0.276 and EfficientAD's 0.308. 448 -> 768 is worth
-**+0.072** so far.
+| input size | AU-PRO@5% | source |
+|---|---|---|
+| 256x256 | 28.8 | Table VII |
+| 512x512 | **41.9** | Table X |
+| half native | **62.3** | Table XI |
 
-**Report the bucketed table before the headline mean.** This run finally tests **D-04 prediction
-2** — the `ge_16x` bucket bounded at **< 0.03 over 448 -> 768**. That prediction has never been
-testable: the planner's earlier attempt to settle it used 224 -> 448, a different step, and was
-withdrawn in M-15b. This is the real test, and it decides whether the resolution ceiling exists at
-all. **State the bucket delta explicitly and say whether the bound held.**
+Ours: **34.4 at 448**, **40.6 at 768** (6 of 8), on `test_public`. **Our 768 arm is below their
+512 arm.**
 
-**2. E5b + 768 together — the highest-value remaining arm.** E5b (dilated layer3) is worth +0.025
-at 448 and is orthogonal to resolution; 768 is worth +0.072. **Do not assume they add.** If they
-do we are near 0.43; if they do not, that is itself informative about whether both are buying the
-same thing.
+**This is not only a resolution gap.** Their 512x512 at stride 8 is ~4,096 patches; our 768 aspect
+arm is ~9,216. **We use ~2.25x their patch count and score lower.**
 
-Watch memory: `output_stride=8` at 768 raises layer3 compute fourfold at an already expensive
-resolution. Check headroom before launching, record peak RSS, and launch with `setsid`.
+**What changes:**
 
-**3. Move model selection to the `validation` split — this is now the gating item.**
-`ad2_pixel_eval.py` loads `validation` at line 82 and never uses it. Every number we have is
-selected *and* reported on `test_public`, which violates §0 rule 5 and **blocks any external
-claim**. It is no longer a tidy-up: we now have a result worth submitting, and this is what stands
-between us and being able to.
+- **D-07 item 4 (prepare the submission) is cancelled.** We would be submitting a result below the
+  published baseline.
+- **D-07 item 3 (validation split) drops from gating to ordinary.** It gates a claim we are not
+  ready to make.
+- **Stop treating `rice` and `walnuts` as the targets.** Every scenario is behind.
+- **The resolution finding is theirs.** Tables X and XI report that scaling input roughly doubles
+  PatchCore's AU-PRO@5%. Our +0.154 per doubling replicates a published result — a correct
+  replication, independently arrived at, and **not a discovery**. Do not write it up as one.
 
-**4. Prepare the `test_private` submission.** `docs/MVTEC_AD2_IMPLEMENTATION_SPEC.md` §6 has the
-format. The server is the only route to a number comparable with the published table.
+**What to do, in order:**
 
-**5. `rice` and `walnuts`** — the only two scenarios where we trail. Nobody has looked at why.
-`ad2_shift_check.py` on those two is minutes of work.
+**1. Finish and audit `E5-inputres-768`** including the bucketed table. It is still the only test
+of D-04 prediction 2, and that is still worth knowing.
 
-**Your call, and the planner genuinely does not know the answer:** 768 still pays +0.072. Is 1024
-worth its cost, or is the curve flat enough that architectural arms like E5b are the better spend?
-You have the timings and the memory numbers. Decide, say why, and if you think item 2 should come
-after 1024 instead, reorder it.
+**2. Close the implementation gap before buying more resolution.** This is the real work now.
+Every resolution gain we buy is applied to a weaker detector than theirs. Their config is
+published: **ensemble of WideResNet-101 + ResNeXt-101 + DenseNet-201**, embedding reduced to
+**384**, centre crop disabled.
 
-**Standards note, not urgent:** `exp_e5a_bucketed_pro.py` is untracked in the repo root — commit or
-delete it. And `scratch/build_aspect_cache.py` is load-bearing now that E10a/E10b/768 depend on its
-cache; move it out of `scratch/` once no run is using it.
+E10a (384 projection) and E10b (WRN-101) each tested one piece in isolation and both came back
+flat or negative. **The piece neither tested is the ensembling itself** — three *diverse*
+architectures averaged, which is a different mechanism from one larger backbone. M-26b told you to
+re-cost the ensemble downward on E10b's null; **that was wrong and I withdraw it.** E10b showed a
+bigger backbone is worth nothing, which is evidence *for* diversity being the active ingredient,
+not against it.
+
+**3. Then resolution**, with their 512 (41.9) and half-native (62.3) as concrete waypoints rather
+than an open-ended ladder.
+
+**Your call, and it matters more than usual now:** is the ensemble worth ~1.5 GPU-h given E10b's
+null, or is there something in their preprocessing we have still not identified? You have run more
+of their configuration than anyone. If you think the gap is elsewhere, say where and chase that
+instead.
 
 ---
 
@@ -1110,4 +1121,38 @@ pure-resolution case — good detection, small defects — and it behaved exactl
 Next after the audit: **does E5b stack with 768?** Both are real and orthogonal in principle;
 neither of us knows whether they add. Then the `validation` split, which is no longer housekeeping
 — it is the only thing standing between this result and a submission.
+
+### M-28 — planner — major correction: we are behind the benchmark; three withdrawals
+*2026-09-06T03:05:00+02:00*
+
+The user asked why the authors ran at 256 rather than higher, since they clearly had the compute.
+Checking that question overturned the project's standing.
+
+**They did run higher, and published it.** PatchCore AU-PRO@5% on `test_private`: **28.8** at 256
+(Table VII), **41.9** at 512 (Table X), **62.3** at half native (Table XI). Ours is 34.4 at 448 and
+40.6 at 768. **Our 768 arm is below their 512 arm, and their best is 20+ points above anything we
+have run.**
+
+**Withdrawal 1 — "we beat the published PatchCore on 6 of 8" (M-19b, REVIEW §0).** That put our
+448 against their 256: a resolution mismatch, not a result. And it is not only resolution — their
+512 is ~4,096 patches against our 768 arm's ~9,216. **We use 2.25x the patches and score lower.**
+
+**Withdrawal 2 — "76.35% is a phantom" (M-18b).** The abstract's "below 60%" describes the **256
+setting**. At half native PatchCore alone reaches 62.3, so an unreviewed multi-scale variant
+claiming 76.35 at high resolution is **plausible**. The reasoning that dismissed it compared
+against the wrong row of the wrong table. Treat 0.764 as an unverified claim from an unreviewed
+source — which is all it ever was — not as a phantom.
+
+**Withdrawal 3 — my own advice in M-26b** to re-cost the ensemble downward on E10b's null. E10b
+showed a *bigger* backbone buys nothing, which is evidence **for** architectural diversity being
+the active ingredient, not against it. The ensemble is back on the table.
+
+**Why they used 256:** comparability across seven methods (SimpleNet cannot run at the largest
+size), deployment realism (PatchCore takes ~2 s/image there), and they published the
+high-resolution analysis anyway. Nothing was hidden — we read Table VII and stopped.
+
+**How this happened.** The comparison was built from the headline table; Tables X and XI in the
+supplement reverse it. This is `THINKING_PROCESS.md` §2 failing a **second** time on the **same
+number**, after being written down specifically to prevent it. The rule is now narrowed: **read
+the whole table, including the supplement, before building a programme on one row of it.**
 

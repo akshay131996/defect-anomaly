@@ -230,43 +230,35 @@ MVTec AD 2 SuperADD / VAND 4.0 Feature Fusion (`outputs/ad2_feature_fusion.json`
 
 ### Immediate next step
 
-*updated 2026-09-06*
+*corrected 2026-09-06 — the previous version said we were ahead of the benchmark. We are not.*
 
-**Where we are.** On the six scenarios the 768 arm has finished, mean AU-PRO@5% is **0.406**,
-against the published PatchCore's **0.276** and the best published method (EfficientAD) at
-**0.308** on `test_private`. Resolution is still paying: 224 -> 448 gave +0.154, 448 -> 768 gives
-**+0.072** so far — diminishing, but the largest lever we have. `E5b` (dilated layer3) adds
-**+0.025** at 448 and is orthogonal to resolution.
+**Read `REVIEW.md` §0 before anything else.** PatchCore's published AU-PRO@5% on `test_private`:
+**28.8 at 256** (Table VII), **41.9 at 512** (Table X), **62.3 at half native** (Table XI). Ours
+is **34.4 at 448** and **40.6 at 768** on `test_public`.
 
-Best results to date, all on `test_public`, driver 580:
+**Our 768 arm sits below their 512 arm. We are behind this benchmark, not leading it.**
 
-| run | mean AU-PRO@5% |
-|---|---|
-| E4b (448 baseline) | 0.3444 |
-| E5b (448 + dilated layer3) | **0.3692** |
-| E5-768 (6 of 8 scenarios) | **0.406** |
+And it is not only resolution: their 512x512 at stride 8 is ~4,096 patches, our 768 aspect arm is
+~9,216. **We use about 2.25x their patch count and score lower.** That is an implementation
+deficit and it is the most actionable fact we have.
 
-**Order of work:**
+Order of work:
 
-1. **Let `E5-inputres-768` finish, then audit it.** Report the **bucketed table**, because it
-   finally tests D-04 prediction 2 — the `ge_16x` bucket bounded at **< 0.03 over 448 -> 768**.
-   That prediction has never been testable until now; the earlier attempt to settle it used
-   224 -> 448 and was withdrawn. **Report the bucket deltas before the headline mean.**
-2. **E5b + 768 together.** E5b is orthogonal to resolution and each is worth +0.025 and +0.072
-   alone. **Do not assume they stack** — measure it. If they do, we are near 0.43. Watch memory:
-   dilating layer3 at 768 raises layer3 compute fourfold at an already expensive resolution, so
-   check headroom before launching and record peak RSS.
-3. **Move model selection to the `validation` split.** `ad2_pixel_eval.py` loads it at line 82 and
-   never uses it. Everything so far is selected *and* reported on `test_public`, which violates §0
-   rule 5 and **blocks any external claim**. This is now the gating item, not a tidy-up.
-4. **Prepare the `test_private` submission.** We have a result worth validating externally and the
-   server is the only route to a comparable number. See `docs/MVTEC_AD2_IMPLEMENTATION_SPEC.md` §6.
-5. **`rice` and `walnuts`** — still the only scenarios where we trail the published PatchCore, and
-   nobody has looked at why. `ad2_shift_check.py` on those two is minutes.
+1. **Finish and audit `E5-inputres-768`**, including the bucketed table — it is still the only test
+   of D-04 prediction 2.
+2. **Close the implementation gap, before buying more resolution.** Every resolution gain is
+   currently being applied to a weaker detector. Their config is published: ensemble of
+   WideResNet-101 / ResNeXt-101 / DenseNet-201, embedding reduced to 384, centre crop disabled.
+   E10a and E10b tested two pieces of that in isolation and both were flat or negative — **so the
+   remaining candidate is the ensembling itself**, which E10b did not test.
+3. **Then resolution**, targeting their 512 (41.9) and half-native (62.3) as concrete waypoints.
+4. **Do not submit to the evaluation server yet.** We would be submitting below the published
+   baseline. This was the top priority yesterday; it is premature now.
+5. `rice` and `walnuts` are no longer special — every scenario is behind.
 
-**Open question worth your own read:** 768 still pays +0.072. Is 1024 worth its cost, or is the
-curve flattening enough that E5b-style architectural arms are the better spend? You have the
-timings; make the call and say why.
+**The resolution result is theirs, published.** Our measured +0.154 per doubling replicates
+Tables X and XI. Correct, independently arrived at, and **not a discovery** — it must not be
+written up as one.
 
 ---
 

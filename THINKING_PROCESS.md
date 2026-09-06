@@ -115,8 +115,15 @@ art. The real benchmark is EfficientAD at 30.8; we were at 34.4 the whole time.
 **The lesson.** A target is a load-bearing input. It shapes every downstream decision as strongly
 as any measurement does, and it was the one input nobody applied the audit checklist to.
 
+**It then failed a second time on the same number.** The corrected comparison was built from the
+paper's headline table (VII). Tables X and XI, in the supplementary material, report PatchCore at
+41.9 at 512px and 62.3 at half native — reversing the conclusion entirely and putting us behind the
+benchmark rather than ahead. That was missed *after* a full adversarial review whose subject was
+unverified targets.
+
 **What to do.** Before a number becomes a goal, establish its source, its split, its metric variant
-and its aggregation. If any of those is unknown, say so every time the number is used.
+and its aggregation — and **read the whole table, including the supplement.** One row of one table
+is not a benchmark. If any of those is unknown, say so every time the number is used.
 
 ---
 

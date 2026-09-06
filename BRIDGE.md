@@ -184,6 +184,7 @@ stated conclusion follows from the numbers — those are two different checks.*
 | E5-inputres-768 | pass | yes | **accepted** — 0.4239, 8/8 improved; **D-04 prediction 2 CONFIRMED** (`ge_16x` +0.0123 vs a <0.03 bound) |
 | E11-ours-256-squash | pass | yes | **accepted** — 22.2; the "-6.5 gap" reading is **withdrawn**, see REF |
 | REF-official-256 | pass | yes | **accepted** — official code on our split = **20.6**. Split effect **-8.2**; **we are +1.6 ahead of the reference**, no implementation gap |
+| REF-official-512 | pass | yes | **accepted** — 31.1 on our split (split effect -10.8); replicates the published curve and validates the harness |
 
 ---
 
@@ -1613,3 +1614,55 @@ controlled run to anchor them. P1 exists so the next comparison has one.
 
 5. **Next Actions:**
 Proceeding to launch `REF-official-halfnative` and queueing our 1024 aspect pipeline (`E5-inputres-1024`).
+
+### M-38 — planner — REF-512 accepted; our entire edge is the geometry
+*2026-09-06T19:10:00+02:00*
+
+`REF-official-512` accepted. 1530 regions, monotonic, 64 min. **Mean 31.08 on `test_public`.**
+
+**The harness is validated.** M-35's caution about `can` was right and the check worked: I said
+that if the curve replicates, REF-512 should land near 20.6 x 1.45 = **30.0**. It landed at
+**31.08**. The published 256 -> 512 relative gain reproduces on our split. The +74% on `can` was
+noise, as expected — the mean was the number that mattered.
+
+**Split effect grows with resolution:** -8.2 at 256, **-10.8** at 512. Do not extrapolate it as a
+constant to half-native.
+
+### The finding: our advantage is aspect-preserving geometry, and nothing else
+
+| | mean AU-PRO@5% |
+|---|---|
+| their pipeline, **squash** @512 | 31.1 |
+| our pipeline, **squash** @448 | **31.4** |
+| our pipeline, **aspect** @448 | **34.4** |
+
+**Our squash pipeline reproduces theirs to within 0.3 while using fewer pixels.** Swapping squash
+for aspect on our own pipeline is worth **+3.1**. That is the whole of our edge — +1.6 at 256,
++3.4 for our 448 against their 512 — and it is now attributed rather than assumed.
+
+This is the first clean, single-cause claim this project has produced: **aspect-preserving
+preprocessing is worth ~3 points of AU-PRO@5% on MVTec AD 2, and every reference implementation
+squashes.** It is also consistent with `can` (2.18:1) being the scenario where we gain most.
+
+### Two defects in the REF runs
+
+**GPU changed mid-sequence.** `REF-official-256` ran on an **RTX 4000 Ada**; `REF-official-512` on
+an **RTX A4000** — different architecture (Ada vs Ampere). The 256 -> 512 REF comparison therefore
+spans two cards. Probably small, but this project has documented a driver change moving a result by
+0.010, and §0 requires `env` to match for a comparison. **Flag it in the record; do not silently
+compare across it.**
+
+**The REF runner does not record `driver`.** We added driver capture to `ad2_pixel_eval.py` on
+2026-09-05 but not to `run_ref_official.py`. Both REF records have `env` without it. **Add it**, so
+the half-native run is comparable to something.
+
+### Next
+
+P1 continues: **`REF-official-halfnative`**. It is the top of their curve and the only remaining
+unknown on our split. Expect it to be slow — the paper reports ~2 s/image at that size, and REF-512
+already took 64 min. **Record peak RSS and VRAM**; if it will not fit, say so early.
+
+Then P2 (ours at 1024) — and given the finding above, **the interesting question is whether the
++3.1 geometry edge holds at the top of the curve or washes out.** If it holds, that is the result
+worth writing up.
+

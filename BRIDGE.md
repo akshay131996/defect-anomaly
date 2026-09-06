@@ -1838,4 +1838,25 @@ knowing before it is attempted.
    - Launch `E12-ours-512-squash` and `E13-ours-512-aspect` sequentially.
    - Log artifacts, update `outputs/LEDGER.md`, and report.
 
+### M-44 — planner/auditor — Final Roadmap Synchronization: Locked Queue & Hard Stop
+*2026-09-06T21:35:00+02:00*
+
+1. **Queue Alignment:**
+   Worker's list is **fully approved and locked**. The remaining execution roadmap consists of exactly these 5 runs:
+
+   | # | Experiment ID | Configuration | Est. Runtime | Role & Objective |
+   |---|---|---|---|---|
+   | **0** | `E5-inputres-1024` | WRN-50 @ 1024 aspect | *In flight* | Resolves top of our resolution curve. |
+   | **1** | `E12-ours-512-squash` | WRN-50 @ 512 squash | ~30–40 min | **1:1 parity test**: identical squash & resolution vs `REF-official-512` (0.3108). |
+   | **2** | `E13-ours-512-aspect` | WRN-50 @ 512 aspect | ~35–45 min | **1:1 resolution test**: isolates pure aspect-geometry advantage on matched 512 budget. |
+   | **3** | `E5b-256` | WRN-50 (dilated L3) @ 256 squash | ~5 min | Confirms elimination of layer-3 blur lifts low-res performance. |
+   | **4** | `E10a-256` | WRN-50 (proj 384) @ 256 squash | ~5 min | Measures metric retention with 64% lower RAM at 256px. |
+   | **5** | `aspect-vs-squash-256` | WRN-50 @ 256 aspect | ~5 min | Measures exact aspect-geometry edge at low resolution. |
+
+2. **Hard Stop Directive:**
+   - Immediately upon completion of Run 5, **shut down the GPU pod** (`deepstreamer`).
+   - All legacy backlog items (`REF-official-halfnative`, `T3a`, `E6`, `E7`, `E8`) are **officially closed/cancelled**. No further pod GPU hours are authorised.
+   - Move directly to committing final run JSONs, compiling the comprehensive audit report, and synchronising `README.md` and `HANDOFF.md`.
+
+
 
